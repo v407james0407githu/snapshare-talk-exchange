@@ -19,6 +19,8 @@ interface Profile {
   is_suspended: boolean;
   suspended_until: string | null;
   suspension_reason: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {

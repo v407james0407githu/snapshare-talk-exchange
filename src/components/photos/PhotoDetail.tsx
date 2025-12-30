@@ -97,7 +97,6 @@ export function PhotoDetail({ photo, open, onClose }: PhotoDetailProps) {
       }
     }
   }, [open, photo.id, user]);
-  };
 
   const loadUserRating = async () => {
     if (!user) return;

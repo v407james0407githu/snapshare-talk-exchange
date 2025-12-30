@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Camera, 
   Menu, 
@@ -25,13 +27,18 @@ const navItems = [
   { label: "作品分享", href: "/gallery" },
   { label: "討論區", href: "/forums" },
   { label: "二手交易", href: "/marketplace" },
-  { label: "哈拉打屁", href: "/lounge" },
 ];
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const isLoggedIn = false; // This would come from auth state
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full glass border-b border-border/50">
@@ -71,40 +78,56 @@ export function Header() {
             <Search className="h-5 w-5" />
           </Button>
 
-          {isLoggedIn ? (
+          {user ? (
             <>
               {/* Upload Button */}
-              <Button variant="gold" size="sm" className="hidden sm:flex gap-2">
-                <ImagePlus className="h-4 w-4" />
-                上傳作品
-              </Button>
+              <Link to="/upload">
+                <Button variant="gold" size="sm" className="hidden sm:flex gap-2">
+                  <ImagePlus className="h-4 w-4" />
+                  上傳作品
+                </Button>
+              </Link>
 
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
               </Button>
 
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
-                    <div className="w-8 h-8 rounded-full bg-gradient-gold flex items-center justify-center">
-                      <User className="h-4 w-4 text-charcoal" />
-                    </div>
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-gradient-gold text-charcoal">
+                        {profile?.display_name?.[0] || profile?.username?.[0] || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    我的檔案
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{profile?.display_name || profile?.username}</p>
+                    <p className="text-xs text-muted-foreground">@{profile?.username}</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      我的檔案
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Settings className="mr-2 h-4 w-4" />
-                    設定
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      設定
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem 
+                    className="text-destructive cursor-pointer"
+                    onClick={handleSignOut}
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     登出
                   </DropdownMenuItem>
@@ -113,12 +136,12 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link to="/login">
+              <Link to="/auth">
                 <Button variant="ghost" size="sm">
                   登入
                 </Button>
               </Link>
-              <Link to="/register">
+              <Link to="/auth?tab=register">
                 <Button variant="gold" size="sm">
                   註冊
                 </Button>
@@ -156,6 +179,15 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+            {user && (
+              <Link
+                to="/upload"
+                onClick={() => setIsMenuOpen(false)}
+                className="px-4 py-3 rounded-lg text-sm font-medium text-primary bg-primary/10"
+              >
+                上傳作品
+              </Link>
+            )}
           </nav>
         </div>
       )}
