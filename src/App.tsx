@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Gallery from "./pages/Gallery";
 import Forums from "./pages/Forums";
+import ForumTopic from "./pages/ForumTopic";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import Upload from "./pages/Upload";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/gallery" element={<Gallery />} />
             <Route path="/forums" element={<Forums />} />
+            <Route path="/forums/topic/:topicId" element={<ForumTopic />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/upload" element={<Upload />} />
