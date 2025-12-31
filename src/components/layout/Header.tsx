@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -12,7 +13,8 @@ import {
   Bell,
   Settings,
   LogOut,
-  ImagePlus
+  ImagePlus,
+  Shield
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,6 +36,7 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const { isAdmin, isModerator } = useAdmin();
 
   const handleSignOut = async () => {
     await signOut();
@@ -117,6 +120,14 @@ export function Header() {
                       我的檔案
                     </Link>
                   </DropdownMenuItem>
+                  {(isAdmin || isModerator) && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="cursor-pointer">
+                        <Shield className="mr-2 h-4 w-4" />
+                        管理後台
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
