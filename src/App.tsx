@@ -15,6 +15,7 @@ import Marketplace from "./pages/Marketplace";
 import CreateListing from "./pages/CreateListing";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagement from "./pages/admin/UserManagement";
+import ReportManagement from "./pages/admin/ReportManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/marketplace/create" element={<CreateListing />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<UserManagement />} />
+            <Route path="/admin/reports" element={<ReportManagement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
