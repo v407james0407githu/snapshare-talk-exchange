@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Gallery from "./pages/Gallery";
+import PhotoDetail from "./pages/PhotoDetail";
 import Forums from "./pages/Forums";
 import ForumTopic from "./pages/ForumTopic";
 import Auth from "./pages/Auth";
@@ -30,6 +31,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/gallery/:photoId" element={<PhotoDetail />} />
             <Route path="/forums" element={<Forums />} />
             <Route path="/forums/topic/:topicId" element={<ForumTopic />} />
             <Route path="/auth" element={<Auth />} />
