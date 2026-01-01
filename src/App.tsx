@@ -16,6 +16,9 @@ import Upload from "./pages/Upload";
 import Marketplace from "./pages/Marketplace";
 import CreateListing from "./pages/CreateListing";
 import ListingDetail from "./pages/ListingDetail";
+import Notifications from "./pages/Notifications";
+import Favorites from "./pages/Favorites";
+import Messages from "./pages/Messages";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagement from "./pages/admin/UserManagement";
 import ReportManagement from "./pages/admin/ReportManagement";
@@ -43,6 +46,10 @@ const App = () => (
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/marketplace/create" element={<CreateListing />} />
             <Route path="/marketplace/:listingId" element={<ListingDetail />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/favorites" element={<Favorites />} />
+            <Route path="/messages" element={<Messages />} />
+            <Route path="/messages/:conversationId" element={<Messages />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/reports" element={<ReportManagement />} />
