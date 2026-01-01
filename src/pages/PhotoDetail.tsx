@@ -358,7 +358,7 @@ export default function PhotoDetailPage() {
             {/* Mobile Stats */}
             <div className="lg:hidden bg-card rounded-xl border border-border p-4 space-y-4">
               {/* Photographer */}
-              <div className="flex items-center gap-3">
+              <Link to={`/user/${photographer?.user_id}`} className="flex items-center gap-3 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors">
                 <Avatar>
                   <AvatarImage src={photographer?.avatar_url || undefined} />
                   <AvatarFallback>
@@ -369,7 +369,7 @@ export default function PhotoDetailPage() {
                   <p className="font-medium">{photographer?.display_name || photographer?.username}</p>
                   <p className="text-sm text-muted-foreground">@{photographer?.username}</p>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
 
@@ -380,7 +380,7 @@ export default function PhotoDetailPage() {
               <h1 className="font-serif text-2xl font-bold mb-4">{photo.title}</h1>
 
               {/* Photographer - Desktop */}
-              <div className="hidden lg:flex items-center gap-3 mb-4">
+              <Link to={`/user/${photographer?.user_id}`} className="hidden lg:flex items-center gap-3 mb-4 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors">
                 <Avatar>
                   <AvatarImage src={photographer?.avatar_url || undefined} />
                   <AvatarFallback>
@@ -391,7 +391,7 @@ export default function PhotoDetailPage() {
                   <p className="font-medium">{photographer?.display_name || photographer?.username}</p>
                   <p className="text-sm text-muted-foreground">@{photographer?.username}</p>
                 </div>
-              </div>
+              </Link>
 
               {photo.description && (
                 <p className="text-muted-foreground mb-4">{photo.description}</p>

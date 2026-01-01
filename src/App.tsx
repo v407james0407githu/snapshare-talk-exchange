@@ -11,9 +11,11 @@ import Forums from "./pages/Forums";
 import ForumTopic from "./pages/ForumTopic";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 import Upload from "./pages/Upload";
 import Marketplace from "./pages/Marketplace";
 import CreateListing from "./pages/CreateListing";
+import ListingDetail from "./pages/ListingDetail";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagement from "./pages/admin/UserManagement";
 import ReportManagement from "./pages/admin/ReportManagement";
@@ -36,9 +38,11 @@ const App = () => (
             <Route path="/forums/topic/:topicId" element={<ForumTopic />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/user/:userId" element={<UserProfile />} />
             <Route path="/upload" element={<Upload />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/marketplace/create" element={<CreateListing />} />
+            <Route path="/marketplace/:listingId" element={<ListingDetail />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/reports" element={<ReportManagement />} />
