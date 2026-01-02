@@ -12,12 +12,15 @@ import {
   MessageSquare,
   Eye,
   Pin,
+  PinOff,
   Lock,
+  Unlock,
   Loader2,
   Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminActions } from "@/hooks/useAdminActions";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -60,6 +63,14 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState("");
+  const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
+
+  // Check admin status when user is available
+  useState(() => {
+    if (user) {
+      checkAdminStatus();
+    }
+  });
 
   // Fetch topic
   const { data: topic, isLoading: topicLoading } = useQuery({
@@ -273,6 +284,63 @@ export default function ForumTopic() {
                   reportedUserId={topic.user_id}
                 />
               </div>
+
+              {/* Admin Controls */}
+              {canModerate && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-2">管理員操作</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant={topic.is_pinned ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={async () => {
+                        const success = await toggleTopicPinned(topic.id, topic.is_pinned);
+                        if (success) {
+                          queryClient.invalidateQueries({ queryKey: ["forum-topic", topicId] });
+                        }
+                      }}
+                      disabled={adminLoading}
+                      className="gap-2"
+                    >
+                      {topic.is_pinned ? (
+                        <>
+                          <PinOff className="h-4 w-4" />
+                          取消置頂
+                        </>
+                      ) : (
+                        <>
+                          <Pin className="h-4 w-4" />
+                          設為置頂
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant={topic.is_locked ? "outline" : "secondary"}
+                      size="sm"
+                      onClick={async () => {
+                        const success = await toggleTopicLocked(topic.id, topic.is_locked);
+                        if (success) {
+                          queryClient.invalidateQueries({ queryKey: ["forum-topic", topicId] });
+                        }
+                      }}
+                      disabled={adminLoading}
+                      className="gap-2"
+                    >
+                      {topic.is_locked ? (
+                        <>
+                          <Unlock className="h-4 w-4" />
+                          解鎖主題
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-4 w-4" />
+                          鎖定主題
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

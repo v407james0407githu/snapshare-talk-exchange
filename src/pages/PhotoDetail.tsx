@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdminActions } from "@/hooks/useAdminActions";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +23,8 @@ import {
   CornerDownRight,
   ArrowLeft,
   Calendar,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -42,6 +45,7 @@ interface Photo {
   comment_count: number;
   average_rating: number;
   rating_count: number;
+  is_featured: boolean;
   created_at: string;
 }
 
@@ -66,6 +70,7 @@ export default function PhotoDetailPage() {
   const { photoId } = useParams<{ photoId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { canModerate, checkAdminStatus, togglePhotoFeatured, loading: adminLoading } = useAdminActions();
 
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [photographer, setPhotographer] = useState<Profile | null>(null);
@@ -91,8 +96,11 @@ export default function PhotoDetailPage() {
   }, [photoId]);
 
   useEffect(() => {
-    if (user && photo) {
-      loadUserRating();
+    if (user) {
+      checkAdminStatus();
+      if (photo) {
+        loadUserRating();
+      }
     }
   }, [user, photo]);
 
@@ -432,6 +440,37 @@ export default function PhotoDetailPage() {
                 <Calendar className="h-4 w-4" />
                 {format(new Date(photo.created_at), "yyyy年MM月dd日", { locale: zhTW })}
               </div>
+
+              {/* Admin Controls */}
+              {canModerate && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-2">管理員操作</p>
+                  <Button
+                    variant={photo.is_featured ? "destructive" : "outline"}
+                    size="sm"
+                    onClick={async () => {
+                      const success = await togglePhotoFeatured(photo.id, photo.is_featured);
+                      if (success) {
+                        setPhoto(prev => prev ? { ...prev, is_featured: !prev.is_featured } : prev);
+                      }
+                    }}
+                    disabled={adminLoading}
+                    className="gap-2"
+                  >
+                    {photo.is_featured ? (
+                      <>
+                        <PinOff className="h-4 w-4" />
+                        取消置頂
+                      </>
+                    ) : (
+                      <>
+                        <Pin className="h-4 w-4" />
+                        設為置頂
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
 
               {/* Report Button */}
               {user && user.id !== photo.user_id && (
