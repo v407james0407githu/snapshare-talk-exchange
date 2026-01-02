@@ -20,6 +20,7 @@ import {
   Plus,
   CheckCircle
 } from 'lucide-react';
+import { resizeImage, createThumbnail } from '@/lib/imageResize';
 
 const phoneBrands = [
   { value: 'apple', label: 'Apple' },
@@ -192,18 +193,37 @@ export function PhotoUpload() {
 
     try {
       for (const uploadedFile of uploadedFiles) {
-        const fileExt = uploadedFile.file.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}_${uploadedFile.id}.${fileExt}`;
+        // Resize image before upload
+        const resizedImage = await resizeImage(uploadedFile.file);
+        const thumbnail = await createThumbnail(uploadedFile.file);
+        
+        const timestamp = Date.now();
+        const fileName = `${user.id}/${timestamp}_${uploadedFile.id}.jpg`;
+        const thumbFileName = `${user.id}/${timestamp}_${uploadedFile.id}_thumb.jpg`;
 
-        const { error: uploadError, data: uploadData } = await supabase.storage
+        // Upload resized main image
+        const { error: uploadError } = await supabase.storage
           .from('photos')
-          .upload(fileName, uploadedFile.file);
+          .upload(fileName, resizedImage.blob, {
+            contentType: 'image/jpeg',
+          });
 
         if (uploadError) throw uploadError;
+
+        // Upload thumbnail
+        const { error: thumbError } = await supabase.storage
+          .from('photos')
+          .upload(thumbFileName, thumbnail.blob, {
+            contentType: 'image/jpeg',
+          });
 
         const { data: { publicUrl } } = supabase.storage
           .from('photos')
           .getPublicUrl(fileName);
+
+        const { data: { publicUrl: thumbUrl } } = supabase.storage
+          .from('photos')
+          .getPublicUrl(thumbFileName);
 
         const { error: insertError } = await supabase
           .from('photos')
@@ -212,6 +232,7 @@ export function PhotoUpload() {
             title: uploadedFiles.length > 1 ? `${title} - ${uploadedFile.id}` : title,
             description,
             image_url: publicUrl,
+            thumbnail_url: thumbError ? null : thumbUrl,
             category,
             brand,
             phone_model: category === 'phone' ? phoneModel : null,
