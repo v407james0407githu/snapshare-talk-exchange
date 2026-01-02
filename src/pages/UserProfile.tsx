@@ -60,18 +60,15 @@ export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
   const [activeTab, setActiveTab] = useState('photos');
 
-  // Fetch user profile
+  // Fetch user profile using RPC to get only public fields
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['user-profile', userId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+        .rpc('get_public_profile', { target_user_id: userId });
 
       if (error) throw error;
-      return data as UserProfile;
+      return (data && data.length > 0 ? data[0] : null) as UserProfile | null;
     },
     enabled: !!userId,
   });
