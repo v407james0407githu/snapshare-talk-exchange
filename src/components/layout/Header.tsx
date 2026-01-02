@@ -16,15 +16,9 @@ import {
   ImagePlus,
   Shield,
   Heart,
-  MessageSquare
+  MessageSquare,
+  Bell
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   DropdownMenu,
   DropdownMenuContent,
