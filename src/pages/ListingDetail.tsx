@@ -29,7 +29,6 @@ import {
   Shield,
   ShieldCheck,
   MessageSquare,
-  Phone,
   Mail,
   Crown,
   Loader2,
@@ -66,7 +65,6 @@ interface SellerProfile {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
-  phone: string | null;
   bio: string | null;
   is_verified: boolean;
   is_vip: boolean;
@@ -119,18 +117,15 @@ export default function ListingDetail() {
     enabled: !!listingId,
   });
 
-  // Fetch seller profile
+  // Fetch seller profile using secure RPC function
   const { data: seller } = useQuery({
     queryKey: ['seller-profile', listing?.user_id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', listing?.user_id)
-        .single();
+        .rpc('get_public_profile', { target_user_id: listing?.user_id });
 
       if (error) throw error;
-      return data as SellerProfile;
+      return (data?.[0] || null) as SellerProfile | null;
     },
     enabled: !!listing?.user_id,
   });
@@ -458,12 +453,6 @@ export default function ListingDetail() {
                               rows={4}
                             />
 
-                            {seller.phone && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Phone className="h-4 w-4" />
-                                <span>賣家電話：{seller.phone}</span>
-                              </div>
-                            )}
 
                             <Button onClick={handleSendMessage} className="w-full">
                               發送訊息
