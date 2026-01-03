@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -150,15 +150,18 @@ export default function Auth() {
 
       <Card className="w-full max-w-md relative z-10 border-border/50 shadow-2xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex items-center gap-2">
+          <Link to="/" className="mx-auto flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Camera className="h-10 w-10 text-primary" />
             <span className="font-serif text-2xl font-bold">
               光影<span className="text-gradient">論壇</span>
             </span>
-          </div>
+          </Link>
           <CardDescription className="text-muted-foreground">
             加入攝影愛好者社群，分享你的精彩瞬間
           </CardDescription>
+          <Link to="/" className="text-sm text-primary hover:underline">
+            ← 返回首頁瀏覽內容
+          </Link>
         </CardHeader>
 
         <CardContent>
