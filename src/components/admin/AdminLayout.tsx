@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,14 +46,25 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { loading, user } = useAdmin();
+  const { loading, user, isAdmin, isModerator } = useAdmin();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!isAdmin && !isModerator) {
+      navigate("/");
+    }
+  }, [loading, user, isAdmin, isModerator, navigate]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
   };
 
-  if (loading) {
+  if (loading || !user || (!isAdmin && !isModerator)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
