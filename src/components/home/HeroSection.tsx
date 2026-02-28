@@ -1,78 +1,175 @@
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, Sparkles, Users } from "lucide-react";
+import { Camera, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Banner {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  image_url: string;
+  cta_primary_text: string | null;
+  cta_primary_link: string | null;
+  cta_secondary_text: string | null;
+  cta_secondary_link: string | null;
+}
+
+const fallbackBanners: Banner[] = [
+  {
+    id: "1",
+    title: "用光影說故事，與同好共鳴",
+    subtitle: "全台最活躍的攝影創作者社群，分享作品、交流心得。",
+    image_url: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1920&q=80",
+    cta_primary_text: "開始創作之旅",
+    cta_primary_link: "/auth",
+    cta_secondary_text: "瀏覽精選作品",
+    cta_secondary_link: "/gallery",
+  },
+  {
+    id: "2",
+    title: "捕捉每一刻的美好",
+    subtitle: "用鏡頭記錄生活中的感動瞬間，與攝影愛好者一起成長。",
+    image_url: "https://images.unsplash.com/photo-1493863641943-9b68992a8d07?w=1920&q=80",
+    cta_primary_text: "上傳作品",
+    cta_primary_link: "/upload",
+    cta_secondary_text: "探索社群",
+    cta_secondary_link: "/forums",
+  },
+  {
+    id: "3",
+    title: "器材交流，找到你的最佳夥伴",
+    subtitle: "二手器材買賣、器材評測分享，讓每一分投資都值得。",
+    image_url: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=1920&q=80",
+    cta_primary_text: "逛逛市集",
+    cta_primary_link: "/marketplace",
+    cta_secondary_text: "器材討論",
+    cta_secondary_link: "/forums",
+  },
+];
 
 export function HeroSection() {
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [
+    Autoplay({ delay: 5000, stopOnInteraction: false }),
+  ]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  const { data: banners } = useQuery({
+    queryKey: ["hero-banners"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("hero_banners" as any)
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error || !data || data.length === 0) return fallbackBanners;
+      return data as unknown as Banner[];
+    },
+  });
+
+  const slides = banners ?? fallbackBanners;
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect);
+    return () => { emblaApi.off("select", onSelect); };
+  }, [emblaApi, onSelect]);
+
   return (
-    <section className="relative overflow-hidden bg-gradient-hero min-h-[80vh] flex items-center">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/30 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float" style={{ animationDelay: "-3s" }} />
+    <section className="relative min-h-[40vh] md:min-h-[50vh] max-h-[60vh] overflow-hidden group">
+      <div ref={emblaRef} className="overflow-hidden h-[50vh] md:h-[55vh] max-h-[60vh]">
+        <div className="flex h-full">
+          {slides.map((banner) => (
+            <div key={banner.id} className="flex-[0_0_100%] min-w-0 relative h-full">
+              {/* Background Image */}
+              <img
+                src={banner.image_url}
+                alt={banner.title}
+                className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+              />
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+
+              {/* Content */}
+              <div className="relative z-10 h-full flex items-center">
+                <div className="container">
+                  <div className="max-w-xl">
+                    <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-2xl p-6 md:p-8">
+                      <h1 className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-3">
+                        {banner.title}
+                      </h1>
+                      {banner.subtitle && (
+                        <p className="text-sm md:text-lg text-white/80 mb-6">
+                          {banner.subtitle}
+                        </p>
+                      )}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        {banner.cta_primary_text && banner.cta_primary_link && (
+                          <Link to={banner.cta_primary_link}>
+                            <Button variant="hero" size="lg" className="group/btn w-full sm:w-auto">
+                              <Camera className="h-4 w-4 mr-2 transition-transform group-hover/btn:scale-110" />
+                              {banner.cta_primary_text}
+                            </Button>
+                          </Link>
+                        )}
+                        {banner.cta_secondary_text && banner.cta_secondary_link && (
+                          <Link to={banner.cta_secondary_link}>
+                            <Button variant="glass" size="lg" className="text-white w-full sm:w-auto">
+                              <Users className="h-4 w-4 mr-2" />
+                              {banner.cta_secondary_text}
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Grid Pattern Overlay */}
-      <div 
-        className="absolute inset-0 opacity-5"
-        style={{
-          backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px'
-        }}
-      />
+      {/* Arrows */}
+      <button
+        onClick={() => emblaApi?.scrollPrev()}
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 hover:bg-black/60 text-white rounded-full p-2"
+        aria-label="Previous slide"
+      >
+        <ChevronLeft className="h-6 w-6" />
+      </button>
+      <button
+        onClick={() => emblaApi?.scrollNext()}
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 hover:bg-black/60 text-white rounded-full p-2"
+        aria-label="Next slide"
+      >
+        <ChevronRight className="h-6 w-6" />
+      </button>
 
-      <div className="container relative z-10 py-20">
-        <div className="max-w-3xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">攝影愛好者的專屬社群</span>
-          </div>
-
-          {/* Title */}
-          <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl font-bold text-cream leading-tight mb-6 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-            用<span className="text-gradient">光影</span>說故事
-            <br />
-            與同好<span className="text-gradient">共鳴</span>
-          </h1>
-
-          {/* Description */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-            在這裡分享您的攝影作品、交流器材心得、結識志同道合的朋友。
-            無論是手機攝影還是專業相機，都歡迎加入我們的大家庭。
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-            <Link to="/register">
-              <Button variant="hero" size="xl" className="group">
-                <Camera className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
-                開始創作之旅
-              </Button>
-            </Link>
-            <Link to="/gallery">
-              <Button variant="glass" size="xl" className="text-cream">
-                <Users className="h-5 w-5 mr-2" />
-                瀏覽精選作品
-              </Button>
-            </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 mt-16 animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
-            {[
-              { value: "12,000+", label: "創作者" },
-              { value: "50,000+", label: "作品" },
-              { value: "200,000+", label: "互動討論" },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-gradient mb-1">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Dots */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        {slides.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => emblaApi?.scrollTo(idx)}
+            className={`w-2.5 h-2.5 rounded-full transition-all ${
+              idx === selectedIndex
+                ? "bg-white w-6"
+                : "bg-white/50 hover:bg-white/70"
+            }`}
+            aria-label={`Go to slide ${idx + 1}`}
+          />
+        ))}
       </div>
     </section>
   );
