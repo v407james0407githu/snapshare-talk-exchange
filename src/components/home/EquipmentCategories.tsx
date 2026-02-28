@@ -93,13 +93,13 @@ export function EquipmentCategories() {
             icon={<Smartphone className="h-6 w-6" />}
             title="手機攝影"
             brands={mobilePhoneBrands}
-            linkPrefix="/equipment/mobile"
+            linkPrefix="/forums"
           />
           <CategoryCard
             icon={<Camera className="h-6 w-6" />}
             title="相機攝影"
             brands={cameraBrands}
-            linkPrefix="/equipment/camera"
+            linkPrefix="/forums"
           />
         </div>
       </div>

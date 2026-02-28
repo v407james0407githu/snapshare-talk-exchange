@@ -31,9 +31,9 @@ const navItems = [
   { label: "總覽", href: "/admin", icon: LayoutDashboard },
   { label: "會員管理", href: "/admin/users", icon: Users },
   { label: "Banner管理", href: "/admin/banners", icon: ImageIcon },
+  { label: "分類管理", href: "/admin/categories", icon: MessageSquare },
   { label: "檢舉處理", href: "/admin/reports", icon: Flag },
   { label: "作品審核", href: "/admin/photos", icon: Image },
-  { label: "討論管理", href: "/admin/forums", icon: MessageSquare },
   { label: "數據分析", href: "/admin/analytics", icon: BarChart3 },
   { label: "系統設定", href: "/admin/settings", icon: Settings },
 ];
