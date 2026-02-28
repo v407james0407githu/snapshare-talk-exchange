@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Users,
   Image,
+  ImageIcon,
   MessageSquare,
   Flag,
   Settings,
@@ -29,6 +30,7 @@ import { useNavigate } from "react-router-dom";
 const navItems = [
   { label: "總覽", href: "/admin", icon: LayoutDashboard },
   { label: "會員管理", href: "/admin/users", icon: Users },
+  { label: "Banner管理", href: "/admin/banners", icon: ImageIcon },
   { label: "檢舉處理", href: "/admin/reports", icon: Flag },
   { label: "作品審核", href: "/admin/photos", icon: Image },
   { label: "討論管理", href: "/admin/forums", icon: MessageSquare },
