@@ -17,7 +17,19 @@ import {
   Unlock,
   Loader2,
   Send,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminActions } from "@/hooks/useAdminActions";
@@ -63,6 +75,7 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
 
   // Check admin status when user is available
@@ -174,6 +187,29 @@ export default function ForumTopic() {
     createReplyMutation.mutate(replyContent);
   };
 
+  const handleDeleteTopic = async () => {
+    if (!user || !topic) return;
+    setIsDeleting(true);
+
+    try {
+      // Delete related content_tags
+      await supabase.from("content_tags").delete().eq("content_id", topic.id);
+      // Delete related replies
+      await supabase.from("forum_replies").delete().eq("topic_id", topic.id);
+      // Delete the topic
+      const { error } = await supabase.from("forum_topics").delete().eq("id", topic.id);
+
+      if (error) throw error;
+
+      toast.success("討論串已刪除");
+      navigate("/forums");
+    } catch (err: any) {
+      toast.error("刪除失敗：" + err.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatTime = (dateString: string) => {
     return formatDistanceToNow(new Date(dateString), {
       addSuffix: true,
@@ -278,12 +314,44 @@ export default function ForumTopic() {
                     {topic.reply_count || 0} 回覆
                   </span>
                 </div>
-                <ReportDialog
-                  contentType="forum_topic"
-                  contentId={topic.id}
-                  reportedUserId={topic.user_id}
-                />
+                <div className="flex items-center gap-2">
+                  {user && user.id !== topic.user_id && (
+                    <ReportDialog
+                      contentType="forum_topic"
+                      contentId={topic.id}
+                      reportedUserId={topic.user_id}
+                    />
+                  )}
+                </div>
               </div>
+
+              {/* Delete Button - Owner or Admin */}
+              {user && (user.id === topic.user_id || canModerate) && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="gap-2" disabled={isDeleting}>
+                        <Trash2 className="h-4 w-4" />
+                        刪除討論串
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>確定要刪除這個討論串嗎？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          此操作無法復原，討論串及其所有回覆將會被永久刪除。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteTopic} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          確定刪除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
 
               {/* Admin Controls */}
               {canModerate && (
