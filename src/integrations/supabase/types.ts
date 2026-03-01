@@ -335,12 +335,15 @@ export type Database = {
           cta_primary_text: string | null
           cta_secondary_link: string | null
           cta_secondary_text: string | null
+          gradient_opacity: number
+          gradient_type: string
           id: string
           image_url: string
           is_active: boolean | null
           sort_order: number | null
           subtitle: string | null
-          title: string
+          text_align: string
+          title: string | null
           updated_at: string | null
         }
         Insert: {
@@ -349,12 +352,15 @@ export type Database = {
           cta_primary_text?: string | null
           cta_secondary_link?: string | null
           cta_secondary_text?: string | null
+          gradient_opacity?: number
+          gradient_type?: string
           id?: string
           image_url: string
           is_active?: boolean | null
           sort_order?: number | null
           subtitle?: string | null
-          title: string
+          text_align?: string
+          title?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -363,12 +369,15 @@ export type Database = {
           cta_primary_text?: string | null
           cta_secondary_link?: string | null
           cta_secondary_text?: string | null
+          gradient_opacity?: number
+          gradient_type?: string
           id?: string
           image_url?: string
           is_active?: boolean | null
           sort_order?: number | null
           subtitle?: string | null
-          title?: string
+          text_align?: string
+          title?: string | null
           updated_at?: string | null
         }
         Relationships: []

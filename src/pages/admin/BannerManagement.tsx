@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,7 +15,7 @@ import { toast } from "sonner";
 
 interface Banner {
   id: string;
-  title: string;
+  title: string | null;
   subtitle: string | null;
   image_url: string;
   cta_primary_text: string | null;
@@ -22,6 +24,9 @@ interface Banner {
   cta_secondary_link: string | null;
   sort_order: number;
   is_active: boolean;
+  text_align: string;
+  gradient_type: string;
+  gradient_opacity: number;
   created_at: string;
 }
 
@@ -35,7 +40,24 @@ const emptyForm = {
   cta_secondary_link: "",
   sort_order: 0,
   is_active: true,
+  text_align: "left",
+  gradient_type: "left-to-right",
+  gradient_opacity: 0.6,
 };
+
+const textAlignOptions = [
+  { value: "left", label: "左對齊" },
+  { value: "center", label: "置中" },
+  { value: "right", label: "右對齊" },
+];
+
+const gradientOptions = [
+  { value: "left-to-right", label: "左到右" },
+  { value: "right-to-left", label: "右到左" },
+  { value: "top-to-bottom", label: "上到下" },
+  { value: "bottom-to-top", label: "下到上" },
+  { value: "none", label: "無遮罩" },
+];
 
 export default function BannerManagement() {
   const queryClient = useQueryClient();
@@ -58,7 +80,7 @@ export default function BannerManagement() {
   const saveMutation = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
       const payload = {
-        title: values.title,
+        title: values.title || null,
         subtitle: values.subtitle || null,
         image_url: values.image_url,
         cta_primary_text: values.cta_primary_text || null,
@@ -67,6 +89,9 @@ export default function BannerManagement() {
         cta_secondary_link: values.cta_secondary_link || null,
         sort_order: values.sort_order,
         is_active: values.is_active,
+        text_align: values.text_align,
+        gradient_type: values.gradient_type,
+        gradient_opacity: values.gradient_opacity,
       };
       if (values.id) {
         const { error } = await supabase
@@ -115,7 +140,7 @@ export default function BannerManagement() {
   const openEdit = (banner: Banner) => {
     setEditingId(banner.id);
     setForm({
-      title: banner.title,
+      title: banner.title ?? "",
       subtitle: banner.subtitle ?? "",
       image_url: banner.image_url,
       cta_primary_text: banner.cta_primary_text ?? "",
@@ -124,17 +149,31 @@ export default function BannerManagement() {
       cta_secondary_link: banner.cta_secondary_link ?? "",
       sort_order: banner.sort_order,
       is_active: banner.is_active,
+      text_align: banner.text_align ?? "left",
+      gradient_type: banner.gradient_type ?? "left-to-right",
+      gradient_opacity: banner.gradient_opacity ?? 0.6,
     });
     setDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.image_url) {
-      toast.error("標題與圖片網址為必填");
+    if (!form.image_url) {
+      toast.error("圖片網址為必填");
       return;
     }
     saveMutation.mutate(editingId ? { ...form, id: editingId } : form);
+  };
+
+  const gradientPreview = () => {
+    if (form.gradient_type === "none") return "無遮罩";
+    const dirMap: Record<string, string> = {
+      "left-to-right": "→",
+      "right-to-left": "←",
+      "top-to-bottom": "↓",
+      "bottom-to-top": "↑",
+    };
+    return `${dirMap[form.gradient_type] || ""} 透明度 ${Math.round(form.gradient_opacity * 100)}%`;
   };
 
   return (
@@ -150,8 +189,8 @@ export default function BannerManagement() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label>標題 *</Label>
-                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <Label>標題（可留空）</Label>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="可選填" />
               </div>
               <div>
                 <Label>副標題</Label>
@@ -164,6 +203,61 @@ export default function BannerManagement() {
                   <img src={form.image_url} alt="Preview" className="mt-2 rounded-lg h-32 w-full object-cover" />
                 )}
               </div>
+
+              {/* Text Align */}
+              <div>
+                <Label>文字對齊</Label>
+                <Select value={form.text_align} onValueChange={(v) => setForm({ ...form, text_align: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {textAlignOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Gradient Settings */}
+              <div>
+                <Label>漸層遮罩方向</Label>
+                <Select value={form.gradient_type} onValueChange={(v) => setForm({ ...form, gradient_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {gradientOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.gradient_type !== "none" && (
+                <div>
+                  <Label>遮罩透明度: {Math.round(form.gradient_opacity * 100)}%</Label>
+                  <Slider
+                    value={[form.gradient_opacity]}
+                    onValueChange={([v]) => setForm({ ...form, gradient_opacity: v })}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    className="mt-2"
+                  />
+                </div>
+              )}
+
+              {/* Gradient Preview */}
+              {form.image_url && (
+                <div className="relative rounded-lg overflow-hidden h-24">
+                  <img src={form.image_url} alt="Gradient preview" className="absolute inset-0 w-full h-full object-cover" />
+                  <GradientOverlayPreview type={form.gradient_type} opacity={form.gradient_opacity} />
+                  <div className={`relative z-10 h-full flex items-center px-4 ${
+                    form.text_align === "center" ? "justify-center text-center" : 
+                    form.text_align === "right" ? "justify-end text-right" : "justify-start text-left"
+                  }`}>
+                    <span className="text-white font-bold text-sm drop-shadow">{form.title || "預覽文字"}</span>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>主按鈕文字</Label>
@@ -214,13 +308,18 @@ export default function BannerManagement() {
             <Card key={banner.id} className={!banner.is_active ? "opacity-50" : ""}>
               <CardContent className="flex items-center gap-4 p-4">
                 <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" />
-                <img src={banner.image_url} alt={banner.title} className="h-16 w-28 rounded-lg object-cover shrink-0" />
+                <img src={banner.image_url} alt={banner.title || "Banner"} className="h-16 w-28 rounded-lg object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{banner.title}</h3>
+                  <h3 className="font-medium truncate">{banner.title || <span className="text-muted-foreground italic">無標題</span>}</h3>
                   <p className="text-sm text-muted-foreground truncate">{banner.subtitle}</p>
-                  <span className={`text-xs ${banner.is_active ? "text-green-500" : "text-muted-foreground"}`}>
-                    {banner.is_active ? "啟用中" : "已停用"} · 排序: {banner.sort_order}
-                  </span>
+                  <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+                    <span className={banner.is_active ? "text-green-500" : ""}>
+                      {banner.is_active ? "啟用中" : "已停用"}
+                    </span>
+                    <span>· 排序: {banner.sort_order}</span>
+                    <span>· 對齊: {textAlignOptions.find(o => o.value === banner.text_align)?.label || "左"}</span>
+                    <span>· 遮罩: {gradientOptions.find(o => o.value === banner.gradient_type)?.label || "左到右"}</span>
+                  </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <Button variant="outline" size="icon" onClick={() => openEdit(banner)}>
@@ -241,5 +340,22 @@ export default function BannerManagement() {
         </div>
       )}
     </AdminLayout>
+  );
+}
+
+function GradientOverlayPreview({ type, opacity }: { type: string; opacity: number }) {
+  if (type === "none") return null;
+  const dirMap: Record<string, string> = {
+    "left-to-right": "to right",
+    "right-to-left": "to left",
+    "top-to-bottom": "to bottom",
+    "bottom-to-top": "to top",
+  };
+  const dir = dirMap[type] || "to right";
+  return (
+    <div
+      className="absolute inset-0"
+      style={{ background: `linear-gradient(${dir}, rgba(0,0,0,${opacity}), rgba(0,0,0,${opacity * 0.3}), transparent)` }}
+    />
   );
 }
