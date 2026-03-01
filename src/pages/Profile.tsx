@@ -24,6 +24,7 @@ import {
   Loader2,
   CheckCircle
 } from 'lucide-react';
+import { AvatarCropDialog } from '@/components/profile/AvatarCropDialog';
 
 export default function Profile() {
   const { user, profile, updateProfile, loading } = useAuth();
@@ -34,6 +35,8 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [showCropDialog, setShowCropDialog] = useState(false);
   
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -62,37 +65,36 @@ export default function Profile() {
     return null;
   }
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      toast({
-        title: "格式錯誤",
-        description: "請上傳圖片檔案",
-        variant: "destructive",
-      });
+      toast({ title: "格式錯誤", description: "請上傳圖片檔案", variant: "destructive" });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "檔案過大", description: "頭像大小不能超過 5MB", variant: "destructive" });
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast({
-        title: "檔案過大",
-        description: "頭像大小不能超過 2MB",
-        variant: "destructive",
-      });
-      return;
-    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setShowCropDialog(true);
+    };
+    reader.readAsDataURL(file);
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  };
 
+  const handleCroppedUpload = async (croppedBlob: Blob) => {
     setIsUploadingAvatar(true);
-
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
-
+      const fileName = `${user.id}/avatar.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, croppedBlob, { upsert: true, contentType: 'image/jpeg' });
 
       if (uploadError) throw uploadError;
 
@@ -100,19 +102,15 @@ export default function Profile() {
         .from('avatars')
         .getPublicUrl(fileName);
 
-      await updateProfile({ avatar_url: publicUrl });
+      // Add cache-busting param
+      await updateProfile({ avatar_url: `${publicUrl}?t=${Date.now()}` });
 
-      toast({
-        title: "上傳成功",
-        description: "頭像已更新",
-      });
+      toast({ title: "上傳成功", description: "頭像已更新" });
+      setShowCropDialog(false);
+      setCropImageSrc(null);
     } catch (error) {
       console.error('Error uploading avatar:', error);
-      toast({
-        title: "上傳失敗",
-        description: "請稍後再試",
-        variant: "destructive",
-      });
+      toast({ title: "上傳失敗", description: "請稍後再試", variant: "destructive" });
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -176,7 +174,7 @@ export default function Profile() {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={handleAvatarUpload}
+                    onChange={handleAvatarSelect}
                   />
                 </div>
 
@@ -365,6 +363,18 @@ export default function Profile() {
           </Tabs>
         </div>
       </div>
+      {cropImageSrc && (
+        <AvatarCropDialog
+          open={showCropDialog}
+          onOpenChange={(open) => {
+            setShowCropDialog(open);
+            if (!open) setCropImageSrc(null);
+          }}
+          imageSrc={cropImageSrc}
+          onCropComplete={handleCroppedUpload}
+          isUploading={isUploadingAvatar}
+        />
+      )}
     </MainLayout>
   );
 }
