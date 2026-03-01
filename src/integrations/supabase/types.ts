@@ -722,6 +722,45 @@ export type Database = {
         }
         Relationships: []
       }
+      site_content: {
+        Row: {
+          content_meta: Json | null
+          content_type: string
+          content_value: string
+          id: string
+          is_active: boolean | null
+          section_key: string
+          section_label: string
+          sort_order: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          content_meta?: Json | null
+          content_type?: string
+          content_value?: string
+          id?: string
+          is_active?: boolean | null
+          section_key: string
+          section_label: string
+          sort_order?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          content_meta?: Json | null
+          content_type?: string
+          content_value?: string
+          id?: string
+          is_active?: boolean | null
+          section_key?: string
+          section_label?: string
+          sort_order?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           created_at: string | null

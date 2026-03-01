@@ -24,6 +24,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import ReportManagement from "./pages/admin/ReportManagement";
 import BannerManagement from "./pages/admin/BannerManagement";
 import CategoryManagement from "./pages/admin/CategoryManagement";
+import ContentManagement from "./pages/admin/ContentManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/admin/reports" element={<ReportManagement />} />
             <Route path="/admin/banners" element={<BannerManagement />} />
             <Route path="/admin/categories" element={<CategoryManagement />} />
+            <Route path="/admin/content" element={<ContentManagement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
