@@ -215,79 +215,84 @@ export default function Gallery() {
             </div>
           ) : filteredPhotos?.length ? (
             <div
-              className={`grid gap-6 ${
-                viewMode === "grid"
-                  ? "sm:grid-cols-2 lg:grid-cols-3"
-                  : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              }`}
+              className={
+                viewMode === "masonry"
+                  ? "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 [column-fill:_balance]"
+                  : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+              }
             >
               {filteredPhotos.map((photo) => (
                 <Link
                   key={photo.id}
                   to={`/gallery/${photo.id}`}
-                  className="group relative block overflow-hidden rounded-xl bg-card border border-border hover-lift"
+                  className={`group relative block overflow-hidden rounded-xl bg-card border border-border hover-lift ${
+                    viewMode === "masonry" ? "mb-4 break-inside-avoid" : ""
+                  }`}
                 >
-                  {/* Image */}
+                  {/* Image - natural aspect ratio for masonry, fixed for grid */}
                   <div
                     className={`overflow-hidden ${
-                      viewMode === "grid" ? "aspect-[4/3]" : "aspect-square"
+                      viewMode === "grid" ? "aspect-[4/3]" : ""
                     }`}
                   >
                     <img
                       src={photo.image_url}
                       alt={photo.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      className={`w-full object-cover transition-transform duration-500 group-hover:scale-110 ${
+                        viewMode === "grid" ? "h-full" : "h-auto"
+                      }`}
+                      loading="lazy"
                     />
                   </div>
 
                   {/* Overlay on Hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/90 via-zinc-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <h3 className="font-serif text-lg font-bold text-cream mb-1">
+                  <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <h3 className="font-serif text-sm md:text-base font-bold text-cream mb-1 line-clamp-1">
                         {photo.title}
                       </h3>
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="flex items-center gap-2 mb-2">
                         {photo.profiles?.avatar_url ? (
                           <img
                             src={photo.profiles.avatar_url}
                             alt=""
-                            className="w-6 h-6 rounded-full object-cover"
+                            className="w-5 h-5 rounded-full object-cover"
                           />
                         ) : (
-                          <span className="text-lg">👤</span>
+                          <span className="text-sm">👤</span>
                         )}
-                        <span className="text-sm text-cream/80">
+                        <span className="text-xs text-cream/80 truncate">
                           {photo.profiles?.display_name ||
                             photo.profiles?.username}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-cream/70">
+                      <div className="flex items-center gap-3 text-xs text-cream/70">
                         <span className="flex items-center gap-1">
-                          <Heart className="h-4 w-4" /> {photo.like_count || 0}
+                          <Heart className="h-3 w-3" /> {photo.like_count || 0}
                         </span>
                         <span className="flex items-center gap-1">
-                          <MessageCircle className="h-4 w-4" />{" "}
+                          <MessageCircle className="h-3 w-3" />{" "}
                           {photo.comment_count || 0}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Eye className="h-4 w-4" /> {photo.view_count || 0}
+                          <Eye className="h-3 w-3" /> {photo.view_count || 0}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Equipment Badge */}
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2 py-1 rounded-full bg-zinc-900/70 backdrop-blur-sm text-xs text-cream/90 border border-cream/20">
+                  <div className="absolute top-2 left-2">
+                    <span className="px-2 py-0.5 rounded-full bg-charcoal/70 backdrop-blur-sm text-[10px] md:text-xs text-cream/90 border border-cream/20">
                       {getEquipmentDisplay(photo)}
                     </span>
                   </div>
 
                   {/* Rating Badge */}
                   {(photo.average_rating || 0) > 0 && (
-                    <div className="absolute top-3 right-3">
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/90 text-xs font-medium text-zinc-900">
-                        <Star className="h-3 w-3 fill-current" />{" "}
+                    <div className="absolute top-2 right-2">
+                      <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/90 text-[10px] md:text-xs font-medium text-primary-foreground">
+                        <Star className="h-2.5 w-2.5 fill-current" />{" "}
                         {Number(photo.average_rating).toFixed(1)}
                       </span>
                     </div>
