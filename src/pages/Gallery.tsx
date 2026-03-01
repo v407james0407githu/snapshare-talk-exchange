@@ -217,81 +217,82 @@ export default function Gallery() {
             <div
               className={
                 viewMode === "masonry"
-                  ? "columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 [column-fill:_balance]"
-                  : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+                  ? "columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3"
+                  : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
               }
             >
               {filteredPhotos.map((photo) => (
                 <Link
                   key={photo.id}
                   to={`/gallery/${photo.id}`}
-                  className={`group relative block overflow-hidden rounded-xl bg-card border border-border hover-lift ${
-                    viewMode === "masonry" ? "mb-4 break-inside-avoid" : ""
+                  className={`group relative block overflow-hidden rounded-lg ${
+                    viewMode === "masonry" ? "mb-3 break-inside-avoid" : ""
                   }`}
                 >
-                  {/* Image - natural aspect ratio for masonry, fixed for grid */}
+                  {/* Image container */}
                   <div
-                    className={`overflow-hidden ${
+                    className={`overflow-hidden rounded-lg ${
                       viewMode === "grid" ? "aspect-[4/3]" : ""
                     }`}
                   >
                     <img
                       src={photo.image_url}
                       alt={photo.title}
-                      className={`w-full object-cover transition-transform duration-500 group-hover:scale-110 ${
+                      className={`w-full object-cover transition-all duration-500 ease-out group-hover:scale-[1.03] group-hover:brightness-110 ${
                         viewMode === "grid" ? "h-full" : "h-auto"
                       }`}
                       loading="lazy"
                     />
                   </div>
 
-                  {/* Overlay on Hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <h3 className="font-serif text-sm md:text-base font-bold text-cream mb-1 line-clamp-1">
-                        {photo.title}
-                      </h3>
-                      <div className="flex items-center gap-2 mb-2">
-                        {photo.profiles?.avatar_url ? (
-                          <img
-                            src={photo.profiles.avatar_url}
-                            alt=""
-                            className="w-5 h-5 rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-sm">👤</span>
-                        )}
-                        <span className="text-xs text-cream/80 truncate">
-                          {photo.profiles?.display_name ||
-                            photo.profiles?.username}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-cream/70">
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3 w-3" /> {photo.like_count || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MessageCircle className="h-3 w-3" />{" "}
-                          {photo.comment_count || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> {photo.view_count || 0}
-                        </span>
-                      </div>
+                  {/* Hover Overlay — gradient from bottom */}
+                  <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-charcoal/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                  {/* Info on Hover */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+                    <h3 className="font-serif text-sm md:text-base font-bold text-cream mb-1 line-clamp-1 drop-shadow-md">
+                      {photo.title}
+                    </h3>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {photo.profiles?.avatar_url ? (
+                        <img
+                          src={photo.profiles.avatar_url}
+                          alt=""
+                          className="w-5 h-5 rounded-full object-cover ring-1 ring-cream/30"
+                        />
+                      ) : (
+                        <span className="text-sm">👤</span>
+                      )}
+                      <span className="text-xs text-cream/80 truncate drop-shadow-sm">
+                        {photo.profiles?.display_name ||
+                          photo.profiles?.username}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-cream/70">
+                      <span className="flex items-center gap-1">
+                        <Heart className="h-3 w-3" /> {photo.like_count || 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MessageCircle className="h-3 w-3" />{" "}
+                        {photo.comment_count || 0}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Eye className="h-3 w-3" /> {photo.view_count || 0}
+                      </span>
                     </div>
                   </div>
 
                   {/* Equipment Badge */}
-                  <div className="absolute top-2 left-2">
+                  <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <span className="px-2 py-0.5 rounded-full bg-charcoal/70 backdrop-blur-sm text-[10px] md:text-xs text-cream/90 border border-cream/20">
                       {getEquipmentDisplay(photo)}
                     </span>
                   </div>
 
-                  {/* Rating Badge */}
+                  {/* Rating Badge — always visible */}
                   {(photo.average_rating || 0) > 0 && (
                     <div className="absolute top-2 right-2">
-                      <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/90 text-[10px] md:text-xs font-medium text-primary-foreground">
+                      <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/90 text-[10px] md:text-xs font-medium text-primary-foreground shadow-md">
                         <Star className="h-2.5 w-2.5 fill-current" />{" "}
                         {Number(photo.average_rating).toFixed(1)}
                       </span>
