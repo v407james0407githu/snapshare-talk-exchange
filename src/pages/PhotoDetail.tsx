@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,7 +25,19 @@ import {
   Calendar,
   Pin,
   PinOff,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { formatDistanceToNow, format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 
@@ -70,6 +82,7 @@ export default function PhotoDetailPage() {
   const { photoId } = useParams<{ photoId: string }>();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { canModerate, checkAdminStatus, togglePhotoFeatured, loading: adminLoading } = useAdminActions();
 
   const [photo, setPhoto] = useState<Photo | null>(null);
@@ -87,6 +100,7 @@ export default function PhotoDetailPage() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (photoId) {
@@ -293,6 +307,35 @@ export default function PhotoDetailPage() {
     setIsSubmittingComment(false);
   };
 
+  const handleDeletePhoto = async () => {
+    if (!user || !photo) return;
+    setIsDeleting(true);
+
+    try {
+      // Delete related content_tags
+      await supabase.from("content_tags").delete().eq("content_id", photo.id);
+      // Delete related comments
+      await supabase.from("comments").delete().eq("photo_id", photo.id);
+      // Delete related ratings
+      await supabase.from("photo_ratings").delete().eq("photo_id", photo.id);
+      // Delete the photo record
+      const { error } = await supabase.from("photos").delete().eq("id", photo.id);
+
+      if (error) throw error;
+
+      toast({ title: "作品已刪除" });
+      navigate("/gallery");
+    } catch (err: any) {
+      toast({
+        title: "刪除失敗",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSubmitReply = async (parentId: string) => {
     if (!user || !photo) return;
     if (!replyContent.trim()) return;
@@ -469,6 +512,34 @@ export default function PhotoDetailPage() {
                       </>
                     )}
                   </Button>
+                </div>
+              )}
+
+              {/* Delete Button - Owner or Admin */}
+              {user && (user.id === photo.user_id || canModerate) && (
+                <div className="mt-4">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="gap-2" disabled={isDeleting}>
+                        <Trash2 className="h-4 w-4" />
+                        刪除作品
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>確定要刪除這個作品嗎？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          此操作無法復原，作品及其所有評論、評分將會被永久刪除。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeletePhoto} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          確定刪除
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               )}
 
