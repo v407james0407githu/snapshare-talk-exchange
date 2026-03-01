@@ -16,6 +16,7 @@ import {
   Search,
   Bell,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ const navItems = [
   { label: "總覽", href: "/admin", icon: LayoutDashboard },
   { label: "會員管理", href: "/admin/users", icon: Users },
   { label: "Banner管理", href: "/admin/banners", icon: ImageIcon },
+  { label: "內容管理", href: "/admin/content", icon: FileText },
   { label: "分類管理", href: "/admin/categories", icon: MessageSquare },
   { label: "檢舉處理", href: "/admin/reports", icon: Flag },
   { label: "作品審核", href: "/admin/photos", icon: Image },
