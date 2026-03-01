@@ -229,11 +229,14 @@ export default function PhotoDetailPage() {
 
     setIsRating(true);
 
-    const { error } = await supabase.from("photo_ratings").upsert({
-      photo_id: photo.id,
-      user_id: user.id,
-      rating,
-    });
+    const { error } = await supabase.from("photo_ratings").upsert(
+      {
+        photo_id: photo.id,
+        user_id: user.id,
+        rating,
+      },
+      { onConflict: "photo_id,user_id" }
+    );
 
     if (error) {
       toast({
