@@ -64,7 +64,7 @@ const categories = [
 export default function Gallery() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<"grid" | "masonry">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -285,7 +285,7 @@ export default function Gallery() {
               <div
                 className={
                   viewMode === "masonry"
-                    ? "columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3"
+                    ? "columns-2 sm:columns-3 md:columns-4 xl:columns-5 gap-3 [column-fill:_balance]"
                     : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
                 }
               >
@@ -293,7 +293,7 @@ export default function Gallery() {
                   <Link
                     key={photo.id}
                     to={`/gallery/${photo.id}`}
-                    className={`group relative block overflow-hidden rounded-lg ${
+                    className={`group relative block overflow-hidden rounded-lg border border-border/50 ${
                       viewMode === "masonry" ? "mb-3 break-inside-avoid" : ""
                     }`}
                   >
@@ -301,8 +301,8 @@ export default function Gallery() {
                       <img
                         src={photo.image_url}
                         alt={photo.title}
-                        className={`w-full object-cover transition-all duration-500 ease-out group-hover:scale-[1.03] group-hover:brightness-110 ${
-                          viewMode === "grid" ? "h-full" : "h-auto"
+                        className={`w-full transition-all duration-500 ease-out group-hover:scale-[1.03] group-hover:brightness-110 ${
+                          viewMode === "grid" ? "h-full object-cover" : "h-auto object-contain"
                         }`}
                         loading="lazy"
                       />
