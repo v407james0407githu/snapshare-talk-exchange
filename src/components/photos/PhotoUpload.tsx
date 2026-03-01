@@ -21,6 +21,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { resizeImage, createThumbnail } from '@/lib/imageResize';
+import { TagInput } from '@/components/forums/TagInput';
 
 const phoneBrands = [
   { value: 'apple', label: 'Apple' },
@@ -70,7 +71,6 @@ export function PhotoUpload() {
   const [cameraBody, setCameraBody] = useState('');
   const [lens, setLens] = useState('');
   const [customTags, setCustomTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -138,16 +138,6 @@ export function PhotoUpload() {
     });
   }, []);
 
-  const addTag = useCallback(() => {
-    if (newTag.trim() && !customTags.includes(newTag.trim())) {
-      setCustomTags(prev => [...prev, newTag.trim()]);
-      setNewTag('');
-    }
-  }, [newTag, customTags]);
-
-  const removeTag = useCallback((tag: string) => {
-    setCustomTags(prev => prev.filter(t => t !== tag));
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,7 +215,7 @@ export function PhotoUpload() {
           .from('photos')
           .getPublicUrl(thumbFileName);
 
-        const { error: insertError } = await supabase
+        const { data: photoData, error: insertError } = await supabase
           .from('photos')
           .insert({
             user_id: user.id,
@@ -238,9 +228,36 @@ export function PhotoUpload() {
             phone_model: category === 'phone' ? phoneModel : null,
             camera_body: category === 'camera' ? cameraBody : null,
             lens: category === 'camera' ? lens : null,
-          });
+          })
+          .select()
+          .single();
 
         if (insertError) throw insertError;
+
+        // Save tags for photo
+        if (customTags.length > 0 && photoData) {
+          for (const tagName of customTags) {
+            const { data: existingTag } = await supabase
+              .from("tags" as any)
+              .select("id")
+              .eq("name", tagName)
+              .maybeSingle();
+            let tagId: string;
+            if (existingTag) {
+              tagId = (existingTag as any).id;
+            } else {
+              const { data: newTag } = await supabase
+                .from("tags" as any)
+                .insert({ name: tagName, slug: tagName.toLowerCase().replace(/\s+/g, "-") } as any)
+                .select("id")
+                .single();
+              tagId = (newTag as any).id;
+            }
+            await supabase.from("content_tags" as any).insert({
+              tag_id: tagId, content_id: photoData.id, content_type: "photo",
+            } as any);
+          }
+        }
       }
 
       toast({
@@ -448,38 +465,8 @@ export function PhotoUpload() {
             )}
 
             <div className="space-y-2">
-              <Label>自訂標籤</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="新增標籤"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addTag();
-                    }
-                  }}
-                />
-                <Button type="button" variant="outline" onClick={addTag}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {customTags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {customTags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => removeTag(tag)}
-                    >
-                      {tag}
-                      <X className="ml-1 h-3 w-3" />
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              <Label>標籤</Label>
+              <TagInput tags={customTags} onChange={setCustomTags} placeholder="輸入標籤後按 Enter，例如：風景、夜拍" />
             </div>
           </CardContent>
         </Card>

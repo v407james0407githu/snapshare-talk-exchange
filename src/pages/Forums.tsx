@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationLink,
+  PaginationNext, PaginationPrevious, PaginationEllipsis,
+} from "@/components/ui/pagination";
 import { Search, Plus, MessageSquare, Clock, TrendingUp, Loader2, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +25,8 @@ import { toast } from "sonner";
 import { useForumCategories, ForumCategorySidebar } from "@/components/forums/ForumCategorySelector";
 import { TopicList, type ForumTopic } from "@/components/forums/TopicList";
 import { TagInput } from "@/components/forums/TagInput";
+
+const TOPICS_PER_PAGE = 10;
 
 export default function Forums() {
   const { user } = useAuth();
@@ -33,6 +39,7 @@ export default function Forums() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newTopic, setNewTopic] = useState({ title: "", content: "", category: "", brand: "" });
   const [newTopicTags, setNewTopicTags] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: categories } = useForumCategories();
 
@@ -45,7 +52,7 @@ export default function Forums() {
         .select("*")
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(200);
       if (error) throw error;
 
       const userIds = [...new Set(topicsData.map((t) => t.user_id))];
@@ -133,7 +140,6 @@ export default function Forums() {
       // Save tags
       if (newTopicTags.length > 0) {
         for (const tagName of newTopicTags) {
-          // Upsert tag
           const { data: existingTag } = await supabase
             .from("tags" as any)
             .select("id")
@@ -187,6 +193,14 @@ export default function Forums() {
   const hotTopics = filteredTopics?.filter((t) => (t.reply_count || 0) > 10);
   const unansweredTopics = filteredTopics?.filter((t) => (t.reply_count || 0) === 0);
 
+  // Pagination helper
+  const paginateTopics = (list: ForumTopic[] | undefined) => {
+    if (!list) return { items: [], totalPages: 0 };
+    const totalPages = Math.max(1, Math.ceil(list.length / TOPICS_PER_PAGE));
+    const start = (currentPage - 1) * TOPICS_PER_PAGE;
+    return { items: list.slice(start, start + TOPICS_PER_PAGE), totalPages };
+  };
+
   const topicCounts: Record<string, number> = {};
   topics?.forEach((t) => { topicCounts[t.category] = (topicCounts[t.category] || 0) + 1; });
 
@@ -202,7 +216,80 @@ export default function Forums() {
     createTopicMutation.mutate(newTopic);
   };
 
-  const allCategories = categories?.flatMap((c) => [c, ...(c.children || [])]) || [];
+  // Reset page when filters change
+  const handleCategoryChange = (catId: string | null) => {
+    setSelectedCategory(catId);
+    setCurrentPage(1);
+  };
+  const handleSubCategoryChange = (subId: string | null) => {
+    setSelectedSubCategory(subId);
+    setCurrentPage(1);
+  };
+  const handleTagChange = (tag: string | null) => {
+    setSelectedTag(tag);
+    setCurrentPage(1);
+  };
+
+  const renderPagination = (totalPages: number) => {
+    if (totalPages <= 1) return null;
+
+    const pages: (number | 'ellipsis')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('ellipsis');
+      for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push('ellipsis');
+      pages.push(totalPages);
+    }
+
+    return (
+      <Pagination className="mt-6">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            />
+          </PaginationItem>
+          {pages.map((page, i) =>
+            page === 'ellipsis' ? (
+              <PaginationItem key={`e${i}`}><PaginationEllipsis /></PaginationItem>
+            ) : (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  isActive={currentPage === page}
+                  onClick={() => setCurrentPage(page)}
+                  className="cursor-pointer"
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            )
+          )}
+          <PaginationItem>
+            <PaginationNext
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  };
+
+  const renderTabContent = (list: ForumTopic[] | undefined) => {
+    const { items, totalPages } = paginateTopics(list);
+    return (
+      <>
+        <TopicList topics={items} onTagClick={handleTagChange} />
+        {renderPagination(totalPages)}
+      </>
+    );
+  };
 
   return (
     <MainLayout>
@@ -228,15 +315,15 @@ export default function Forums() {
             <div className="sticky top-24 space-y-6">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="搜尋主題..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+                <Input placeholder="搜尋主題..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="pl-10" />
               </div>
 
               <ForumCategorySidebar
                 categories={categories}
                 selectedCategory={selectedCategory}
                 selectedSubCategory={selectedSubCategory}
-                onSelectCategory={setSelectedCategory}
-                onSelectSubCategory={setSelectedSubCategory}
+                onSelectCategory={handleCategoryChange}
+                onSelectSubCategory={handleSubCategoryChange}
                 topicCounts={topicCounts}
               />
 
@@ -251,7 +338,7 @@ export default function Forums() {
                       key={tag.id}
                       variant={selectedTag === tag.name ? "default" : "outline"}
                       className="cursor-pointer hover:bg-primary/10"
-                      onClick={() => setSelectedTag(selectedTag === tag.name ? null : tag.name)}
+                      onClick={() => handleTagChange(selectedTag === tag.name ? null : tag.name)}
                     >
                       #{tag.name}
                       <span className="ml-1 text-xs opacity-60">{tag.usage_count}</span>
@@ -286,7 +373,7 @@ export default function Forums() {
                 <span className="text-sm text-muted-foreground">篩選標籤：</span>
                 <Badge variant="default" className="gap-1">
                   #{selectedTag}
-                  <button onClick={() => setSelectedTag(null)} className="ml-1 hover:text-destructive">✕</button>
+                  <button onClick={() => handleTagChange(null)} className="ml-1 hover:text-destructive">✕</button>
                 </Badge>
               </div>
             )}
@@ -296,15 +383,15 @@ export default function Forums() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Tabs defaultValue="latest" className="space-y-6">
+              <Tabs defaultValue="latest" className="space-y-6" onValueChange={() => setCurrentPage(1)}>
                 <TabsList>
                   <TabsTrigger value="latest" className="gap-2"><Clock className="h-4 w-4" />最新</TabsTrigger>
                   <TabsTrigger value="hot" className="gap-2"><TrendingUp className="h-4 w-4" />熱門</TabsTrigger>
                   <TabsTrigger value="unanswered" className="gap-2"><MessageSquare className="h-4 w-4" />待回覆</TabsTrigger>
                 </TabsList>
-                <TabsContent value="latest"><TopicList topics={filteredTopics} onTagClick={setSelectedTag} /></TabsContent>
-                <TabsContent value="hot"><TopicList topics={hotTopics} onTagClick={setSelectedTag} /></TabsContent>
-                <TabsContent value="unanswered"><TopicList topics={unansweredTopics} onTagClick={setSelectedTag} /></TabsContent>
+                <TabsContent value="latest">{renderTabContent(filteredTopics)}</TabsContent>
+                <TabsContent value="hot">{renderTabContent(hotTopics)}</TabsContent>
+                <TabsContent value="unanswered">{renderTabContent(unansweredTopics)}</TabsContent>
               </Tabs>
             )}
           </main>
