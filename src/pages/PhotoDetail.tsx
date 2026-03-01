@@ -139,15 +139,12 @@ export default function PhotoDetailPage() {
         .update({ view_count: (data.view_count || 0) + 1 })
         .eq("id", photoId);
 
-      // Fetch photographer profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .eq("user_id", data.user_id)
-        .single();
+      // Fetch photographer profile using security definer function
+      const { data: profileData } = await supabase
+        .rpc("get_public_profile", { target_user_id: data.user_id });
 
-      if (profile) {
-        setPhotographer(profile);
+      if (profileData && profileData.length > 0) {
+        setPhotographer(profileData[0] as unknown as Profile);
       }
     } catch (err: any) {
       setError(err.message || "無法載入照片");
@@ -808,16 +805,45 @@ function RecommendedWorks({ photo }: { photo: Photo }) {
 
   useEffect(() => {
     if (!photo) return;
-    supabase
-      .from("photos")
-      .select("id, title, image_url, average_rating, view_count")
-      .neq("id", photo.id)
-      .neq("user_id", photo.user_id)
-      .eq("is_hidden", false)
-      .order("average_rating", { ascending: false })
-      .limit(12)
-      .then(({ data }) => setWorks(data || []));
-  }, [photo.id]);
+
+    const fetchRecommendations = async () => {
+      // 1. First try: same brand or category, excluding current photo & author
+      const { data: smartData } = await supabase
+        .from("photos")
+        .select("id, title, image_url, average_rating, view_count, brand, category")
+        .neq("id", photo.id)
+        .eq("is_hidden", false)
+        .or(`brand.eq.${photo.brand},category.eq.${photo.category}`)
+        .order("average_rating", { ascending: false })
+        .limit(12);
+
+      if (smartData && smartData.length > 0) {
+        // Sort: same brand+category first, then same brand, then same category
+        const sorted = smartData.sort((a, b) => {
+          const scoreA = (a.brand === photo.brand ? 2 : 0) + (a.category === photo.category ? 1 : 0);
+          const scoreB = (b.brand === photo.brand ? 2 : 0) + (b.category === photo.category ? 1 : 0);
+          return scoreB - scoreA;
+        });
+        // Filter out current author's photos that are already in AuthorWorks
+        const filtered = sorted.filter(p => p.id !== photo.id);
+        setWorks(filtered.slice(0, 12));
+        return;
+      }
+
+      // 2. Fallback: just get highest rated photos
+      const { data: fallbackData } = await supabase
+        .from("photos")
+        .select("id, title, image_url, average_rating, view_count")
+        .neq("id", photo.id)
+        .eq("is_hidden", false)
+        .order("average_rating", { ascending: false })
+        .limit(12);
+
+      setWorks(fallbackData || []);
+    };
+
+    fetchRecommendations();
+  }, [photo.id, photo.brand, photo.category]);
 
   if (works.length === 0) return null;
 
@@ -831,6 +857,9 @@ function RecommendedWorks({ photo }: { photo: Photo }) {
         </h2>
         <Separator className="flex-1" />
       </div>
+      <p className="text-sm text-muted-foreground mb-4">
+        根據相同品牌「{photo.brand}」與分類「{photo.category}」為您推薦
+      </p>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {works.map((p) => (
           <PhotoCard key={p.id} p={p} />
