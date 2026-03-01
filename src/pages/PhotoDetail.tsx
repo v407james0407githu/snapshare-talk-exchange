@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -405,7 +405,7 @@ export default function PhotoDetailPage() {
               <img
                 src={photo.image_url}
                 alt={photo.title}
-                className="w-full h-auto max-h-[70vh] object-contain bg-black"
+                className="w-full h-auto max-h-[90vh] object-contain bg-black"
               />
             </div>
 
@@ -732,7 +732,110 @@ export default function PhotoDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Author's Other Works */}
+        <AuthorWorks photo={photo} photographer={photographer} />
+
+        {/* Recommended Works */}
+        <RecommendedWorks photo={photo} />
       </div>
     </MainLayout>
+  );
+}
+
+function PhotoCard({ p }: { p: { id: string; title: string; image_url: string; average_rating: number; view_count: number } }) {
+  return (
+    <Link to={`/gallery/${p.id}`} className="group block">
+      <div className="relative rounded-lg overflow-hidden border border-border bg-card">
+        <img
+          src={p.image_url}
+          alt={p.title}
+          className="w-full aspect-[4/3] object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform">
+          <p className="text-white text-sm font-medium truncate">{p.title}</p>
+          <div className="flex items-center gap-3 text-white/80 text-xs mt-1">
+            <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-current" />{Number(p.average_rating).toFixed(1)}</span>
+            <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{p.view_count}</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function AuthorWorks({ photo, photographer }: { photo: Photo; photographer: Profile | null }) {
+  const [works, setWorks] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!photo) return;
+    supabase
+      .from("photos")
+      .select("id, title, image_url, average_rating, view_count")
+      .eq("user_id", photo.user_id)
+      .neq("id", photo.id)
+      .eq("is_hidden", false)
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .then(({ data }) => setWorks(data || []));
+  }, [photo.id, photo.user_id]);
+
+  if (works.length === 0) return null;
+
+  return (
+    <div className="mt-12">
+      <div className="flex items-center gap-3 mb-6">
+        <Separator className="flex-1" />
+        <h2 className="text-lg font-semibold whitespace-nowrap flex items-center gap-2">
+          <Camera className="h-5 w-5 text-primary" />
+          {photographer?.display_name || photographer?.username} 的其他作品
+        </h2>
+        <Separator className="flex-1" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {works.map((p) => (
+          <PhotoCard key={p.id} p={p} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecommendedWorks({ photo }: { photo: Photo }) {
+  const [works, setWorks] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!photo) return;
+    supabase
+      .from("photos")
+      .select("id, title, image_url, average_rating, view_count")
+      .neq("id", photo.id)
+      .neq("user_id", photo.user_id)
+      .eq("is_hidden", false)
+      .order("average_rating", { ascending: false })
+      .limit(12)
+      .then(({ data }) => setWorks(data || []));
+  }, [photo.id]);
+
+  if (works.length === 0) return null;
+
+  return (
+    <div className="mt-12">
+      <div className="flex items-center gap-3 mb-6">
+        <Separator className="flex-1" />
+        <h2 className="text-lg font-semibold whitespace-nowrap flex items-center gap-2">
+          <Star className="h-5 w-5 text-primary" />
+          更多推薦作品
+        </h2>
+        <Separator className="flex-1" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {works.map((p) => (
+          <PhotoCard key={p.id} p={p} />
+        ))}
+      </div>
+    </div>
   );
 }
