@@ -24,58 +24,58 @@ interface ForumTopic {
 
 const recentTopics: ForumTopic[] = [
   {
-    id: "1",
+    id: "demo-1",
     title: "【心得】Sony A7C II 一個月使用心得分享",
     category: "相機",
     author: "攝影狂熱者",
     avatar: "📷",
-    replies: 156,
-    views: 3456,
-    lastActivity: "10 分鐘前",
+    replies: 42,
+    views: 1567,
+    lastActivity: "2 小時前",
     isPinned: true,
     isHot: true,
   },
   {
-    id: "2",
+    id: "demo-2",
     title: "iPhone 16 Pro 夜拍實測，ProRAW 真的有差嗎？",
     category: "手機",
     author: "科技宅",
     avatar: "📱",
-    replies: 89,
-    views: 2134,
-    lastActivity: "25 分鐘前",
+    replies: 28,
+    views: 892,
+    lastActivity: "5 小時前",
     isHot: true,
   },
   {
-    id: "3",
+    id: "demo-3",
     title: "Fujifilm X100VI 終於入手！開箱分享",
     category: "相機",
     author: "富士信徒",
     avatar: "🗻",
-    replies: 234,
-    views: 5678,
-    lastActivity: "1 小時前",
+    replies: 65,
+    views: 2341,
+    lastActivity: "8 小時前",
     isHot: true,
   },
   {
-    id: "4",
+    id: "demo-4",
     title: "請教各位前輩：街拍構圖有什麼建議？",
     category: "技術",
     author: "新手上路",
     avatar: "🌱",
-    replies: 45,
-    views: 890,
-    lastActivity: "2 小時前",
+    replies: 15,
+    views: 456,
+    lastActivity: "12 小時前",
   },
   {
-    id: "5",
+    id: "demo-5",
     title: "Ricoh GR IIIx vs Fujifilm X100V 該怎麼選？",
     category: "器材",
     author: "選擇困難症",
     avatar: "🤔",
-    replies: 78,
-    views: 1567,
-    lastActivity: "3 小時前",
+    replies: 33,
+    views: 1123,
+    lastActivity: "1 天前",
   },
 ];
 
@@ -120,7 +120,7 @@ export function ForumPreview() {
             {recentTopics.map((topic) => (
               <Link
                 key={topic.id}
-                to={`/forums/topic/${topic.id}`}
+                to="/forums"
                 className="block px-6 py-4 hover:bg-muted/30 transition-colors"
               >
                 <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">

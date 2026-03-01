@@ -41,7 +41,7 @@ function CategoryCard({ icon, title, brands, linkPrefix }: CategoryCardProps) {
         {brands.map((brand) => (
           <Link
             key={brand.name}
-            to={`${linkPrefix}/${brand.name.toLowerCase()}`}
+            to={linkPrefix}
             className="group flex items-center justify-between p-3 rounded-xl bg-secondary/50 hover:bg-primary/10 transition-colors"
           >
             <div className="flex items-center gap-3">
@@ -93,13 +93,13 @@ export function EquipmentCategories() {
             icon={<Smartphone className="h-6 w-6" />}
             title="手機攝影"
             brands={mobilePhoneBrands}
-            linkPrefix="/forums"
+            linkPrefix="/forums?category=phone"
           />
           <CategoryCard
             icon={<Camera className="h-6 w-6" />}
             title="相機攝影"
             brands={cameraBrands}
-            linkPrefix="/forums"
+            linkPrefix="/forums?category=camera"
           />
         </div>
       </div>
