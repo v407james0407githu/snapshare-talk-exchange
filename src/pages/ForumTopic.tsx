@@ -40,7 +40,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { ReportDialog } from "@/components/reports/ReportDialog";
-import { ForumImageUpload, useTextareaDrop } from "@/components/forums/ForumImageUpload";
+import { ForumImageUpload, useTextareaDrop, filesToItems, urlsToItems, uploadPendingItems, type ImageItem } from "@/components/forums/ForumImageUpload";
 import { ImageLightbox } from "@/components/forums/ImageLightbox";
 
 interface ForumTopicData {
@@ -84,52 +84,36 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState("");
-  const [replyImages, setReplyImages] = useState<string[]>([]);
+  const [replyImages, setReplyImages] = useState<ImageItem[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [replyDragUploading, setReplyDragUploading] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
-  const [editingImages, setEditingImages] = useState<string[]>([]);
+  const [editingImages, setEditingImages] = useState<ImageItem[]>([]);
   const [editingTopic, setEditingTopic] = useState(false);
   const [editingTopicTitle, setEditingTopicTitle] = useState("");
   const [editingTopicContent, setEditingTopicContent] = useState("");
-  const [editingTopicImages, setEditingTopicImages] = useState<string[]>([]);
+  const [editingTopicImages, setEditingTopicImages] = useState<ImageItem[]>([]);
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
 
-  const handleReplyDragUpload = async (files: File[]) => {
-    if (replyDragUploading) return;
+  const handleReplyDragFiles = (files: File[]) => {
     const isEditing = editingReplyId !== null;
-    const currentImages = isEditing ? editingImages : replyImages;
-    const remaining = 5 - currentImages.length;
+    const currentItems = isEditing ? editingImages : replyImages;
+    const remaining = 5 - currentItems.length;
     if (remaining <= 0) { toast.error('最多只能上傳 5 張圖片'); return; }
-    const valid = files.filter(f => f.type.startsWith('image/') && f.size <= 10 * 1024 * 1024).slice(0, remaining);
-    if (!valid.length) return;
-    setReplyDragUploading(true);
-    try {
-      const { resizeImage } = await import('@/lib/imageResize');
-      const newUrls: string[] = [];
-      for (const file of valid) {
-        const resized = await resizeImage(file, 1920, 0.85);
-        const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-        const { error } = await supabase.storage.from('photos').upload(path, resized.blob, { contentType: 'image/jpeg' });
-        if (error) throw error;
-        const { data } = supabase.storage.from('photos').getPublicUrl(path);
-        newUrls.push(data.publicUrl);
-      }
+    const newItems = filesToItems(files).slice(0, remaining);
+    if (newItems.length > 0) {
       if (isEditing) {
-        setEditingImages(prev => [...prev, ...newUrls]);
+        setEditingImages(prev => [...prev, ...newItems]);
       } else {
-        setReplyImages(prev => [...prev, ...newUrls]);
+        setReplyImages(prev => [...prev, ...newItems]);
       }
-      toast.success(`已上傳 ${newUrls.length} 張圖片`);
-    } catch (err: any) { toast.error('上傳失敗：' + err.message); }
-    finally { setReplyDragUploading(false); }
+    }
   };
 
-  const replyDrag = useTextareaDrop(handleReplyDragUpload, !user || replyDragUploading);
+  const replyDrag = useTextareaDrop(handleReplyDragFiles, !user);
 
   // Check admin status when user is available
   useState(() => {
@@ -208,11 +192,12 @@ export default function ForumTopic() {
       if (!user) throw new Error("請先登入");
       if (!topicId) throw new Error("主題不存在");
 
+      const imageUrls = replyImages.length > 0 ? await uploadPendingItems(replyImages) : null;
       const { error } = await supabase.from("forum_replies").insert({
         topic_id: topicId,
         content,
         user_id: user.id,
-        image_urls: replyImages.length > 0 ? replyImages : null,
+        image_urls: imageUrls,
       } as any);
 
       if (error) throw error;
@@ -231,11 +216,12 @@ export default function ForumTopic() {
 
   // Update reply mutation
   const updateReplyMutation = useMutation({
-    mutationFn: async ({ replyId, content, imageUrls }: { replyId: string; content: string; imageUrls: string[] }) => {
+    mutationFn: async ({ replyId, content, items }: { replyId: string; content: string; items: ImageItem[] }) => {
       if (!user) throw new Error("請先登入");
+      const imageUrls = items.length > 0 ? await uploadPendingItems(items) : null;
       const { error } = await supabase
         .from("forum_replies")
-        .update({ content, image_urls: imageUrls.length > 0 ? imageUrls : null } as any)
+        .update({ content, image_urls: imageUrls } as any)
         .eq("id", replyId)
         .eq("user_id", user.id);
       if (error) throw error;
@@ -254,11 +240,12 @@ export default function ForumTopic() {
 
   // Update topic mutation
   const updateTopicMutation = useMutation({
-    mutationFn: async ({ title, content, imageUrls }: { title: string; content: string; imageUrls: string[] }) => {
+    mutationFn: async ({ title, content, items }: { title: string; content: string; items: ImageItem[] }) => {
       if (!user || !topicId) throw new Error("請先登入");
+      const imageUrls = items.length > 0 ? await uploadPendingItems(items) : null;
       const { error } = await supabase
         .from("forum_topics")
-        .update({ title, content, image_urls: imageUrls.length > 0 ? imageUrls : null } as any)
+        .update({ title, content, image_urls: imageUrls } as any)
         .eq("id", topicId)
         .eq("user_id", user.id);
       if (error) throw error;
@@ -311,7 +298,7 @@ export default function ForumTopic() {
     setEditingReplyId(reply.id);
     setEditingContent(reply.content);
     const imgs = reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [];
-    setEditingImages(imgs);
+    setEditingImages(urlsToItems(imgs));
   };
 
   const handleCancelEdit = () => {
@@ -322,7 +309,7 @@ export default function ForumTopic() {
 
   const handleSaveEdit = () => {
     if (!editingReplyId || !editingContent.trim()) return;
-    updateReplyMutation.mutate({ replyId: editingReplyId, content: editingContent, imageUrls: editingImages });
+    updateReplyMutation.mutate({ replyId: editingReplyId, content: editingContent, items: editingImages });
   };
 
   const handleStartEditTopic = () => {
@@ -331,12 +318,12 @@ export default function ForumTopic() {
     setEditingTopicTitle(topic.title);
     setEditingTopicContent(topic.content);
     const imgs = topic.image_urls?.length ? topic.image_urls : topic.image_url ? [topic.image_url] : [];
-    setEditingTopicImages(imgs);
+    setEditingTopicImages(urlsToItems(imgs));
   };
 
   const handleSaveEditTopic = () => {
     if (!editingTopicTitle.trim() || !editingTopicContent.trim()) return;
-    updateTopicMutation.mutate({ title: editingTopicTitle, content: editingTopicContent, imageUrls: editingTopicImages });
+    updateTopicMutation.mutate({ title: editingTopicTitle, content: editingTopicContent, items: editingTopicImages });
   };
 
   const handleDeleteTopic = async () => {
@@ -456,8 +443,8 @@ export default function ForumTopic() {
                     rows={6}
                   />
                   <ForumImageUpload
-                    imageUrls={editingTopicImages}
-                    onImagesChange={setEditingTopicImages}
+                    items={editingTopicImages}
+                    onItemsChange={setEditingTopicImages}
                     disabled={updateTopicMutation.isPending}
                   />
                   <div className="flex gap-2 justify-end mt-3">
@@ -712,8 +699,8 @@ export default function ForumTopic() {
                             autoFocus
                           />
                           <ForumImageUpload
-                            imageUrls={editingImages}
-                            onImagesChange={setEditingImages}
+                            items={editingImages}
+                            onItemsChange={setEditingImages}
                             disabled={updateReplyMutation.isPending}
                           />
                           <div className="flex gap-2 justify-end">
@@ -740,7 +727,7 @@ export default function ForumTopic() {
                                     key={i}
                                     src={url}
                                     alt={`回覆附圖 ${i + 1}`}
-                                    className="max-h-48 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                                    className="max-w-full max-h-64 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-contain"
                                     onClick={() => { setLightboxImages(imgs); setLightboxIndex(i); setLightboxOpen(true); }}
                                   />
                                 ))}
@@ -789,8 +776,8 @@ export default function ForumTopic() {
             </div>
             <div className="mt-3">
               <ForumImageUpload
-                imageUrls={replyImages}
-                onImagesChange={setReplyImages}
+                items={replyImages}
+                onItemsChange={setReplyImages}
                 disabled={!user || createReplyMutation.isPending}
               />
             </div>
