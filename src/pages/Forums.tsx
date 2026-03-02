@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { useForumCategories, ForumCategorySidebar } from "@/components/forums/ForumCategorySelector";
 import { TopicList, type ForumTopic } from "@/components/forums/TopicList";
 import { TagInput } from "@/components/forums/TagInput";
-import { ForumImageUpload, useTextareaDrop } from "@/components/forums/ForumImageUpload";
+import { ForumImageUpload, useTextareaDrop, filesToItems, uploadPendingItems, type ImageItem } from "@/components/forums/ForumImageUpload";
 
 const TOPICS_PER_PAGE = 10;
 
@@ -40,35 +40,20 @@ export default function Forums() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newTopic, setNewTopic] = useState({ title: "", content: "", category: "", brand: "" });
   const [newTopicTags, setNewTopicTags] = useState<string[]>([]);
-  const [newTopicImages, setNewTopicImages] = useState<string[]>([]);
+  const [newTopicImages, setNewTopicImages] = useState<ImageItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [dragUploading, setDragUploading] = useState(false);
+  
 
-  const handleDragUploadFiles = async (files: File[]) => {
-    if (dragUploading) return;
+  const handleDragUploadFiles = (files: File[]) => {
     const remaining = 5 - newTopicImages.length;
     if (remaining <= 0) { toast.error('最多只能上傳 5 張圖片'); return; }
-    const valid = files.filter(f => f.type.startsWith('image/') && f.size <= 10 * 1024 * 1024).slice(0, remaining);
-    if (!valid.length) return;
-    setDragUploading(true);
-    try {
-      const { resizeImage } = await import('@/lib/imageResize');
-      const newUrls: string[] = [];
-      for (const file of valid) {
-        const resized = await resizeImage(file, 1920, 0.85);
-        const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-        const { error } = await supabase.storage.from('photos').upload(path, resized.blob, { contentType: 'image/jpeg' });
-        if (error) throw error;
-        const { data } = supabase.storage.from('photos').getPublicUrl(path);
-        newUrls.push(data.publicUrl);
-      }
-      setNewTopicImages(prev => [...prev, ...newUrls]);
-      toast.success(`已上傳 ${newUrls.length} 張圖片`);
-    } catch (err: any) { toast.error('上傳失敗：' + err.message); }
-    finally { setDragUploading(false); }
+    const newItems = filesToItems(files).slice(0, remaining);
+    if (newItems.length > 0) {
+      setNewTopicImages(prev => [...prev, ...newItems]);
+    }
   };
 
-  const contentDrag = useTextareaDrop(handleDragUploadFiles, dragUploading);
+  const contentDrag = useTextareaDrop(handleDragUploadFiles, false);
 
   const { data: categories } = useForumCategories();
 
@@ -153,6 +138,8 @@ export default function Forums() {
   const createTopicMutation = useMutation({
     mutationFn: async (topicData: typeof newTopic) => {
       if (!user) throw new Error("請先登入");
+      // Upload pending images first
+      const imageUrls = newTopicImages.length > 0 ? await uploadPendingItems(newTopicImages) : null;
       const { data, error } = await supabase
         .from("forum_topics")
         .insert({
@@ -161,7 +148,7 @@ export default function Forums() {
           category: topicData.category,
           brand: topicData.brand || null,
           user_id: user.id,
-          image_urls: newTopicImages.length > 0 ? newTopicImages : null,
+          image_urls: imageUrls,
         } as any)
         .select()
         .single();
@@ -489,7 +476,7 @@ export default function Forums() {
             </div>
             <div className="space-y-2">
               <Label>附加圖片</Label>
-              <ForumImageUpload imageUrls={newTopicImages} onImagesChange={setNewTopicImages} disabled={createTopicMutation.isPending} />
+              <ForumImageUpload items={newTopicImages} onItemsChange={setNewTopicImages} disabled={createTopicMutation.isPending} />
             </div>
           </div>
           <DialogFooter>
