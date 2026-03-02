@@ -6,6 +6,7 @@ import { NotificationDropdown } from "@/components/notifications/NotificationDro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { 
   Camera, 
   Menu, 
@@ -28,19 +29,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navItems = [
-  { label: "首頁", href: "/" },
-  { label: "作品分享", href: "/gallery" },
-  { label: "討論區", href: "/forums" },
-  { label: "二手交易", href: "/marketplace" },
-];
-
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { isAdmin, isModerator } = useAdmin();
+  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
+
+  const navItems = [
+    { label: "首頁", href: "/" },
+    { label: "作品分享", href: "/gallery" },
+    ...(forumEnabled ? [{ label: "討論區", href: "/forums" }] : []),
+    ...(marketplaceEnabled ? [{ label: "二手交易", href: "/marketplace" }] : []),
+  ];
 
   const handleSignOut = async () => {
     await signOut();
