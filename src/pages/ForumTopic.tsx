@@ -18,6 +18,9 @@ import {
   Loader2,
   Send,
   Trash2,
+  Pencil,
+  X,
+  Check,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -87,6 +90,8 @@ export default function ForumTopic() {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [replyDragUploading, setReplyDragUploading] = useState(false);
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
 
   const handleReplyDragUpload = async (files: File[]) => {
@@ -213,6 +218,28 @@ export default function ForumTopic() {
     },
   });
 
+  // Update reply mutation
+  const updateReplyMutation = useMutation({
+    mutationFn: async ({ replyId, content }: { replyId: string; content: string }) => {
+      if (!user) throw new Error("請先登入");
+      const { error } = await supabase
+        .from("forum_replies")
+        .update({ content } as any)
+        .eq("id", replyId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forum-replies", topicId] });
+      toast.success("回覆已更新");
+      setEditingReplyId(null);
+      setEditingContent("");
+    },
+    onError: (error) => {
+      toast.error("更新失敗：" + (error as Error).message);
+    },
+  });
+
   const handleSubmitReply = () => {
     if (!user) {
       toast.error("請先登入");
@@ -224,6 +251,21 @@ export default function ForumTopic() {
       return;
     }
     createReplyMutation.mutate(replyContent);
+  };
+
+  const handleStartEdit = (reply: ForumReply) => {
+    setEditingReplyId(reply.id);
+    setEditingContent(reply.content);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReplyId(null);
+    setEditingContent("");
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingReplyId || !editingContent.trim()) return;
+    updateReplyMutation.mutate({ replyId: editingReplyId, content: editingContent });
   };
 
   const handleDeleteTopic = async () => {
@@ -511,6 +553,11 @@ export default function ForumTopic() {
                             <Clock className="h-3.5 w-3.5" />
                             {formatTime(reply.created_at)}
                           </span>
+                          {user && user.id === reply.user_id && editingReplyId !== reply.id && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleStartEdit(reply)} title="編輯">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <ReportDialog
                             contentType="forum_reply"
                             contentId={reply.id}
@@ -518,25 +565,47 @@ export default function ForumTopic() {
                           />
                         </div>
                       </div>
-                      <p className="whitespace-pre-wrap text-foreground/90">
-                        {reply.content}
-                      </p>
-                      {(() => {
-                        const imgs = reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [];
-                        return imgs.length > 0 ? (
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {imgs.map((url, i) => (
-                              <img
-                                key={i}
-                                src={url}
-                                alt={`回覆附圖 ${i + 1}`}
-                                className="max-h-48 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-cover"
-                                onClick={() => { setLightboxImages(imgs); setLightboxIndex(i); setLightboxOpen(true); }}
-                              />
-                            ))}
+                      {editingReplyId === reply.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value)}
+                            rows={3}
+                            autoFocus
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <Button variant="ghost" size="sm" onClick={handleCancelEdit} disabled={updateReplyMutation.isPending}>
+                              <X className="h-4 w-4 mr-1" />取消
+                            </Button>
+                            <Button size="sm" onClick={handleSaveEdit} disabled={updateReplyMutation.isPending || !editingContent.trim()}>
+                              {updateReplyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                              儲存
+                            </Button>
                           </div>
-                        ) : null;
-                      })()}
+                        </div>
+                      ) : (
+                        <>
+                          <p className="whitespace-pre-wrap text-foreground/90">
+                            {reply.content}
+                          </p>
+                          {(() => {
+                            const imgs = reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [];
+                            return imgs.length > 0 ? (
+                              <div className="flex flex-wrap gap-2 mt-3">
+                                {imgs.map((url, i) => (
+                                  <img
+                                    key={i}
+                                    src={url}
+                                    alt={`回覆附圖 ${i + 1}`}
+                                    className="max-h-48 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                                    onClick={() => { setLightboxImages(imgs); setLightboxIndex(i); setLightboxOpen(true); }}
+                                  />
+                                ))}
+                              </div>
+                            ) : null;
+                          })()}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
