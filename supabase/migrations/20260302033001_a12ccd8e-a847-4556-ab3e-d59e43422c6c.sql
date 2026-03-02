@@ -1,0 +1,1 @@
+ALTER TABLE public.hero_banners ADD COLUMN link_url text DEFAULT NULL;
