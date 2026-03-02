@@ -382,6 +382,36 @@ export type Database = {
         }
         Relationships: []
       }
+      homepage_sections: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_visible: boolean
+          section_key: string
+          section_label: string
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_visible?: boolean
+          section_key: string
+          section_label: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_visible?: boolean
+          section_key?: string
+          section_label?: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       marketplace_listings: {
         Row: {
           additional_images: string[] | null
@@ -768,6 +798,42 @@ export type Database = {
           section_key?: string
           section_label?: string
           sort_order?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          id: string
+          setting_group: string
+          setting_key: string
+          setting_label: string
+          setting_type: string
+          setting_value: string
+          sort_order: number
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_group?: string
+          setting_key: string
+          setting_label: string
+          setting_type?: string
+          setting_value?: string
+          sort_order?: number
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_group?: string
+          setting_key?: string
+          setting_label?: string
+          setting_type?: string
+          setting_value?: string
+          sort_order?: number
           updated_at?: string | null
           updated_by?: string | null
         }

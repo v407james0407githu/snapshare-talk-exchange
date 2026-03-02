@@ -17,6 +17,7 @@ import {
   Bell,
   ChevronDown,
   FileText,
+  Layers,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ import { useNavigate } from "react-router-dom";
 
 const navItems = [
   { label: "總覽", href: "/admin", icon: LayoutDashboard },
+  { label: "區塊排序", href: "/admin/sections", icon: Layers },
   { label: "會員管理", href: "/admin/users", icon: Users },
   { label: "Banner管理", href: "/admin/banners", icon: ImageIcon },
   { label: "內容管理", href: "/admin/content", icon: FileText },

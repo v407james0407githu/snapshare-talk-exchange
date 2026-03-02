@@ -26,6 +26,9 @@ import BannerManagement from "./pages/admin/BannerManagement";
 import CategoryManagement from "./pages/admin/CategoryManagement";
 import ContentManagement from "./pages/admin/ContentManagement";
 import PhotoManagement from "./pages/admin/PhotoManagement";
+import HomepageSectionManagement from "./pages/admin/HomepageSectionManagement";
+import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
+import SystemSettings from "./pages/admin/SystemSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +64,9 @@ const App = () => (
             <Route path="/admin/categories" element={<CategoryManagement />} />
             <Route path="/admin/content" element={<ContentManagement />} />
             <Route path="/admin/photos" element={<PhotoManagement />} />
+            <Route path="/admin/sections" element={<HomepageSectionManagement />} />
+            <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/admin/settings" element={<SystemSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
