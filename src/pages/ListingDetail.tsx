@@ -103,11 +103,13 @@ export default function ListingDetail() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [editForm, setEditForm] = useState({
-    title: '', description: '', brand: '', model: '', condition: '', price: '', location: '',
+    title: '', description: '', brand: '', model: '', condition: '', price: '', location: '', category: '',
   });
   const [editNewImages, setEditNewImages] = useState<File[]>([]);
   const [editRemovedImages, setEditRemovedImages] = useState<string[]>([]);
+  const [editNewVerificationImage, setEditNewVerificationImage] = useState<File | null>(null);
   const editImageInputRef = useRef<HTMLInputElement>(null);
+  const editVerificationInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
@@ -238,9 +240,11 @@ export default function ListingDetail() {
       condition: listing.condition,
       price: String(listing.price),
       location: listing.location || '',
+      category: listing.category,
     });
     setEditNewImages([]);
     setEditRemovedImages([]);
+    setEditNewVerificationImage(null);
     setEditDialogOpen(true);
   };
 
@@ -260,7 +264,18 @@ export default function ListingDetail() {
     if (!listing || !user) return;
     setIsEditSaving(true);
     try {
-      // Upload new images
+      // Upload new verification image if changed
+      let verificationUrl = listing.verification_image_url;
+      if (editNewVerificationImage) {
+        const ext = editNewVerificationImage.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}_verification.${ext}`;
+        const { error: upErr } = await supabase.storage.from('verification').upload(fileName, editNewVerificationImage);
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage.from('verification').getPublicUrl(fileName);
+        verificationUrl = publicUrl;
+      }
+
+      // Upload new additional images
       const newUrls: string[] = [];
       for (const file of editNewImages) {
         const ext = file.name.split('.').pop();
@@ -271,7 +286,6 @@ export default function ListingDetail() {
         newUrls.push(publicUrl);
       }
 
-      // Compute final additional_images
       const kept = (listing.additional_images || []).filter(u => !editRemovedImages.includes(u));
       const finalAdditional = [...kept, ...newUrls];
 
@@ -283,8 +297,10 @@ export default function ListingDetail() {
           brand: editForm.brand || null,
           model: editForm.model || null,
           condition: editForm.condition,
+          category: editForm.category,
           price: parseFloat(editForm.price),
           location: editForm.location || null,
+          verification_image_url: verificationUrl,
           additional_images: finalAdditional.length > 0 ? finalAdditional : null,
         })
         .eq('id', listing.id);
@@ -678,6 +694,41 @@ export default function ListingDetail() {
             <DialogDescription>修改商品資訊後點擊儲存</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            {/* Verification Image */}
+            <div className="space-y-2">
+              <Label>驗證照片（主圖）</Label>
+              <div className="relative aspect-video rounded-lg overflow-hidden border bg-muted">
+                <img
+                  src={editNewVerificationImage ? URL.createObjectURL(editNewVerificationImage) : listing?.verification_image_url}
+                  alt="驗證照"
+                  className="w-full h-full object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => editVerificationInputRef.current?.click()}
+                  className="absolute inset-0 flex items-center justify-center bg-background/50 opacity-0 hover:opacity-100 transition-opacity"
+                >
+                  <div className="flex items-center gap-2 bg-background/90 px-3 py-2 rounded-lg text-sm font-medium">
+                    <Camera className="h-4 w-4" />
+                    更換照片
+                  </div>
+                </button>
+              </div>
+              <input
+                ref={editVerificationInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.type.startsWith('image/')) {
+                    setEditNewVerificationImage(file);
+                  }
+                  e.target.value = '';
+                }}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label>標題</Label>
               <Input value={editForm.title} onChange={(e) => setEditForm(f => ({ ...f, title: e.target.value }))} />
@@ -688,15 +739,31 @@ export default function ListingDetail() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label>分類</Label>
+                <Select value={editForm.category} onValueChange={(v) => setEditForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="phone">
+                      <span className="flex items-center gap-2"><Smartphone className="h-4 w-4" />手機</span>
+                    </SelectItem>
+                    <SelectItem value="camera">
+                      <span className="flex items-center gap-2"><Camera className="h-4 w-4" />相機</span>
+                    </SelectItem>
+                    <SelectItem value="lens">鏡頭</SelectItem>
+                    <SelectItem value="accessory">配件</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>品牌</Label>
                 <Input value={editForm.brand} onChange={(e) => setEditForm(f => ({ ...f, brand: e.target.value }))} />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>型號</Label>
                 <Input value={editForm.model} onChange={(e) => setEditForm(f => ({ ...f, model: e.target.value }))} />
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>狀態</Label>
                 <Select value={editForm.condition} onValueChange={(v) => setEditForm(f => ({ ...f, condition: v }))}>
@@ -709,14 +776,16 @@ export default function ListingDetail() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>價格 (TWD)</Label>
                 <Input type="number" value={editForm.price} onChange={(e) => setEditForm(f => ({ ...f, price: e.target.value }))} />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>地點</Label>
-              <Input value={editForm.location} onChange={(e) => setEditForm(f => ({ ...f, location: e.target.value }))} />
+              <div className="space-y-2">
+                <Label>地點</Label>
+                <Input value={editForm.location} onChange={(e) => setEditForm(f => ({ ...f, location: e.target.value }))} />
+              </div>
             </div>
 
             {/* Image Management */}
