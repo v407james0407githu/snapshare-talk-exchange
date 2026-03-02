@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Grid3X3, LayoutGrid, ImagePlus } from "lucide-react";
+import { Search, Filter, Grid3X3, LayoutGrid, ImagePlus, ArrowUpDown } from "lucide-react";
 
 const categories = [
   "全部", "風景", "城市", "街拍", "夜景", "微距", "生活", "天文", "人像", "其他",
@@ -25,6 +25,8 @@ interface GalleryFiltersProps {
   onCategoryChange: (value: string) => void;
   selectedBrand: string;
   onBrandChange: (value: string) => void;
+  sortBy: "newest" | "most_liked" | "highest_rated";
+  onSortChange: (value: "newest" | "most_liked" | "highest_rated") => void;
   viewMode: "grid" | "masonry";
   onViewModeChange: (mode: "grid" | "masonry") => void;
   onUpload: () => void;
@@ -37,6 +39,8 @@ export function GalleryFilters({
   onCategoryChange,
   selectedBrand,
   onBrandChange,
+  sortBy,
+  onSortChange,
   viewMode,
   onViewModeChange,
   onUpload,
@@ -76,6 +80,17 @@ export function GalleryFilters({
                   {brands.map((b) => (
                     <SelectItem key={b} value={b}>{b}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={(v) => onSortChange(v as any)}>
+                <SelectTrigger className="w-32">
+                  <ArrowUpDown className="h-4 w-4 mr-1" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">最新</SelectItem>
+                  <SelectItem value="most_liked">最多讚</SelectItem>
+                  <SelectItem value="highest_rated">最高評分</SelectItem>
                 </SelectContent>
               </Select>
             </div>
