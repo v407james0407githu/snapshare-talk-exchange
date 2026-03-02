@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, GripVertical, Upload, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -66,6 +66,8 @@ export default function BannerManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: banners = [], isLoading } = useQuery({
     queryKey: ["admin-banners"],
@@ -201,8 +203,57 @@ export default function BannerManagement() {
                 <Input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} />
               </div>
               <div>
-                <Label>圖片網址 *</Label>
-                <Input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} placeholder="https://..." />
+                <Label>Banner 圖片 *</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error("圖片大小不可超過 5MB");
+                      return;
+                    }
+                    setUploading(true);
+                    try {
+                      const ext = file.name.split(".").pop() || "jpg";
+                      const fileName = `banners/${Date.now()}.${ext}`;
+                      const { error: uploadError } = await supabase.storage
+                        .from("photos")
+                        .upload(fileName, file, { upsert: true });
+                      if (uploadError) throw uploadError;
+                      const { data: { publicUrl } } = supabase.storage
+                        .from("photos")
+                        .getPublicUrl(fileName);
+                      setForm((prev) => ({ ...prev, image_url: publicUrl }));
+                      toast.success("圖片上傳成功");
+                    } catch (err: any) {
+                      toast.error("上傳失敗：" + (err.message || "未知錯誤"));
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                    {uploading ? "上傳中..." : "上傳圖片"}
+                  </Button>
+                  <Input
+                    className="flex-1"
+                    value={form.image_url}
+                    onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                    placeholder="或手動輸入圖片網址"
+                  />
+                </div>
                 {form.image_url && (
                   <img src={form.image_url} alt="Preview" className="mt-2 rounded-lg h-32 w-full object-cover" />
                 )}
