@@ -511,13 +511,45 @@ export default function ListingDetail() {
                       </Dialog>
                     )}
 
+                    {isOwner && !listing.is_sold && (
+                      <Button
+                        variant="gold"
+                        className="w-full"
+                        onClick={async () => {
+                          const { error } = await supabase
+                            .from('marketplace_listings')
+                            .update({ is_sold: true })
+                            .eq('id', listing.id);
+                          if (error) {
+                            toast({ title: '操作失敗', variant: 'destructive' });
+                          } else {
+                            toast({ title: '已標記為售出' });
+                            navigate('/marketplace');
+                          }
+                        }}
+                      >
+                        標記為已售出
+                      </Button>
+                    )}
                     {isOwner && (
                       <Button
                         variant="outline"
-                        className="w-full"
-                        onClick={() => navigate(`/marketplace/edit/${listing.id}`)}
+                        className="w-full text-destructive hover:text-destructive"
+                        onClick={async () => {
+                          if (!confirm('確定要刪除此商品？')) return;
+                          const { error } = await supabase
+                            .from('marketplace_listings')
+                            .delete()
+                            .eq('id', listing.id);
+                          if (error) {
+                            toast({ title: '刪除失敗', variant: 'destructive' });
+                          } else {
+                            toast({ title: '商品已刪除' });
+                            navigate('/marketplace');
+                          }
+                        }}
                       >
-                        編輯商品
+                        刪除商品
                       </Button>
                     )}
                     {!isOwner && (
