@@ -233,6 +233,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_url: string | null
           is_hidden: boolean | null
           topic_id: string
           updated_at: string
@@ -242,6 +243,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_hidden?: boolean | null
           topic_id: string
           updated_at?: string
@@ -251,6 +253,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_hidden?: boolean | null
           topic_id?: string
           updated_at?: string
@@ -274,6 +277,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_url: string | null
           is_hidden: boolean | null
           is_locked: boolean | null
           is_pinned: boolean | null
@@ -291,6 +295,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_hidden?: boolean | null
           is_locked?: boolean | null
           is_pinned?: boolean | null
@@ -308,6 +313,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_hidden?: boolean | null
           is_locked?: boolean | null
           is_pinned?: boolean | null
