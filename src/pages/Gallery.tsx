@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2, Aperture, Clock, Sun } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,7 @@ interface Photo {
   camera_body: string | null;
   lens: string | null;
   phone_model: string | null;
+  exif_data: Record<string, any> | null;
   profiles?: {
     username: string;
     display_name: string | null;
@@ -161,6 +162,16 @@ export default function Gallery() {
     return "未知設備";
   };
 
+  const getExifDisplay = (photo: Photo) => {
+    const exif = photo.exif_data;
+    if (!exif) return [];
+    const items: { icon: typeof Aperture; label: string }[] = [];
+    if (exif.aperture || exif.FNumber) items.push({ icon: Aperture, label: `f/${exif.aperture || exif.FNumber}` });
+    if (exif.shutter_speed || exif.ExposureTime) items.push({ icon: Clock, label: `${exif.shutter_speed || exif.ExposureTime}s` });
+    if (exif.iso || exif.ISO) items.push({ icon: Sun, label: `ISO ${exif.iso || exif.ISO}` });
+    return items;
+  };
+
   const handleUpload = () => {
     if (!user) { navigate("/auth"); return; }
     navigate("/upload");
@@ -253,6 +264,23 @@ export default function Gallery() {
                         <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /> {photo.comment_count || 0}</span>
                         <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {photo.view_count || 0}</span>
                       </div>
+                      {(photo.lens || getExifDisplay(photo).length > 0) && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          {photo.lens && (
+                            <span className="px-1.5 py-0.5 rounded bg-cream/10 text-[10px] text-cream/80 backdrop-blur-sm">
+                              {photo.lens}
+                            </span>
+                          )}
+                          {getExifDisplay(photo).map((item, i) => {
+                            const Icon = item.icon;
+                            return (
+                              <span key={i} className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cream/10 text-[10px] text-cream/80 backdrop-blur-sm">
+                                <Icon className="h-2.5 w-2.5" /> {item.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
