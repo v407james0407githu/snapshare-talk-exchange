@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -6,6 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
@@ -36,6 +39,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Pencil,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
@@ -93,6 +97,11 @@ export default function ListingDetail() {
   const { toast } = useToast();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '', description: '', brand: '', model: '', condition: '', price: '', location: '',
+  });
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
@@ -211,6 +220,48 @@ export default function ListingDetail() {
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+  };
+
+  const openEditDialog = () => {
+    if (!listing) return;
+    setEditForm({
+      title: listing.title,
+      description: listing.description,
+      brand: listing.brand || '',
+      model: listing.model || '',
+      condition: listing.condition,
+      price: String(listing.price),
+      location: listing.location || '',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!listing) return;
+    setIsEditSaving(true);
+    try {
+      const { error } = await supabase
+        .from('marketplace_listings')
+        .update({
+          title: editForm.title,
+          description: editForm.description,
+          brand: editForm.brand || null,
+          model: editForm.model || null,
+          condition: editForm.condition,
+          price: parseFloat(editForm.price),
+          location: editForm.location || null,
+        })
+        .eq('id', listing.id);
+      if (error) throw error;
+      toast({ title: '商品已更新' });
+      setEditDialogOpen(false);
+      // Force refetch
+      window.location.reload();
+    } catch {
+      toast({ title: '更新失敗', variant: 'destructive' });
+    } finally {
+      setIsEditSaving(false);
+    }
   };
 
   const prevImage = () => {
@@ -513,6 +564,17 @@ export default function ListingDetail() {
 
                     {isOwner && !listing.is_sold && (
                       <Button
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={openEditDialog}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        編輯商品
+                      </Button>
+                    )}
+
+                    {isOwner && !listing.is_sold && (
+                      <Button
                         variant="gold"
                         className="w-full"
                         onClick={async () => {
@@ -572,6 +634,62 @@ export default function ListingDetail() {
           </div>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>編輯商品</DialogTitle>
+            <DialogDescription>修改商品資訊後點擊儲存</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>標題</Label>
+              <Input value={editForm.title} onChange={(e) => setEditForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>說明</Label>
+              <Textarea value={editForm.description} onChange={(e) => setEditForm(f => ({ ...f, description: e.target.value }))} rows={4} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>品牌</Label>
+                <Input value={editForm.brand} onChange={(e) => setEditForm(f => ({ ...f, brand: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>型號</Label>
+                <Input value={editForm.model} onChange={(e) => setEditForm(f => ({ ...f, model: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>狀態</Label>
+                <Select value={editForm.condition} onValueChange={(v) => setEditForm(f => ({ ...f, condition: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">全新</SelectItem>
+                    <SelectItem value="like_new">幾乎全新</SelectItem>
+                    <SelectItem value="good">良好</SelectItem>
+                    <SelectItem value="fair">普通</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>價格 (TWD)</Label>
+                <Input type="number" value={editForm.price} onChange={(e) => setEditForm(f => ({ ...f, price: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>地點</Label>
+              <Input value={editForm.location} onChange={(e) => setEditForm(f => ({ ...f, location: e.target.value }))} />
+            </div>
+            <Button onClick={handleSaveEdit} className="w-full" disabled={isEditSaving || !editForm.title || !editForm.price}>
+              {isEditSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              {isEditSaving ? '儲存中...' : '儲存變更'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
