@@ -18,6 +18,7 @@ interface Banner {
   title: string | null;
   subtitle: string | null;
   image_url: string;
+  link_url: string | null;
   cta_primary_text: string | null;
   cta_primary_link: string | null;
   cta_secondary_text: string | null;
@@ -34,6 +35,7 @@ const emptyForm = {
   title: "",
   subtitle: "",
   image_url: "",
+  link_url: "",
   cta_primary_text: "",
   cta_primary_link: "",
   cta_secondary_text: "",
@@ -83,6 +85,7 @@ export default function BannerManagement() {
         title: values.title || null,
         subtitle: values.subtitle || null,
         image_url: values.image_url,
+        link_url: values.link_url || null,
         cta_primary_text: values.cta_primary_text || null,
         cta_primary_link: values.cta_primary_link || null,
         cta_secondary_text: values.cta_secondary_text || null,
@@ -143,6 +146,7 @@ export default function BannerManagement() {
       title: banner.title ?? "",
       subtitle: banner.subtitle ?? "",
       image_url: banner.image_url,
+      link_url: banner.link_url ?? "",
       cta_primary_text: banner.cta_primary_text ?? "",
       cta_primary_link: banner.cta_primary_link ?? "",
       cta_secondary_text: banner.cta_secondary_text ?? "",
@@ -202,6 +206,10 @@ export default function BannerManagement() {
                 {form.image_url && (
                   <img src={form.image_url} alt="Preview" className="mt-2 rounded-lg h-32 w-full object-cover" />
                 )}
+              </div>
+              <div>
+                <Label>超連結網址（點擊 Banner 跳轉，可留空）</Label>
+                <Input value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} placeholder="https://... 或 /gallery" />
               </div>
 
               {/* Text Align */}
