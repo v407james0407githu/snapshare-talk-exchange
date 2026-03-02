@@ -1,0 +1,1 @@
+ALTER TABLE public.photos ADD COLUMN featured_order integer DEFAULT 0;

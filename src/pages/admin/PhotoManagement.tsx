@@ -6,9 +6,26 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Star, Eye, Heart, MessageCircle, Loader2, EyeOff, CheckSquare, X, StarOff, EyeIcon } from "lucide-react";
+import { Search, Star, Eye, Heart, MessageCircle, Loader2, EyeOff, CheckSquare, X, StarOff, EyeIcon, GripVertical, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface PhotoRow {
   id: string;
@@ -26,11 +43,226 @@ interface PhotoRow {
   average_rating: number;
   is_featured: boolean;
   is_hidden: boolean;
+  featured_order: number;
   created_at: string;
   author_name?: string;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 50;
+
+// Sortable photo card for featured mode
+function SortablePhotoCard({
+  photo,
+  isSelected,
+  onToggleSelect,
+  onToggleFeatured,
+  onToggleHidden,
+  toggling,
+}: {
+  photo: PhotoRow;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onToggleFeatured: () => void;
+  onToggleHidden: () => void;
+  toggling: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: photo.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.7 : photo.is_hidden ? 0.6 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-card rounded-xl border overflow-hidden transition-shadow ${
+        isDragging ? "shadow-xl" : ""
+      } ${
+        isSelected
+          ? "border-primary ring-2 ring-primary/40"
+          : photo.is_featured
+          ? "border-primary/50 ring-1 ring-primary/20"
+          : "border-border"
+      }`}
+    >
+      <div className="aspect-[4/3] relative overflow-hidden">
+        {/* Drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute top-2 right-2 z-20 p-1.5 rounded-lg bg-background/80 backdrop-blur-sm cursor-grab active:cursor-grabbing border border-border/50 hover:bg-background"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <img
+          src={photo.thumbnail_url || photo.image_url}
+          alt={photo.title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelect}
+            className="h-5 w-5 bg-background/80 backdrop-blur-sm border-2"
+          />
+        </div>
+        {photo.is_featured && (
+          <div className="absolute top-2 left-9">
+            <Badge className="bg-primary text-primary-foreground gap-1">
+              <Star className="h-3 w-3 fill-current" /> 精選
+            </Badge>
+          </div>
+        )}
+        {photo.is_hidden && (
+          <div className="absolute bottom-2 right-2">
+            <Badge variant="destructive" className="gap-1">
+              <EyeOff className="h-3 w-3" /> 已隱藏
+            </Badge>
+          </div>
+        )}
+      </div>
+
+      <div className="p-3">
+        <h3 className="font-medium text-sm truncate mb-1">{photo.title}</h3>
+        <p className="text-xs text-muted-foreground mb-2 truncate">
+          {photo.author_name} · {photo.phone_model || photo.camera_body || photo.brand || "未知裝備"}
+        </p>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+          <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{photo.like_count}</span>
+          <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{photo.comment_count}</span>
+          <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{photo.view_count}</span>
+          {photo.average_rating > 0 && (
+            <span className="flex items-center gap-1"><Star className="h-3 w-3" />{Number(photo.average_rating).toFixed(1)}</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={photo.is_featured}
+              onCheckedChange={onToggleFeatured}
+              disabled={toggling}
+            />
+            <span className="text-xs text-muted-foreground">精選</span>
+          </div>
+          <Button
+            variant={photo.is_hidden ? "outline" : "ghost"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={onToggleHidden}
+            disabled={toggling}
+          >
+            {photo.is_hidden ? "恢復顯示" : "隱藏"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Regular photo card (non-sortable)
+function PhotoCard({
+  photo,
+  isSelected,
+  onToggleSelect,
+  onToggleFeatured,
+  onToggleHidden,
+  toggling,
+}: {
+  photo: PhotoRow;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onToggleFeatured: () => void;
+  onToggleHidden: () => void;
+  toggling: boolean;
+}) {
+  return (
+    <div
+      className={`bg-card rounded-xl border overflow-hidden transition-all cursor-pointer ${
+        isSelected
+          ? "border-primary ring-2 ring-primary/40"
+          : photo.is_featured
+          ? "border-primary/50 ring-1 ring-primary/20"
+          : "border-border"
+      } ${photo.is_hidden ? "opacity-60" : ""}`}
+      onClick={onToggleSelect}
+    >
+      <div className="aspect-[4/3] relative overflow-hidden">
+        <img
+          src={photo.thumbnail_url || photo.image_url}
+          alt={photo.title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggleSelect}
+            className="h-5 w-5 bg-background/80 backdrop-blur-sm border-2"
+          />
+        </div>
+        {photo.is_featured && (
+          <div className="absolute top-2 left-9">
+            <Badge className="bg-primary text-primary-foreground gap-1">
+              <Star className="h-3 w-3 fill-current" /> 精選
+            </Badge>
+          </div>
+        )}
+        {photo.is_hidden && (
+          <div className="absolute top-2 right-2">
+            <Badge variant="destructive" className="gap-1">
+              <EyeOff className="h-3 w-3" /> 已隱藏
+            </Badge>
+          </div>
+        )}
+      </div>
+      <div className="p-3" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-medium text-sm truncate mb-1">{photo.title}</h3>
+        <p className="text-xs text-muted-foreground mb-2 truncate">
+          {photo.author_name} · {photo.phone_model || photo.camera_body || photo.brand || "未知裝備"}
+        </p>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+          <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{photo.like_count}</span>
+          <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{photo.comment_count}</span>
+          <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{photo.view_count}</span>
+          {photo.average_rating > 0 && (
+            <span className="flex items-center gap-1"><Star className="h-3 w-3" />{Number(photo.average_rating).toFixed(1)}</span>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={photo.is_featured}
+              onCheckedChange={onToggleFeatured}
+              disabled={toggling}
+            />
+            <span className="text-xs text-muted-foreground">精選</span>
+          </div>
+          <Button
+            variant={photo.is_hidden ? "outline" : "ghost"}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={onToggleHidden}
+            disabled={toggling}
+          >
+            {photo.is_hidden ? "恢復顯示" : "隱藏"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PhotoManagement() {
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
@@ -43,8 +275,16 @@ export default function PhotoManagement() {
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
+  const [orderDirty, setOrderDirty] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
 
+  const isFeaturedMode = filter === "featured";
   const isSelectMode = selectedIds.size > 0;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -56,6 +296,7 @@ export default function PhotoManagement() {
     setPage(0);
     setHasMore(true);
     setSelectedIds(new Set());
+    setOrderDirty(false);
   }, [debouncedSearch, filter]);
 
   const fetchPhotos = useCallback(async (pageNum: number) => {
@@ -66,11 +307,16 @@ export default function PhotoManagement() {
 
       let query = supabase
         .from("photos")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .range(from, to);
+        .select("*");
 
-      if (filter === "featured") query = query.eq("is_featured", true);
+      if (filter === "featured") {
+        query = query.eq("is_featured", true)
+          .order("featured_order", { ascending: true })
+          .order("like_count", { ascending: false });
+      } else {
+        query = query.order("created_at", { ascending: false });
+      }
+
       if (filter === "hidden") query = query.eq("is_hidden", true);
 
       if (debouncedSearch) {
@@ -78,6 +324,8 @@ export default function PhotoManagement() {
           `title.ilike.%${debouncedSearch}%,brand.ilike.%${debouncedSearch}%,camera_body.ilike.%${debouncedSearch}%,phone_model.ilike.%${debouncedSearch}%`
         );
       }
+
+      query = query.range(from, to);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -94,10 +342,11 @@ export default function PhotoManagement() {
         });
       }
 
-      const mapped: PhotoRow[] = (data || []).map((p) => ({
+      const mapped: PhotoRow[] = (data || []).map((p: any) => ({
         ...p,
         is_featured: p.is_featured ?? false,
         is_hidden: p.is_hidden ?? false,
+        featured_order: p.featured_order ?? 0,
         like_count: p.like_count ?? 0,
         comment_count: p.comment_count ?? 0,
         view_count: p.view_count ?? 0,
@@ -119,6 +368,44 @@ export default function PhotoManagement() {
   useEffect(() => {
     fetchPhotos(page);
   }, [page, fetchPhotos]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setPhotos((prev) => {
+      const oldIndex = prev.findIndex((p) => p.id === active.id);
+      const newIndex = prev.findIndex((p) => p.id === over.id);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+    setOrderDirty(true);
+  };
+
+  const saveOrder = async () => {
+    setSavingOrder(true);
+    try {
+      const updates = photos.map((photo, index) => ({
+        id: photo.id,
+        featured_order: index,
+      }));
+
+      // Update one by one (batch not supported by supabase-js for different rows)
+      for (const u of updates) {
+        await supabase
+          .from("photos")
+          .update({ featured_order: u.featured_order })
+          .eq("id", u.id);
+      }
+
+      setOrderDirty(false);
+      toast.success("排序已儲存，首頁將按此順序顯示精選作品");
+    } catch (err) {
+      console.error(err);
+      toast.error("儲存排序失敗");
+    } finally {
+      setSavingOrder(false);
+    }
+  };
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -212,6 +499,50 @@ export default function PhotoManagement() {
 
   const featuredCount = photos.filter((p) => p.is_featured).length;
 
+  const renderGrid = () => {
+    if (isFeaturedMode) {
+      return (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={photos.map((p) => p.id)} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {photos.map((photo) => (
+                <SortablePhotoCard
+                  key={photo.id}
+                  photo={photo}
+                  isSelected={selectedIds.has(photo.id)}
+                  onToggleSelect={() => toggleSelect(photo.id)}
+                  onToggleFeatured={() => toggleFeatured(photo)}
+                  onToggleHidden={() => toggleHidden(photo)}
+                  toggling={togglingIds.has(photo.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {photos.map((photo) => (
+          <PhotoCard
+            key={photo.id}
+            photo={photo}
+            isSelected={selectedIds.has(photo.id)}
+            onToggleSelect={() => toggleSelect(photo.id)}
+            onToggleFeatured={() => toggleFeatured(photo)}
+            onToggleHidden={() => toggleHidden(photo)}
+            toggling={togglingIds.has(photo.id)}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <AdminLayout title="作品管理" subtitle="管理所有作品，設定精選或隱藏作品">
       {/* Toolbar */}
@@ -250,40 +581,16 @@ export default function PhotoManagement() {
               已選 <span className="font-semibold text-foreground">{selectedIds.size}</span> 件
             </span>
             <div className="h-4 w-px bg-border" />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => batchUpdate("is_featured", true)}
-              disabled={batchLoading}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => batchUpdate("is_featured", true)} disabled={batchLoading}>
               <Star className="h-3.5 w-3.5" /> 設為精選
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => batchUpdate("is_featured", false)}
-              disabled={batchLoading}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => batchUpdate("is_featured", false)} disabled={batchLoading}>
               <StarOff className="h-3.5 w-3.5" /> 取消精選
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => batchUpdate("is_hidden", true)}
-              disabled={batchLoading}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => batchUpdate("is_hidden", true)} disabled={batchLoading}>
               <EyeOff className="h-3.5 w-3.5" /> 隱藏
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => batchUpdate("is_hidden", false)}
-              disabled={batchLoading}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => batchUpdate("is_hidden", false)} disabled={batchLoading}>
               <EyeIcon className="h-3.5 w-3.5" /> 恢復顯示
             </Button>
             <Button variant="ghost" size="sm" onClick={clearSelection} className="gap-1">
@@ -293,9 +600,23 @@ export default function PhotoManagement() {
         )}
       </div>
 
-      {filter === "featured" && (
-        <div className="mb-4 text-sm text-muted-foreground">
-          目前共有 <span className="font-semibold text-primary">{featuredCount}</span> 件精選作品
+      {isFeaturedMode && (
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+          <div className="text-sm text-muted-foreground">
+            目前共有 <span className="font-semibold text-primary">{featuredCount}</span> 件精選作品
+            {isFeaturedMode && " · 拖曳卡片可調整首頁顯示順序"}
+          </div>
+          {orderDirty && (
+            <Button
+              size="sm"
+              onClick={saveOrder}
+              disabled={savingOrder}
+              className="gap-1.5"
+            >
+              {savingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              儲存排序
+            </Button>
+          )}
         </div>
       )}
 
@@ -311,97 +632,8 @@ export default function PhotoManagement() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {photos.map((photo) => {
-              const isSelected = selectedIds.has(photo.id);
-              return (
-                <div
-                  key={photo.id}
-                  className={`bg-card rounded-xl border overflow-hidden transition-all cursor-pointer ${
-                    isSelected
-                      ? "border-primary ring-2 ring-primary/40"
-                      : photo.is_featured
-                      ? "border-primary/50 ring-1 ring-primary/20"
-                      : "border-border"
-                  } ${photo.is_hidden ? "opacity-60" : ""}`}
-                  onClick={() => toggleSelect(photo.id)}
-                >
-                  {/* Image */}
-                  <div className="aspect-[4/3] relative overflow-hidden">
-                    <img
-                      src={photo.thumbnail_url || photo.image_url}
-                      alt={photo.title}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                    {/* Selection checkbox */}
-                    <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => toggleSelect(photo.id)}
-                        className="h-5 w-5 bg-background/80 backdrop-blur-sm border-2"
-                      />
-                    </div>
-                    {photo.is_featured && (
-                      <div className="absolute top-2 left-9">
-                        <Badge className="bg-primary text-primary-foreground gap-1">
-                          <Star className="h-3 w-3 fill-current" /> 精選
-                        </Badge>
-                      </div>
-                    )}
-                    {photo.is_hidden && (
-                      <div className="absolute top-2 right-2">
-                        <Badge variant="destructive" className="gap-1">
-                          <EyeOff className="h-3 w-3" /> 已隱藏
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
+          {renderGrid()}
 
-                  {/* Info */}
-                  <div className="p-3" onClick={(e) => e.stopPropagation()}>
-                    <h3 className="font-medium text-sm truncate mb-1">{photo.title}</h3>
-                    <p className="text-xs text-muted-foreground mb-2 truncate">
-                      {photo.author_name} · {photo.phone_model || photo.camera_body || photo.brand || "未知裝備"}
-                    </p>
-
-                    {/* Stats */}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                      <span className="flex items-center gap-1"><Heart className="h-3 w-3" />{photo.like_count}</span>
-                      <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" />{photo.comment_count}</span>
-                      <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{photo.view_count}</span>
-                      {photo.average_rating > 0 && (
-                        <span className="flex items-center gap-1"><Star className="h-3 w-3" />{Number(photo.average_rating).toFixed(1)}</span>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={photo.is_featured}
-                          onCheckedChange={() => toggleFeatured(photo)}
-                          disabled={togglingIds.has(photo.id)}
-                        />
-                        <span className="text-xs text-muted-foreground">精選</span>
-                      </div>
-                      <Button
-                        variant={photo.is_hidden ? "outline" : "ghost"}
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => toggleHidden(photo)}
-                        disabled={togglingIds.has(photo.id)}
-                      >
-                        {photo.is_hidden ? "恢復顯示" : "隱藏"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Load More */}
           {hasMore && (
             <div className="flex justify-center mt-8">
               <Button

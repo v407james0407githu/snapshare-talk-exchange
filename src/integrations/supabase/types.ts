@@ -564,6 +564,7 @@ export type Database = {
           created_at: string
           description: string | null
           exif_data: Json | null
+          featured_order: number | null
           id: string
           image_url: string
           is_featured: boolean | null
@@ -587,6 +588,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           exif_data?: Json | null
+          featured_order?: number | null
           id?: string
           image_url: string
           is_featured?: boolean | null
@@ -610,6 +612,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           exif_data?: Json | null
+          featured_order?: number | null
           id?: string
           image_url?: string
           is_featured?: boolean | null
