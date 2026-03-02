@@ -61,7 +61,7 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnP
         .in("category_id", categoryIds)
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(10);
 
       if (!topicsData || topicsData.length === 0) {
         setTopics([]);
