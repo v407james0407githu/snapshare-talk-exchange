@@ -40,7 +40,7 @@ export default function Forums() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newTopic, setNewTopic] = useState({ title: "", content: "", category: "", brand: "" });
   const [newTopicTags, setNewTopicTags] = useState<string[]>([]);
-  const [newTopicImage, setNewTopicImage] = useState<string | null>(null);
+  const [newTopicImages, setNewTopicImages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: categories } = useForumCategories();
@@ -134,7 +134,7 @@ export default function Forums() {
           category: topicData.category,
           brand: topicData.brand || null,
           user_id: user.id,
-          image_url: newTopicImage,
+          image_urls: newTopicImages.length > 0 ? newTopicImages : null,
         } as any)
         .select()
         .single();
@@ -172,7 +172,7 @@ export default function Forums() {
       setShowCreateDialog(false);
       setNewTopic({ title: "", content: "", category: "", brand: "" });
       setNewTopicTags([]);
-      setNewTopicImage(null);
+      setNewTopicImages([]);
       navigate(`/forums/topic/${data.id}`);
     },
     onError: (error) => toast.error("發表失敗：" + (error as Error).message),
@@ -452,7 +452,7 @@ export default function Forums() {
             </div>
             <div className="space-y-2">
               <Label>附加圖片</Label>
-              <ForumImageUpload imageUrl={newTopicImage} onImageChange={setNewTopicImage} disabled={createTopicMutation.isPending} />
+              <ForumImageUpload imageUrls={newTopicImages} onImagesChange={setNewTopicImages} disabled={createTopicMutation.isPending} />
             </div>
           </div>
           <DialogFooter>

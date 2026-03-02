@@ -38,6 +38,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { ForumImageUpload } from "@/components/forums/ForumImageUpload";
+import { ImageLightbox } from "@/components/forums/ImageLightbox";
 
 interface ForumTopicData {
   id: string;
@@ -52,6 +53,7 @@ interface ForumTopicData {
   is_locked: boolean;
   created_at: string;
   image_url?: string | null;
+  image_urls?: string[] | null;
   profiles?: {
     username: string;
     display_name: string | null;
@@ -65,6 +67,7 @@ interface ForumReply {
   user_id: string;
   created_at: string;
   image_url?: string | null;
+  image_urls?: string[] | null;
   profiles?: {
     username: string;
     display_name: string | null;
@@ -78,8 +81,11 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState("");
-  const [replyImage, setReplyImage] = useState<string | null>(null);
+  const [replyImages, setReplyImages] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
 
   // Check admin status when user is available
@@ -163,7 +169,7 @@ export default function ForumTopic() {
         topic_id: topicId,
         content,
         user_id: user.id,
-        image_url: replyImage,
+        image_urls: replyImages.length > 0 ? replyImages : null,
       } as any);
 
       if (error) throw error;
@@ -173,7 +179,7 @@ export default function ForumTopic() {
       queryClient.invalidateQueries({ queryKey: ["forum-topic", topicId] });
       toast.success("回覆成功");
       setReplyContent("");
-      setReplyImage(null);
+      setReplyImages([]);
     },
     onError: (error) => {
       toast.error("回覆失敗：" + (error as Error).message);
@@ -307,14 +313,22 @@ export default function ForumTopic() {
 
               <div className="prose prose-invert max-w-none">
                 <p className="whitespace-pre-wrap">{topic.content}</p>
-                {topic.image_url && (
-                  <img
-                    src={topic.image_url}
-                    alt="主題附圖"
-                    className="mt-4 max-w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => window.open(topic.image_url!, '_blank')}
-                  />
-                )}
+                {(() => {
+                  const imgs = topic.image_urls?.length ? topic.image_urls : topic.image_url ? [topic.image_url] : [];
+                  return imgs.length > 0 ? (
+                    <div className="flex flex-wrap gap-3 mt-4">
+                      {imgs.map((url, i) => (
+                        <img
+                          key={i}
+                          src={url}
+                          alt={`主題附圖 ${i + 1}`}
+                          className="max-h-64 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                          onClick={() => { setLightboxImages(imgs); setLightboxIndex(i); setLightboxOpen(true); }}
+                        />
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
@@ -480,14 +494,22 @@ export default function ForumTopic() {
                       <p className="whitespace-pre-wrap text-foreground/90">
                         {reply.content}
                       </p>
-                      {reply.image_url && (
-                        <img
-                          src={reply.image_url}
-                          alt="回覆附圖"
-                          className="mt-3 max-w-full max-h-96 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(reply.image_url!, '_blank')}
-                        />
-                      )}
+                      {(() => {
+                        const imgs = reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [];
+                        return imgs.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {imgs.map((url, i) => (
+                              <img
+                                key={i}
+                                src={url}
+                                alt={`回覆附圖 ${i + 1}`}
+                                className="max-h-48 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                                onClick={() => { setLightboxImages(imgs); setLightboxIndex(i); setLightboxOpen(true); }}
+                              />
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -518,8 +540,8 @@ export default function ForumTopic() {
             />
             <div className="mt-3">
               <ForumImageUpload
-                imageUrl={replyImage}
-                onImageChange={setReplyImage}
+                imageUrls={replyImages}
+                onImagesChange={setReplyImages}
                 disabled={!user || createReplyMutation.isPending}
               />
             </div>
@@ -545,6 +567,12 @@ export default function ForumTopic() {
           </div>
         )}
       </div>
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </MainLayout>
   );
 }

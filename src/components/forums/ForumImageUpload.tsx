@@ -6,44 +6,63 @@ import { toast } from 'sonner';
 import { resizeImage } from '@/lib/imageResize';
 
 interface ForumImageUploadProps {
-  imageUrl: string | null;
-  onImageChange: (url: string | null) => void;
+  imageUrls: string[];
+  onImagesChange: (urls: string[]) => void;
   disabled?: boolean;
+  maxImages?: number;
 }
 
-export function ForumImageUpload({ imageUrl, onImageChange, disabled }: ForumImageUploadProps) {
+export function ForumImageUpload({ imageUrls, onImagesChange, disabled, maxImages = 5 }: ForumImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('請選擇圖片檔案');
+    const remaining = maxImages - imageUrls.length;
+    if (remaining <= 0) {
+      toast.error(`最多只能上傳 ${maxImages} 張圖片`);
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('圖片大小不能超過 10MB');
-      return;
+    const filesToUpload = files.slice(0, remaining);
+    if (files.length > remaining) {
+      toast.info(`已選取 ${files.length} 張，僅上傳前 ${remaining} 張`);
+    }
+
+    for (const file of filesToUpload) {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} 不是圖片檔案，已跳過`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`${file.name} 超過 10MB，已跳過`);
+        continue;
+      }
     }
 
     setUploading(true);
     try {
-      const resized = await resizeImage(file, 1920, 0.85);
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const newUrls: string[] = [];
+      for (const file of filesToUpload) {
+        if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) continue;
 
-      const { error: uploadError } = await supabase.storage
-        .from('photos')
-        .upload(path, resized.blob, { contentType: 'image/jpeg' });
+        const resized = await resizeImage(file, 1920, 0.85);
+        const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
 
-      if (uploadError) throw uploadError;
+        const { error: uploadError } = await supabase.storage
+          .from('photos')
+          .upload(path, resized.blob, { contentType: 'image/jpeg' });
 
-      const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path);
-      onImageChange(urlData.publicUrl);
-      toast.success('圖片上傳成功');
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('photos').getPublicUrl(path);
+        newUrls.push(urlData.publicUrl);
+      }
+
+      onImagesChange([...imageUrls, ...newUrls]);
+      if (newUrls.length > 0) toast.success(`已上傳 ${newUrls.length} 張圖片`);
     } catch (err: any) {
       toast.error('上傳失敗：' + err.message);
     } finally {
@@ -52,35 +71,47 @@ export function ForumImageUpload({ imageUrl, onImageChange, disabled }: ForumIma
     }
   };
 
+  const removeImage = (index: number) => {
+    onImagesChange(imageUrls.filter((_, i) => i !== index));
+  };
+
   return (
-    <div>
+    <div className="space-y-3">
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handleUpload}
         disabled={disabled || uploading}
       />
-      {imageUrl ? (
-        <div className="relative inline-block">
-          <img
-            src={imageUrl}
-            alt="上傳圖片"
-            className="max-h-48 rounded-lg border border-border object-cover"
-          />
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-            onClick={() => onImageChange(null)}
-            disabled={disabled}
-          >
-            <X className="h-3 w-3" />
-          </Button>
+
+      {imageUrls.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {imageUrls.map((url, i) => (
+            <div key={i} className="relative group">
+              <img
+                src={url}
+                alt={`上傳圖片 ${i + 1}`}
+                className="h-24 w-24 rounded-lg border border-border object-cover"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute -top-2 -right-2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => removeImage(i)}
+                disabled={disabled}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
         </div>
-      ) : (
+      )}
+
+      {imageUrls.length < maxImages && (
         <Button
           type="button"
           variant="outline"
@@ -92,7 +123,7 @@ export function ForumImageUpload({ imageUrl, onImageChange, disabled }: ForumIma
           {uploading ? (
             <><Loader2 className="h-4 w-4 animate-spin" />上傳中...</>
           ) : (
-            <><ImagePlus className="h-4 w-4" />附加圖片</>
+            <><ImagePlus className="h-4 w-4" />附加圖片 ({imageUrls.length}/{maxImages})</>
           )}
         </Button>
       )}
