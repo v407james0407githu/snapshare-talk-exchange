@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { ReportDialog } from "@/components/reports/ReportDialog";
+import { ForumImageUpload } from "@/components/forums/ForumImageUpload";
 
 interface ForumTopicData {
   id: string;
@@ -50,6 +51,7 @@ interface ForumTopicData {
   is_pinned: boolean;
   is_locked: boolean;
   created_at: string;
+  image_url?: string | null;
   profiles?: {
     username: string;
     display_name: string | null;
@@ -62,6 +64,7 @@ interface ForumReply {
   content: string;
   user_id: string;
   created_at: string;
+  image_url?: string | null;
   profiles?: {
     username: string;
     display_name: string | null;
@@ -75,6 +78,7 @@ export default function ForumTopic() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState("");
+  const [replyImage, setReplyImage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
 
@@ -159,7 +163,8 @@ export default function ForumTopic() {
         topic_id: topicId,
         content,
         user_id: user.id,
-      });
+        image_url: replyImage,
+      } as any);
 
       if (error) throw error;
     },
@@ -168,6 +173,7 @@ export default function ForumTopic() {
       queryClient.invalidateQueries({ queryKey: ["forum-topic", topicId] });
       toast.success("回覆成功");
       setReplyContent("");
+      setReplyImage(null);
     },
     onError: (error) => {
       toast.error("回覆失敗：" + (error as Error).message);
@@ -301,6 +307,14 @@ export default function ForumTopic() {
 
               <div className="prose prose-invert max-w-none">
                 <p className="whitespace-pre-wrap">{topic.content}</p>
+                {topic.image_url && (
+                  <img
+                    src={topic.image_url}
+                    alt="主題附圖"
+                    className="mt-4 max-w-full rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => window.open(topic.image_url!, '_blank')}
+                  />
+                )}
               </div>
 
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
@@ -466,6 +480,14 @@ export default function ForumTopic() {
                       <p className="whitespace-pre-wrap text-foreground/90">
                         {reply.content}
                       </p>
+                      {reply.image_url && (
+                        <img
+                          src={reply.image_url}
+                          alt="回覆附圖"
+                          className="mt-3 max-w-full max-h-96 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => window.open(reply.image_url!, '_blank')}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -494,6 +516,13 @@ export default function ForumTopic() {
               rows={4}
               disabled={!user}
             />
+            <div className="mt-3">
+              <ForumImageUpload
+                imageUrl={replyImage}
+                onImageChange={setReplyImage}
+                disabled={!user || createReplyMutation.isPending}
+              />
+            </div>
             <div className="flex justify-end mt-4">
               <Button
                 onClick={handleSubmitReply}

@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useForumCategories, ForumCategorySidebar } from "@/components/forums/ForumCategorySelector";
 import { TopicList, type ForumTopic } from "@/components/forums/TopicList";
 import { TagInput } from "@/components/forums/TagInput";
+import { ForumImageUpload } from "@/components/forums/ForumImageUpload";
 
 const TOPICS_PER_PAGE = 10;
 
@@ -39,6 +40,7 @@ export default function Forums() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newTopic, setNewTopic] = useState({ title: "", content: "", category: "", brand: "" });
   const [newTopicTags, setNewTopicTags] = useState<string[]>([]);
+  const [newTopicImage, setNewTopicImage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: categories } = useForumCategories();
@@ -132,7 +134,8 @@ export default function Forums() {
           category: topicData.category,
           brand: topicData.brand || null,
           user_id: user.id,
-        })
+          image_url: newTopicImage,
+        } as any)
         .select()
         .single();
       if (error) throw error;
@@ -169,6 +172,7 @@ export default function Forums() {
       setShowCreateDialog(false);
       setNewTopic({ title: "", content: "", category: "", brand: "" });
       setNewTopicTags([]);
+      setNewTopicImage(null);
       navigate(`/forums/topic/${data.id}`);
     },
     onError: (error) => toast.error("發表失敗：" + (error as Error).message),
@@ -445,6 +449,10 @@ export default function Forums() {
             <div className="space-y-2">
               <Label>內容 *</Label>
               <Textarea placeholder="分享你的想法..." value={newTopic.content} onChange={(e) => setNewTopic({ ...newTopic, content: e.target.value })} rows={6} />
+            </div>
+            <div className="space-y-2">
+              <Label>附加圖片</Label>
+              <ForumImageUpload imageUrl={newTopicImage} onImageChange={setNewTopicImage} disabled={createTopicMutation.isPending} />
             </div>
           </div>
           <DialogFooter>
