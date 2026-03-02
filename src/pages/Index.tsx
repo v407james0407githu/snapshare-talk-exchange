@@ -11,9 +11,9 @@ const Index = () => {
   return (
     <MainLayout>
       <HeroSection />
+      <EquipmentCategories />
       <FeaturedCarousel />
       <FeaturedGallery />
-      <EquipmentCategories />
       <ForumPreview />
       <MarketplacePreview />
       <CTASection />
