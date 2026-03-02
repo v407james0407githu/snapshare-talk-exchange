@@ -87,10 +87,37 @@ export default function Marketplace() {
 
     if (error) {
       console.error('Error loading listings:', error);
-    } else {
-      setListings((data || []) as Listing[]);
+      setIsLoading(false);
+      return;
     }
 
+    const items = (data || []) as Listing[];
+
+    // Two-stage query: fetch seller profiles
+    const userIds = [...new Set(items.map(l => l.user_id))];
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .rpc('get_public_profiles');
+
+      if (profiles) {
+        const profileMap = new Map(
+          (profiles as any[]).map((p: any) => [p.user_id, p])
+        );
+        items.forEach(item => {
+          const p = profileMap.get(item.user_id);
+          if (p) {
+            item.profiles = {
+              username: p.username,
+              display_name: p.display_name,
+              avatar_url: p.avatar_url,
+              is_verified: p.is_verified,
+            };
+          }
+        });
+      }
+    }
+
+    setListings(items);
     setIsLoading(false);
   };
 
