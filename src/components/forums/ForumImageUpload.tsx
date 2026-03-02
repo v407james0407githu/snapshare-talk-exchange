@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,10 +14,10 @@ interface ForumImageUploadProps {
 
 export function ForumImageUpload({ imageUrls, onImagesChange, disabled, maxImages = 5 }: ForumImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const uploadFiles = useCallback(async (files: File[]) => {
     if (!files.length) return;
 
     const remaining = maxImages - imageUrls.length;
@@ -26,28 +26,24 @@ export function ForumImageUpload({ imageUrls, onImagesChange, disabled, maxImage
       return;
     }
 
-    const filesToUpload = files.slice(0, remaining);
+    const validFiles = files
+      .filter(f => {
+        if (!f.type.startsWith('image/')) { toast.error(`${f.name} 不是圖片檔案，已跳過`); return false; }
+        if (f.size > 10 * 1024 * 1024) { toast.error(`${f.name} 超過 10MB，已跳過`); return false; }
+        return true;
+      })
+      .slice(0, remaining);
+
     if (files.length > remaining) {
       toast.info(`已選取 ${files.length} 張，僅上傳前 ${remaining} 張`);
     }
 
-    for (const file of filesToUpload) {
-      if (!file.type.startsWith('image/')) {
-        toast.error(`${file.name} 不是圖片檔案，已跳過`);
-        continue;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} 超過 10MB，已跳過`);
-        continue;
-      }
-    }
+    if (!validFiles.length) return;
 
     setUploading(true);
     try {
       const newUrls: string[] = [];
-      for (const file of filesToUpload) {
-        if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) continue;
-
+      for (const file of validFiles) {
         const resized = await resizeImage(file, 1920, 0.85);
         const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
 
@@ -69,7 +65,35 @@ export function ForumImageUpload({ imageUrls, onImagesChange, disabled, maxImage
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  }, [imageUrls, maxImages, onImagesChange]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    uploadFiles(Array.from(e.target.files || []));
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled && !uploading) setDragOver(true);
+  }, [disabled, uploading]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    if (disabled || uploading) return;
+
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) {
+      uploadFiles(files);
+    }
+  }, [disabled, uploading, uploadFiles]);
 
   const removeImage = (index: number) => {
     onImagesChange(imageUrls.filter((_, i) => i !== index));
@@ -112,21 +136,61 @@ export function ForumImageUpload({ imageUrls, onImagesChange, disabled, maxImage
       )}
 
       {imageUrls.length < maxImages && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+            dragOver
+              ? 'border-primary bg-primary/5'
+              : 'border-border hover:border-muted-foreground/50'
+          }`}
           onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || uploading}
         >
           {uploading ? (
-            <><Loader2 className="h-4 w-4 animate-spin" />上傳中...</>
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />上傳中...
+            </div>
           ) : (
-            <><ImagePlus className="h-4 w-4" />附加圖片 ({imageUrls.length}/{maxImages})</>
+            <div className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
+              <ImagePlus className="h-5 w-5" />
+              <span>點擊或拖拉圖片到此處上傳</span>
+              <span className="text-xs">({imageUrls.length}/{maxImages})</span>
+            </div>
           )}
-        </Button>
+        </div>
       )}
     </div>
   );
+}
+
+// Hook for textarea drag-drop forwarding
+export function useTextareaDrop(
+  uploadFiles: (files: File[]) => void,
+  disabled?: boolean
+) {
+  const [dragOver, setDragOver] = useState(false);
+
+  const handlers = {
+    onDragOver: (e: React.DragEvent) => {
+      if (e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!disabled) setDragOver(true);
+      }
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+    },
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      if (disabled) return;
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      if (files.length > 0) uploadFiles(files);
+    },
+  };
+
+  return { dragOver, handlers };
 }
