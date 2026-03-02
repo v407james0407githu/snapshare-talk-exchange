@@ -96,6 +96,7 @@ export default function ForumTopic() {
   const [editingTopic, setEditingTopic] = useState(false);
   const [editingTopicTitle, setEditingTopicTitle] = useState("");
   const [editingTopicContent, setEditingTopicContent] = useState("");
+  const [editingTopicImages, setEditingTopicImages] = useState<string[]>([]);
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
 
   const handleReplyDragUpload = async (files: File[]) => {
@@ -253,11 +254,11 @@ export default function ForumTopic() {
 
   // Update topic mutation
   const updateTopicMutation = useMutation({
-    mutationFn: async ({ title, content }: { title: string; content: string }) => {
+    mutationFn: async ({ title, content, imageUrls }: { title: string; content: string; imageUrls: string[] }) => {
       if (!user || !topicId) throw new Error("請先登入");
       const { error } = await supabase
         .from("forum_topics")
-        .update({ title, content } as any)
+        .update({ title, content, image_urls: imageUrls.length > 0 ? imageUrls : null } as any)
         .eq("id", topicId)
         .eq("user_id", user.id);
       if (error) throw error;
@@ -329,11 +330,13 @@ export default function ForumTopic() {
     setEditingTopic(true);
     setEditingTopicTitle(topic.title);
     setEditingTopicContent(topic.content);
+    const imgs = topic.image_urls?.length ? topic.image_urls : topic.image_url ? [topic.image_url] : [];
+    setEditingTopicImages(imgs);
   };
 
   const handleSaveEditTopic = () => {
     if (!editingTopicTitle.trim() || !editingTopicContent.trim()) return;
-    updateTopicMutation.mutate({ title: editingTopicTitle, content: editingTopicContent });
+    updateTopicMutation.mutate({ title: editingTopicTitle, content: editingTopicContent, imageUrls: editingTopicImages });
   };
 
   const handleDeleteTopic = async () => {
@@ -451,6 +454,11 @@ export default function ForumTopic() {
                     value={editingTopicContent}
                     onChange={(e) => setEditingTopicContent(e.target.value)}
                     rows={6}
+                  />
+                  <ForumImageUpload
+                    imageUrls={editingTopicImages}
+                    onImagesChange={setEditingTopicImages}
+                    disabled={updateTopicMutation.isPending}
                   />
                   <div className="flex gap-2 justify-end mt-3">
                     <Button variant="ghost" size="sm" onClick={() => setEditingTopic(false)} disabled={updateTopicMutation.isPending}>
