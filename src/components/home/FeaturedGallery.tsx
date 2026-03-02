@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Eye, Star, ArrowRight } from "lucide-react";
+import { Heart, MessageCircle, Eye, Star, ArrowRight, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface Photo {
+interface FeaturedPhoto {
   id: string;
   title: string;
   imageUrl: string;
+  thumbnailUrl: string | null;
   author: string;
-  avatar: string;
+  avatarUrl: string | null;
   likes: number;
   comments: number;
   views: number;
@@ -16,24 +19,8 @@ interface Photo {
   equipment: string;
 }
 
-const featuredPhotos: Photo[] = [
-  { id: "1", title: "都市晨曦", imageUrl: "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800", author: "攝影達人", avatar: "🎨", likes: 1234, comments: 89, views: 5678, rating: 4.8, equipment: "Sony A7 IV" },
-  { id: "2", title: "山間雲海", imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800", author: "山野客", avatar: "🏔️", likes: 2345, comments: 156, views: 8901, rating: 4.9, equipment: "Fujifilm X-T5" },
-  { id: "3", title: "街頭光影", imageUrl: "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=800", author: "街拍手", avatar: "📸", likes: 876, comments: 45, views: 3456, rating: 4.5, equipment: "Ricoh GR III" },
-  { id: "4", title: "夜色迷離", imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800", author: "夜行者", avatar: "🌙", likes: 1567, comments: 78, views: 4567, rating: 4.7, equipment: "iPhone 15 Pro" },
-  { id: "5", title: "花間蝶影", imageUrl: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800", author: "微距狂", avatar: "🦋", likes: 987, comments: 56, views: 2345, rating: 4.6, equipment: "Nikon Z8" },
-  { id: "6", title: "海岸日落", imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800", author: "海風客", avatar: "🌅", likes: 1890, comments: 102, views: 6789, rating: 4.8, equipment: "Samsung S24 Ultra" },
-  { id: "7", title: "古巷深處", imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800", author: "巷弄人", avatar: "🏚️", likes: 1120, comments: 67, views: 4100, rating: 4.7, equipment: "Canon R6 II" },
-  { id: "8", title: "雨中漫步", imageUrl: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800", author: "雨季客", avatar: "🌧️", likes: 1450, comments: 91, views: 5200, rating: 4.6, equipment: "Sony A7C II" },
-  { id: "9", title: "星空銀河", imageUrl: "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=800", author: "星空獵人", avatar: "✨", likes: 2100, comments: 134, views: 7800, rating: 4.9, equipment: "Nikon Z6 III" },
-  { id: "10", title: "秋葉繽紛", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800", author: "四季攝", avatar: "🍂", likes: 760, comments: 38, views: 2900, rating: 4.4, equipment: "Fujifilm X100VI" },
-  { id: "11", title: "城市倒影", imageUrl: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800", author: "鏡像師", avatar: "🪞", likes: 1680, comments: 85, views: 5400, rating: 4.7, equipment: "Canon R5" },
-  { id: "12", title: "煙火璀璨", imageUrl: "https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=800", author: "夜拍族", avatar: "🎆", likes: 1950, comments: 110, views: 6300, rating: 4.8, equipment: "Sony A1" },
-  { id: "13", title: "田野風光", imageUrl: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800", author: "田園詩人", avatar: "🌾", likes: 890, comments: 42, views: 3100, rating: 4.5, equipment: "Pixel 9 Pro" },
-];
-
 interface PhotoCardProps {
-  photo: Photo;
+  photo: FeaturedPhoto;
 }
 
 function PhotoCard({ photo }: PhotoCardProps) {
@@ -46,16 +33,15 @@ function PhotoCard({ photo }: PhotoCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Image */}
       <div className="aspect-[4/3] overflow-hidden">
         <img
-          src={photo.imageUrl}
+          src={photo.thumbnailUrl || photo.imageUrl}
           alt={photo.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          loading="lazy"
         />
       </div>
 
-      {/* Overlay on Hover */}
       <div
         className={`absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent transition-opacity duration-300 ${
           isHovered ? "opacity-100" : "opacity-0"
@@ -66,7 +52,13 @@ function PhotoCard({ photo }: PhotoCardProps) {
             {photo.title}
           </h3>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-lg">{photo.avatar}</span>
+            {photo.avatarUrl ? (
+              <img src={photo.avatarUrl} alt={photo.author} className="w-5 h-5 rounded-full object-cover" />
+            ) : (
+              <span className="w-5 h-5 rounded-full bg-primary/50 flex items-center justify-center text-xs text-cream">
+                {photo.author.charAt(0)}
+              </span>
+            )}
             <span className="text-sm text-cream/80">{photo.author}</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-cream/70">
@@ -83,24 +75,78 @@ function PhotoCard({ photo }: PhotoCardProps) {
         </div>
       </div>
 
-      {/* Equipment Badge */}
       <div className="absolute top-3 left-3">
         <span className="px-2 py-1 rounded-full bg-charcoal/70 backdrop-blur-sm text-xs text-cream/90 border border-cream/20">
           {photo.equipment}
         </span>
       </div>
 
-      {/* Rating Badge */}
       <div className="absolute top-3 right-3">
         <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/90 text-xs font-medium text-charcoal">
-          <Star className="h-3 w-3 fill-current" /> {photo.rating}
+          <Star className="h-3 w-3 fill-current" /> {photo.rating.toFixed(1)}
         </span>
       </div>
     </Link>
   );
 }
 
+function PhotoCardSkeleton() {
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-card border border-border">
+      <Skeleton className="aspect-[4/3] w-full" />
+    </div>
+  );
+}
+
 export function FeaturedGallery() {
+  const [photos, setPhotos] = useState<FeaturedPhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchFeatured() {
+      const { data, error } = await supabase
+        .from("photos")
+        .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, profiles!inner(username, display_name, avatar_url)")
+        .eq("is_featured", true)
+        .eq("is_hidden", false)
+        .order("like_count", { ascending: false })
+        .limit(13);
+
+      if (error) {
+        console.error("載入精選作品失敗:", error);
+        setLoading(false);
+        return;
+      }
+
+      const mapped: FeaturedPhoto[] = (data || []).map((p: any) => ({
+        id: p.id,
+        title: p.title,
+        imageUrl: p.image_url,
+        thumbnailUrl: p.thumbnail_url,
+        author: p.profiles?.display_name || p.profiles?.username || "匿名",
+        avatarUrl: p.profiles?.avatar_url,
+        likes: p.like_count || 0,
+        comments: p.comment_count || 0,
+        views: p.view_count || 0,
+        rating: Number(p.average_rating) || 0,
+        equipment: p.phone_model || p.camera_body || p.brand || "未知設備",
+      }));
+
+      setPhotos(mapped);
+      setLoading(false);
+    }
+
+    fetchFeatured();
+  }, []);
+
+  // 不顯示空區塊
+  if (!loading && photos.length === 0) return null;
+
+  // 分配到三行: 4-5-4
+  const row1 = photos.slice(0, 4);
+  const row2 = photos.slice(4, 9);
+  const row3 = photos.slice(9, 13);
+
   return (
     <section className="py-20 bg-muted/30">
       <div className="container">
@@ -121,26 +167,37 @@ export function FeaturedGallery() {
           </Link>
         </div>
 
-        {/* Row 1: 4 photos */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {featuredPhotos.slice(0, 4).map((photo) => (
-            <PhotoCard key={photo.id} photo={photo} />
-          ))}
-        </div>
-
-        {/* Row 2: 5 photos */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
-          {featuredPhotos.slice(4, 9).map((photo) => (
-            <PhotoCard key={photo.id} photo={photo} />
-          ))}
-        </div>
-
-        {/* Row 3: 4 photos */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-          {featuredPhotos.slice(9, 13).map((photo) => (
-            <PhotoCard key={photo.id} photo={photo} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 5 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+            </div>
+          </div>
+        ) : (
+          <>
+            {row1.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {row1.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
+              </div>
+            )}
+            {row2.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
+                {row2.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
+              </div>
+            )}
+            {row3.length > 0 && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                {row3.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
+              </div>
+            )}
+          </>
+        )}
 
         <div className="mt-8 text-center sm:hidden">
           <Link to="/gallery">
