@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { useForumCategories, ForumCategorySidebar } from "@/components/forums/ForumCategorySelector";
 import { TopicList, type ForumTopic } from "@/components/forums/TopicList";
 import { TagInput } from "@/components/forums/TagInput";
-import { ForumImageUpload } from "@/components/forums/ForumImageUpload";
+import { ForumImageUpload, useTextareaDrop } from "@/components/forums/ForumImageUpload";
 
 const TOPICS_PER_PAGE = 10;
 
@@ -42,6 +42,33 @@ export default function Forums() {
   const [newTopicTags, setNewTopicTags] = useState<string[]>([]);
   const [newTopicImages, setNewTopicImages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [dragUploading, setDragUploading] = useState(false);
+
+  const handleDragUploadFiles = async (files: File[]) => {
+    if (dragUploading) return;
+    const remaining = 5 - newTopicImages.length;
+    if (remaining <= 0) { toast.error('最多只能上傳 5 張圖片'); return; }
+    const valid = files.filter(f => f.type.startsWith('image/') && f.size <= 10 * 1024 * 1024).slice(0, remaining);
+    if (!valid.length) return;
+    setDragUploading(true);
+    try {
+      const { resizeImage } = await import('@/lib/imageResize');
+      const newUrls: string[] = [];
+      for (const file of valid) {
+        const resized = await resizeImage(file, 1920, 0.85);
+        const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const { error } = await supabase.storage.from('photos').upload(path, resized.blob, { contentType: 'image/jpeg' });
+        if (error) throw error;
+        const { data } = supabase.storage.from('photos').getPublicUrl(path);
+        newUrls.push(data.publicUrl);
+      }
+      setNewTopicImages(prev => [...prev, ...newUrls]);
+      toast.success(`已上傳 ${newUrls.length} 張圖片`);
+    } catch (err: any) { toast.error('上傳失敗：' + err.message); }
+    finally { setDragUploading(false); }
+  };
+
+  const contentDrag = useTextareaDrop(handleDragUploadFiles, dragUploading);
 
   const { data: categories } = useForumCategories();
 
@@ -448,7 +475,17 @@ export default function Forums() {
             </div>
             <div className="space-y-2">
               <Label>內容 *</Label>
-              <Textarea placeholder="分享你的想法..." value={newTopic.content} onChange={(e) => setNewTopic({ ...newTopic, content: e.target.value })} rows={6} />
+              <div
+                className={`relative rounded-md transition-colors ${contentDrag.dragOver ? 'ring-2 ring-primary' : ''}`}
+                {...contentDrag.handlers}
+              >
+                <Textarea placeholder="分享你的想法...（可拖拉圖片到此處上傳）" value={newTopic.content} onChange={(e) => setNewTopic({ ...newTopic, content: e.target.value })} rows={6} />
+                {contentDrag.dragOver && (
+                  <div className="absolute inset-0 bg-primary/10 rounded-md flex items-center justify-center pointer-events-none">
+                    <span className="text-primary font-medium text-sm">放開以上傳圖片</span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>附加圖片</Label>

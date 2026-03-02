@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { ReportDialog } from "@/components/reports/ReportDialog";
-import { ForumImageUpload } from "@/components/forums/ForumImageUpload";
+import { ForumImageUpload, useTextareaDrop } from "@/components/forums/ForumImageUpload";
 import { ImageLightbox } from "@/components/forums/ImageLightbox";
 
 interface ForumTopicData {
@@ -86,7 +86,34 @@ export default function ForumTopic() {
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [replyDragUploading, setReplyDragUploading] = useState(false);
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
+
+  const handleReplyDragUpload = async (files: File[]) => {
+    if (replyDragUploading) return;
+    const remaining = 5 - replyImages.length;
+    if (remaining <= 0) { toast.error('最多只能上傳 5 張圖片'); return; }
+    const valid = files.filter(f => f.type.startsWith('image/') && f.size <= 10 * 1024 * 1024).slice(0, remaining);
+    if (!valid.length) return;
+    setReplyDragUploading(true);
+    try {
+      const { resizeImage } = await import('@/lib/imageResize');
+      const newUrls: string[] = [];
+      for (const file of valid) {
+        const resized = await resizeImage(file, 1920, 0.85);
+        const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const { error } = await supabase.storage.from('photos').upload(path, resized.blob, { contentType: 'image/jpeg' });
+        if (error) throw error;
+        const { data } = supabase.storage.from('photos').getPublicUrl(path);
+        newUrls.push(data.publicUrl);
+      }
+      setReplyImages(prev => [...prev, ...newUrls]);
+      toast.success(`已上傳 ${newUrls.length} 張圖片`);
+    } catch (err: any) { toast.error('上傳失敗：' + err.message); }
+    finally { setReplyDragUploading(false); }
+  };
+
+  const replyDrag = useTextareaDrop(handleReplyDragUpload, !user || replyDragUploading);
 
   // Check admin status when user is available
   useState(() => {
@@ -531,13 +558,23 @@ export default function ForumTopic() {
         ) : (
           <div className="bg-card rounded-xl border border-border p-6">
             <h3 className="font-semibold mb-4">發表回覆</h3>
-            <Textarea
-              placeholder={user ? "分享你的想法..." : "請先登入才能回覆"}
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              rows={4}
-              disabled={!user}
-            />
+            <div
+              className={`relative rounded-md transition-colors ${replyDrag.dragOver ? 'ring-2 ring-primary' : ''}`}
+              {...replyDrag.handlers}
+            >
+              <Textarea
+                placeholder={user ? "分享你的想法...（可拖拉圖片到此處上傳）" : "請先登入才能回覆"}
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                rows={4}
+                disabled={!user}
+              />
+              {replyDrag.dragOver && (
+                <div className="absolute inset-0 bg-primary/10 rounded-md flex items-center justify-center pointer-events-none">
+                  <span className="text-primary font-medium text-sm">放開以上傳圖片</span>
+                </div>
+              )}
+            </div>
             <div className="mt-3">
               <ForumImageUpload
                 imageUrls={replyImages}
