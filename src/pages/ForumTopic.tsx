@@ -92,6 +92,7 @@ export default function ForumTopic() {
   const [replyDragUploading, setReplyDragUploading] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [editingImages, setEditingImages] = useState<string[]>([]);
   const [editingTopic, setEditingTopic] = useState(false);
   const [editingTopicTitle, setEditingTopicTitle] = useState("");
   const [editingTopicContent, setEditingTopicContent] = useState("");
@@ -223,11 +224,11 @@ export default function ForumTopic() {
 
   // Update reply mutation
   const updateReplyMutation = useMutation({
-    mutationFn: async ({ replyId, content }: { replyId: string; content: string }) => {
+    mutationFn: async ({ replyId, content, imageUrls }: { replyId: string; content: string; imageUrls: string[] }) => {
       if (!user) throw new Error("請先登入");
       const { error } = await supabase
         .from("forum_replies")
-        .update({ content } as any)
+        .update({ content, image_urls: imageUrls.length > 0 ? imageUrls : null } as any)
         .eq("id", replyId)
         .eq("user_id", user.id);
       if (error) throw error;
@@ -237,6 +238,7 @@ export default function ForumTopic() {
       toast.success("回覆已更新");
       setEditingReplyId(null);
       setEditingContent("");
+      setEditingImages([]);
     },
     onError: (error) => {
       toast.error("更新失敗：" + (error as Error).message);
@@ -301,16 +303,19 @@ export default function ForumTopic() {
   const handleStartEdit = (reply: ForumReply) => {
     setEditingReplyId(reply.id);
     setEditingContent(reply.content);
+    const imgs = reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [];
+    setEditingImages(imgs);
   };
 
   const handleCancelEdit = () => {
     setEditingReplyId(null);
     setEditingContent("");
+    setEditingImages([]);
   };
 
   const handleSaveEdit = () => {
     if (!editingReplyId || !editingContent.trim()) return;
-    updateReplyMutation.mutate({ replyId: editingReplyId, content: editingContent });
+    updateReplyMutation.mutate({ replyId: editingReplyId, content: editingContent, imageUrls: editingImages });
   };
 
   const handleStartEditTopic = () => {
@@ -691,6 +696,11 @@ export default function ForumTopic() {
                             onChange={(e) => setEditingContent(e.target.value)}
                             rows={3}
                             autoFocus
+                          />
+                          <ForumImageUpload
+                            imageUrls={editingImages}
+                            onImagesChange={setEditingImages}
+                            disabled={updateReplyMutation.isPending}
                           />
                           <div className="flex gap-2 justify-end">
                             <Button variant="ghost" size="sm" onClick={handleCancelEdit} disabled={updateReplyMutation.isPending}>
