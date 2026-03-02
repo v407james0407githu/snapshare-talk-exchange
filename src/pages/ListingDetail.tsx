@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { ReportDialog } from '@/components/reports/ReportDialog';
 import {
   ArrowLeft,
   Camera,
@@ -29,7 +30,7 @@ import {
   Shield,
   ShieldCheck,
   MessageSquare,
-  Mail,
+  Flag,
   Crown,
   Loader2,
   AlertTriangle,
@@ -93,6 +94,7 @@ export default function ListingDetail() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
   // Fetch listing
   const { data: listing, isLoading: listingLoading } = useQuery({
@@ -143,22 +145,68 @@ export default function ListingDetail() {
     setContactDialogOpen(true);
   };
 
-  const handleSendMessage = () => {
-    if (!message.trim()) {
+  const handleSendMessage = async () => {
+    if (!message.trim() || !user || !listing || !seller) return;
+
+    setIsSending(true);
+    try {
+      // Check for existing conversation
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${listing.user_id}),and(participant1_id.eq.${listing.user_id},participant2_id.eq.${user.id})`)
+        .maybeSingle();
+
+      let conversationId = existing?.id;
+
+      if (!conversationId) {
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            participant1_id: user.id,
+            participant2_id: listing.user_id,
+            listing_id: listing.id,
+          })
+          .select('id')
+          .single();
+        if (convError) throw convError;
+        conversationId = newConv.id;
+      }
+
+      // Send message
+      const fullMessage = `[詢問商品：${listing.title}]\n\n${message.trim()}`;
+      const { error: msgError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: fullMessage,
+        });
+      if (msgError) throw msgError;
+
+      // Update last_message_at
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversationId);
+
       toast({
-        title: '請輸入訊息',
+        title: '訊息已發送',
+        description: '您可以在訊息頁面繼續對話',
+      });
+      setMessage('');
+      setContactDialogOpen(false);
+      navigate('/messages');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: '發送失敗',
+        description: '請稍後再試',
         variant: 'destructive',
       });
-      return;
+    } finally {
+      setIsSending(false);
     }
-
-    // In a real app, you would send this message to a messaging system
-    toast({
-      title: '訊息已發送',
-      description: '賣家會盡快回覆您',
-    });
-    setMessage('');
-    setContactDialogOpen(false);
   };
 
   const nextImage = () => {
@@ -454,8 +502,9 @@ export default function ListingDetail() {
                             />
 
 
-                            <Button onClick={handleSendMessage} className="w-full">
-                              發送訊息
+                            <Button onClick={handleSendMessage} className="w-full" disabled={isSending || !message.trim()}>
+                              {isSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                              {isSending ? '發送中...' : '發送訊息'}
                             </Button>
                           </div>
                         </DialogContent>
@@ -470,6 +519,19 @@ export default function ListingDetail() {
                       >
                         編輯商品
                       </Button>
+                    )}
+                    {!isOwner && (
+                      <ReportDialog
+                        contentType="listing"
+                        contentId={listing.id}
+                        reportedUserId={listing.user_id}
+                        trigger={
+                          <Button variant="ghost" size="sm" className="w-full gap-2 text-muted-foreground hover:text-destructive">
+                            <Flag className="h-4 w-4" />
+                            檢舉此商品
+                          </Button>
+                        }
+                      />
                     )}
                   </div>
                 )}
