@@ -30,7 +30,7 @@ const fallbackBanners: Banner[] = [
     image_url: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1920&q=80",
     link_url: null,
     cta_primary_text: "開始創作之旅",
-    cta_primary_link: "/auth",
+    cta_primary_link: "/auth?tab=register",
     cta_secondary_text: "瀏覽精選作品",
     cta_secondary_link: "/gallery",
     text_align: "left",
