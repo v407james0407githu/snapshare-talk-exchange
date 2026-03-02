@@ -70,20 +70,25 @@ export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [conditionFilter, setConditionFilter] = useState<string>('all');
+  const [showSold, setShowSold] = useState(false);
 
   useEffect(() => {
     loadListings();
-  }, []);
+  }, [showSold]);
 
   const loadListings = async () => {
     setIsLoading(true);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('marketplace_listings')
       .select('*')
-      .eq('is_hidden', false)
-      .eq('is_sold', false)
-      .order('created_at', { ascending: false });
+      .eq('is_hidden', false);
+
+    if (!showSold) {
+      query = query.eq('is_sold', false);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error loading listings:', error);
@@ -203,6 +208,13 @@ export default function Marketplace() {
               <SelectItem value="fair">普通</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant={showSold ? "default" : "outline"}
+            onClick={() => setShowSold(!showSold)}
+            className="whitespace-nowrap"
+          >
+            {showSold ? "顯示全部" : "含已售出"}
+          </Button>
         </div>
 
         {/* Listings Grid */}
@@ -224,7 +236,7 @@ export default function Marketplace() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredListings.map((listing) => (
               <Link key={listing.id} to={`/marketplace/${listing.id}`}>
-                <Card className="overflow-hidden hover-lift h-full">
+                <Card className={`overflow-hidden hover-lift h-full ${listing.is_sold ? 'opacity-70' : ''}`}>
                   <div className="aspect-[4/3] relative overflow-hidden">
                     <img
                       src={listing.verification_image_url}
@@ -241,7 +253,12 @@ export default function Marketplace() {
                         {categoryLabels[listing.category]}
                       </Badge>
                     </div>
-                    {listing.is_verified && (
+                    {listing.is_sold && (
+                      <Badge variant="destructive" className="absolute top-2 right-2">
+                        已售出
+                      </Badge>
+                    )}
+                    {!listing.is_sold && listing.is_verified && (
                       <Badge className="absolute top-2 right-2 gap-1 bg-green-500">
                         <ShieldCheck className="h-3 w-3" />
                         已驗證

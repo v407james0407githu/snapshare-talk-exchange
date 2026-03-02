@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -22,9 +22,12 @@ import {
   MessageSquare,
   Upload,
   Loader2,
-  CheckCircle
+  CheckCircle,
+  ShoppingBag,
+  Plus
 } from 'lucide-react';
 import { AvatarCropDialog } from '@/components/profile/AvatarCropDialog';
+import { useRef } from 'react';
 
 export default function Profile() {
   const { user, profile, updateProfile, loading } = useAuth();
@@ -234,6 +237,10 @@ export default function Profile() {
                 <ImageIcon className="h-4 w-4" />
                 我的作品
               </TabsTrigger>
+              <TabsTrigger value="listings" className="gap-2">
+                <ShoppingBag className="h-4 w-4" />
+                我的交易
+              </TabsTrigger>
               <TabsTrigger value="activity" className="gap-2">
                 <MessageSquare className="h-4 w-4" />
                 活動紀錄
@@ -351,6 +358,10 @@ export default function Profile() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="listings">
+              <MyListingsTab userId={user.id} />
+            </TabsContent>
+
             <TabsContent value="activity">
               <Card>
                 <CardContent className="py-12 text-center">
@@ -376,5 +387,96 @@ export default function Profile() {
         />
       )}
     </MainLayout>
+  );
+}
+
+const conditionLabels: Record<string, string> = {
+  new: '全新', like_new: '幾乎全新', good: '良好', fair: '普通',
+};
+
+function MyListingsTab({ userId }: { userId: string }) {
+  const navigate = useNavigate();
+  const [listings, setListings] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('marketplace_listings')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_hidden', false)
+        .order('created_at', { ascending: false });
+      setListings(data || []);
+      setIsLoading(false);
+    };
+    load();
+  }, [userId]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (listings.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">尚無刊登商品</h3>
+          <p className="text-muted-foreground mb-4">開始刊登您的第一件商品吧！</p>
+          <Button variant="gold" onClick={() => navigate('/marketplace/create')}>
+            <Plus className="mr-2 h-4 w-4" />
+            刊登商品
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button variant="gold" size="sm" onClick={() => navigate('/marketplace/create')}>
+          <Plus className="mr-2 h-4 w-4" />
+          刊登商品
+        </Button>
+      </div>
+      {listings.map((listing) => (
+        <Link key={listing.id} to={`/marketplace/${listing.id}`}>
+          <Card className={`hover-lift ${listing.is_sold ? 'opacity-60' : ''}`}>
+            <CardContent className="flex items-center gap-4 p-4">
+              <img
+                src={listing.verification_image_url}
+                alt={listing.title}
+                className="h-16 w-24 rounded-lg object-cover shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium truncate">{listing.title}</h3>
+                <p className="text-lg font-bold text-primary">
+                  NT$ {listing.price?.toLocaleString()}
+                </p>
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="outline" className="text-xs">
+                    {conditionLabels[listing.condition] || listing.condition}
+                  </Badge>
+                  {listing.is_sold && (
+                    <Badge variant="destructive" className="text-xs">已售出</Badge>
+                  )}
+                  {listing.is_verified && !listing.is_sold && (
+                    <Badge variant="secondary" className="text-xs">已驗證</Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      ))}
+    </div>
   );
 }
