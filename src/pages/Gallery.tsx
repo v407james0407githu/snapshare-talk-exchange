@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GalleryFilters } from "@/components/gallery/GalleryFilters";
@@ -35,11 +35,12 @@ const PAGE_SIZE = 20;
 export default function Gallery() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [selectedBrand, setSelectedBrand] = useState("全部品牌");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
   const [sortBy, setSortBy] = useState<"newest" | "most_liked" | "highest_rated">("newest");
 
   const [photos, setPhotos] = useState<Photo[]>([]);
