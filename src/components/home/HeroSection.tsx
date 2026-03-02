@@ -89,7 +89,7 @@ function getAlignClasses(align: string) {
   }
 }
 
-function BannerLink({ url, children, className }: { url: string; children: React.ReactNode; className?: string }) {
+function BannerLink({ url, children, className }: { url: string; children?: React.ReactNode; className?: string }) {
   const isExternal = url.startsWith("http");
   if (isExternal) {
     return <a href={url} target="_blank" rel="noopener noreferrer" className={className}>{children}</a>;
@@ -144,32 +144,24 @@ export function HeroSection() {
 
             return (
               <div key={banner.id} className="flex-[0_0_100%] min-w-0 relative h-full">
-                {banner.link_url && !showContent ? (
-                  <BannerLink url={banner.link_url} className="absolute inset-0">
-                    <img
-                      src={banner.image_url}
-                      alt={banner.title || "Banner"}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  </BannerLink>
-                ) : (
-                  <img
-                    src={banner.image_url}
-                    alt={banner.title || "Banner"}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
-                  />
+                <img
+                  src={banner.image_url}
+                  alt={banner.title || "Banner"}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  loading="lazy"
+                />
+                {banner.link_url && (
+                  <BannerLink url={banner.link_url} className="absolute inset-0 z-[1]" />
                 )}
                 {gradientStyle && (
                   <div className="absolute inset-0" style={gradientStyle} />
                 )}
 
                 {showContent && (
-                  <div className="relative z-10 h-full flex items-center">
+                  <div className="relative z-[2] h-full flex items-center pointer-events-none">
                     <div className="container">
                       <div className={`max-w-xl ${align.container}`}>
-                        <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-2xl p-6 md:p-8">
+                        <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-2xl p-6 md:p-8 pointer-events-auto">
                           {banner.title && (
                             <h1 className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-3">
                               {banner.title}
