@@ -300,7 +300,7 @@ export default function Forums() {
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-cream mb-4">
                 討論<span className="text-gradient">區</span>
               </h1>
-              <p className="text-lg text-muted-foreground">與攝影同好交流心得、分享經驗、討論器材</p>
+              <p className="text-lg text-muted-foreground">與攝影同好交流心得、分享經驗、探討攝影</p>
             </div>
             <Button variant="hero" size="lg" className="gap-2 w-fit" onClick={handleCreateTopic}>
               <Plus className="h-5 w-5" />發表新主題

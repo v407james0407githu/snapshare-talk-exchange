@@ -50,8 +50,8 @@ const fallbackBanners: Banner[] = [
   },
   {
     id: "3",
-    title: "器材交流，找到你的最佳夥伴",
-    subtitle: "二手器材買賣、器材評測分享，讓每一分投資都值得。",
+    title: "攝影交流，找到你的最佳夥伴",
+    subtitle: "二手買賣、攝影評測分享，讓每一分投資都值得。",
     image_url: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=1920&q=80",
     cta_primary_text: "逛逛市集",
     cta_primary_link: "/marketplace",

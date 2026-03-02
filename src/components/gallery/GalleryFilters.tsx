@@ -55,7 +55,7 @@ export function GalleryFilters({
               <div className="relative flex-1 min-w-[180px] max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="搜尋作品、作者或器材..."
+                  placeholder="搜尋作品、作者或裝備..."
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
                   className="pl-10"

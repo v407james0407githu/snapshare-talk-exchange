@@ -115,7 +115,7 @@ export default function Marketplace() {
           <div>
             <h1 className="text-3xl font-bold mb-2">二手交易</h1>
             <p className="text-muted-foreground">
-              安全交易攝影器材，所有商品需實物驗證
+              安全交易攝影裝備，所有商品需實物驗證
             </p>
           </div>
           <Link to="/marketplace/create">
