@@ -106,7 +106,7 @@ export function FeaturedGallery() {
     async function fetchFeatured() {
       const { data, error } = await supabase
         .from("photos")
-        .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, profiles!inner(username, display_name, avatar_url)")
+        .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id")
         .eq("is_featured", true)
         .eq("is_hidden", false)
         .order("like_count", { ascending: false })
@@ -118,19 +118,39 @@ export function FeaturedGallery() {
         return;
       }
 
-      const mapped: FeaturedPhoto[] = (data || []).map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        imageUrl: p.image_url,
-        thumbnailUrl: p.thumbnail_url,
-        author: p.profiles?.display_name || p.profiles?.username || "匿名",
-        avatarUrl: p.profiles?.avatar_url,
-        likes: p.like_count || 0,
-        comments: p.comment_count || 0,
-        views: p.view_count || 0,
-        rating: Number(p.average_rating) || 0,
-        equipment: p.phone_model || p.camera_body || p.brand || "未知設備",
-      }));
+      if (!data || data.length === 0) {
+        setPhotos([]);
+        setLoading(false);
+        return;
+      }
+
+      // 取得所有作者的 user_id，用 RPC 查詢公開資料
+      const userIds = [...new Set(data.map((p) => p.user_id))];
+      const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {};
+
+      for (const uid of userIds) {
+        const { data: profileData } = await supabase.rpc("get_public_profile", { target_user_id: uid });
+        if (profileData && profileData.length > 0) {
+          profileMap[uid] = profileData[0];
+        }
+      }
+
+      const mapped: FeaturedPhoto[] = data.map((p: any) => {
+        const profile = profileMap[p.user_id];
+        return {
+          id: p.id,
+          title: p.title,
+          imageUrl: p.image_url,
+          thumbnailUrl: p.thumbnail_url,
+          author: profile?.display_name || profile?.username || "匿名",
+          avatarUrl: profile?.avatar_url || null,
+          likes: p.like_count || 0,
+          comments: p.comment_count || 0,
+          views: p.view_count || 0,
+          rating: Number(p.average_rating) || 0,
+          equipment: p.phone_model || p.camera_body || p.brand || "未知設備",
+        };
+      });
 
       setPhotos(mapped);
       setLoading(false);
