@@ -17,78 +17,19 @@ interface Photo {
 }
 
 const featuredPhotos: Photo[] = [
-  {
-    id: "1",
-    title: "都市晨曦",
-    imageUrl: "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800",
-    author: "攝影達人",
-    avatar: "🎨",
-    likes: 1234,
-    comments: 89,
-    views: 5678,
-    rating: 4.8,
-    equipment: "Sony A7 IV",
-  },
-  {
-    id: "2",
-    title: "山間雲海",
-    imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800",
-    author: "山野客",
-    avatar: "🏔️",
-    likes: 2345,
-    comments: 156,
-    views: 8901,
-    rating: 4.9,
-    equipment: "Fujifilm X-T5",
-  },
-  {
-    id: "3",
-    title: "街頭光影",
-    imageUrl: "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=800",
-    author: "街拍手",
-    avatar: "📸",
-    likes: 876,
-    comments: 45,
-    views: 3456,
-    rating: 4.5,
-    equipment: "Ricoh GR III",
-  },
-  {
-    id: "4",
-    title: "夜色迷離",
-    imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800",
-    author: "夜行者",
-    avatar: "🌙",
-    likes: 1567,
-    comments: 78,
-    views: 4567,
-    rating: 4.7,
-    equipment: "iPhone 15 Pro",
-  },
-  {
-    id: "5",
-    title: "花間蝶影",
-    imageUrl: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800",
-    author: "微距狂",
-    avatar: "🦋",
-    likes: 987,
-    comments: 56,
-    views: 2345,
-    rating: 4.6,
-    equipment: "Nikon Z8",
-  },
-  {
-    id: "6",
-    title: "海岸日落",
-    imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
-    author: "海風客",
-    avatar: "🌅",
-    likes: 1890,
-    comments: 102,
-    views: 6789,
-    rating: 4.8,
-    equipment: "Samsung S24 Ultra",
-  },
+  { id: "1", title: "都市晨曦", imageUrl: "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800", author: "攝影達人", avatar: "🎨", likes: 1234, comments: 89, views: 5678, rating: 4.8, equipment: "Sony A7 IV" },
+  { id: "2", title: "山間雲海", imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800", author: "山野客", avatar: "🏔️", likes: 2345, comments: 156, views: 8901, rating: 4.9, equipment: "Fujifilm X-T5" },
+  { id: "3", title: "街頭光影", imageUrl: "https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=800", author: "街拍手", avatar: "📸", likes: 876, comments: 45, views: 3456, rating: 4.5, equipment: "Ricoh GR III" },
+  { id: "4", title: "夜色迷離", imageUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800", author: "夜行者", avatar: "🌙", likes: 1567, comments: 78, views: 4567, rating: 4.7, equipment: "iPhone 15 Pro" },
+  { id: "5", title: "花間蝶影", imageUrl: "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800", author: "微距狂", avatar: "🦋", likes: 987, comments: 56, views: 2345, rating: 4.6, equipment: "Nikon Z8" },
+  { id: "6", title: "海岸日落", imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800", author: "海風客", avatar: "🌅", likes: 1890, comments: 102, views: 6789, rating: 4.8, equipment: "Samsung S24 Ultra" },
+  { id: "7", title: "古巷深處", imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800", author: "巷弄人", avatar: "🏚️", likes: 1120, comments: 67, views: 4100, rating: 4.7, equipment: "Canon R6 II" },
+  { id: "8", title: "雨中漫步", imageUrl: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800", author: "雨季客", avatar: "🌧️", likes: 1450, comments: 91, views: 5200, rating: 4.6, equipment: "Sony A7C II" },
+  { id: "9", title: "星空銀河", imageUrl: "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?w=800", author: "星空獵人", avatar: "✨", likes: 2100, comments: 134, views: 7800, rating: 4.9, equipment: "Nikon Z6 III" },
+  { id: "10", title: "秋葉繽紛", imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800", author: "四季攝", avatar: "🍂", likes: 760, comments: 38, views: 2900, rating: 4.4, equipment: "Fujifilm X100VI" },
+  { id: "11", title: "城市倒影", imageUrl: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800", author: "鏡像師", avatar: "🪞", likes: 1680, comments: 85, views: 5400, rating: 4.7, equipment: "Canon R5" },
+  { id: "12", title: "煙火璀璨", imageUrl: "https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=800", author: "夜拍族", avatar: "🎆", likes: 1950, comments: 110, views: 6300, rating: 4.8, equipment: "Sony A1" },
+  { id: "13", title: "田野風光", imageUrl: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800", author: "田園詩人", avatar: "🌾", likes: 890, comments: 42, views: 3100, rating: 4.5, equipment: "Pixel 9 Pro" },
 ];
 
 interface PhotoCardProps {
@@ -180,8 +121,23 @@ export function FeaturedGallery() {
           </Link>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredPhotos.map((photo) => (
+        {/* Row 1: 4 photos */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {featuredPhotos.slice(0, 4).map((photo) => (
+            <PhotoCard key={photo.id} photo={photo} />
+          ))}
+        </div>
+
+        {/* Row 2: 5 photos */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
+          {featuredPhotos.slice(4, 9).map((photo) => (
+            <PhotoCard key={photo.id} photo={photo} />
+          ))}
+        </div>
+
+        {/* Row 3: 4 photos */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+          {featuredPhotos.slice(9, 13).map((photo) => (
             <PhotoCard key={photo.id} photo={photo} />
           ))}
         </div>
