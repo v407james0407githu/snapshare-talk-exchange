@@ -12,6 +12,23 @@ import { Plus, Pencil, Trash2, GripVertical, Upload, Loader2 } from "lucide-reac
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface Banner {
   id: string;
@@ -61,6 +78,68 @@ const gradientOptions = [
   { value: "none", label: "無遮罩" },
 ];
 
+function SortableBannerCard({
+  banner,
+  onEdit,
+  onDelete,
+}: {
+  banner: Banner;
+  onEdit: (banner: Banner) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: banner.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className={!banner.is_active ? "opacity-50" : ""}>
+      <CardContent className="flex items-center gap-4 p-4">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing touch-none shrink-0"
+          aria-label="拖拉排序"
+        >
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
+        </button>
+        <img src={banner.image_url} alt={banner.title || "Banner"} className="h-16 w-28 rounded-lg object-cover shrink-0" />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium truncate">{banner.title || <span className="text-muted-foreground italic">無標題</span>}</h3>
+          <p className="text-sm text-muted-foreground truncate">{banner.subtitle}</p>
+          <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+            <span className={banner.is_active ? "text-green-500" : ""}>
+              {banner.is_active ? "啟用中" : "已停用"}
+            </span>
+            <span>· 排序: {banner.sort_order}</span>
+            <span>· 對齊: {textAlignOptions.find(o => o.value === banner.text_align)?.label || "左"}</span>
+            <span>· 遮罩: {gradientOptions.find(o => o.value === banner.gradient_type)?.label || "左到右"}</span>
+          </div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="icon" onClick={() => onEdit(banner)}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="text-destructive"
+            onClick={() => { if (confirm("確定刪除此 Banner？")) onDelete(banner.id); }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function BannerManagement() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -68,6 +147,11 @@ export default function BannerManagement() {
   const [form, setForm] = useState(emptyForm);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const { data: banners = [], isLoading } = useQuery({
     queryKey: ["admin-banners"],
@@ -80,6 +164,43 @@ export default function BannerManagement() {
       return (data as unknown as Banner[]) ?? [];
     },
   });
+
+  const reorderMutation = useMutation({
+    mutationFn: async (reordered: { id: string; sort_order: number }[]) => {
+      // Update each banner's sort_order
+      const promises = reordered.map(({ id, sort_order }) =>
+        supabase
+          .from("hero_banners" as any)
+          .update({ sort_order } as any)
+          .eq("id", id)
+      );
+      const results = await Promise.all(promises);
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-banners"] });
+      queryClient.invalidateQueries({ queryKey: ["hero-banners"] });
+      toast.success("排序已更新");
+    },
+    onError: () => toast.error("排序更新失敗"),
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = banners.findIndex((b) => b.id === active.id);
+    const newIndex = banners.findIndex((b) => b.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(banners, oldIndex, newIndex);
+    const updates = reordered.map((b, idx) => ({ id: b.id, sort_order: idx }));
+
+    // Optimistic update
+    queryClient.setQueryData(["admin-banners"], reordered.map((b, idx) => ({ ...b, sort_order: idx })));
+    reorderMutation.mutate(updates);
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (values: typeof emptyForm & { id?: string }) => {
@@ -183,7 +304,7 @@ export default function BannerManagement() {
   };
 
   return (
-    <AdminLayout title="Banner管理" subtitle="管理首頁輪播橫幅">
+    <AdminLayout title="Banner管理" subtitle="管理首頁輪播橫幅（拖拉可調整順序）">
       <div className="flex justify-end mb-6">
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
@@ -362,41 +483,20 @@ export default function BannerManagement() {
       ) : banners.length === 0 ? (
         <p className="text-center text-muted-foreground py-12">尚無 Banner，請點擊上方按鈕新增</p>
       ) : (
-        <div className="space-y-4">
-          {banners.map((banner) => (
-            <Card key={banner.id} className={!banner.is_active ? "opacity-50" : ""}>
-              <CardContent className="flex items-center gap-4 p-4">
-                <GripVertical className="h-5 w-5 text-muted-foreground shrink-0" />
-                <img src={banner.image_url} alt={banner.title || "Banner"} className="h-16 w-28 rounded-lg object-cover shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate">{banner.title || <span className="text-muted-foreground italic">無標題</span>}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{banner.subtitle}</p>
-                  <div className="flex gap-2 text-xs text-muted-foreground mt-1">
-                    <span className={banner.is_active ? "text-green-500" : ""}>
-                      {banner.is_active ? "啟用中" : "已停用"}
-                    </span>
-                    <span>· 排序: {banner.sort_order}</span>
-                    <span>· 對齊: {textAlignOptions.find(o => o.value === banner.text_align)?.label || "左"}</span>
-                    <span>· 遮罩: {gradientOptions.find(o => o.value === banner.gradient_type)?.label || "左到右"}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="icon" onClick={() => openEdit(banner)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => { if (confirm("確定刪除此 Banner？")) deleteMutation.mutate(banner.id); }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={banners.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4">
+              {banners.map((banner) => (
+                <SortableBannerCard
+                  key={banner.id}
+                  banner={banner}
+                  onEdit={openEdit}
+                  onDelete={(id) => deleteMutation.mutate(id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
     </AdminLayout>
   );
