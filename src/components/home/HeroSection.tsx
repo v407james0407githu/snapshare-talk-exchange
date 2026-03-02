@@ -154,8 +154,10 @@ export function HeroSection() {
                 {banner.link_url && (
                   <BannerLink url={banner.link_url} className="absolute inset-0 z-[1]" />
                 )}
+                {/* Mobile: always show a bottom-to-top dark gradient for readability */}
+                <div className="absolute inset-0 md:hidden bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                 {gradientStyle && (
-                  <div className="absolute inset-0" style={gradientStyle} />
+                  <div className="absolute inset-0 hidden md:block" style={gradientStyle} />
                 )}
 
                 {showContent && (
