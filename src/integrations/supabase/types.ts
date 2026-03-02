@@ -564,6 +564,57 @@ export type Database = {
         }
         Relationships: []
       }
+      page_views: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          language: string | null
+          page_path: string
+          page_title: string | null
+          referrer: string | null
+          referrer_domain: string | null
+          screen_height: number | null
+          screen_width: number | null
+          session_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          language?: string | null
+          page_path: string
+          page_title?: string | null
+          referrer?: string | null
+          referrer_domain?: string | null
+          screen_height?: number | null
+          screen_width?: number | null
+          session_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          language?: string | null
+          page_path?: string
+          page_title?: string | null
+          referrer?: string | null
+          referrer_domain?: string | null
+          screen_height?: number | null
+          screen_width?: number | null
+          session_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       photo_ratings: {
         Row: {
           created_at: string
