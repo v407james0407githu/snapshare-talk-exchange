@@ -134,8 +134,8 @@ export function HeroSection() {
     banner.title || banner.subtitle || (banner.cta_primary_text && banner.cta_primary_link);
 
   return (
-    <section className="relative min-h-[40vh] md:min-h-[50vh] max-h-[60vh] overflow-hidden group">
-      <div ref={emblaRef} className="overflow-hidden h-[50vh] md:h-[55vh] max-h-[60vh]">
+    <section className="relative h-screen md:min-h-[50vh] md:max-h-[60vh] md:h-auto overflow-hidden group">
+      <div ref={emblaRef} className="overflow-hidden h-screen md:h-[55vh] md:max-h-[60vh]">
         <div className="flex h-full">
           {slides.map((banner) => {
             const align = getAlignClasses(banner.text_align ?? "left");
