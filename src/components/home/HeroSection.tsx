@@ -134,8 +134,8 @@ export function HeroSection() {
     banner.title || banner.subtitle || (banner.cta_primary_text && banner.cta_primary_link);
 
   return (
-    <section className="relative h-[65vh] md:min-h-[50vh] md:max-h-[60vh] md:h-auto overflow-hidden group">
-      <div ref={emblaRef} className="overflow-hidden h-[65vh] md:h-[55vh] md:max-h-[60vh]">
+    <section className="relative min-h-[300px] h-auto md:min-h-[50vh] md:max-h-[60vh] overflow-hidden group">
+      <div ref={emblaRef} className="overflow-hidden min-h-[300px] h-auto md:h-[55vh] md:max-h-[60vh]">
         <div className="flex h-full">
           {slides.map((banner) => {
             const align = getAlignClasses(banner.text_align ?? "left");
@@ -143,11 +143,12 @@ export function HeroSection() {
             const showContent = hasTextContent(banner);
 
             return (
-              <div key={banner.id} className="flex-[0_0_100%] min-w-0 relative h-full">
+              <div key={banner.id} className="flex-[0_0_100%] min-w-0 relative">
+                {/* Mobile: aspect-ratio based, Desktop: absolute fill */}
                 <img
                   src={banner.image_url}
                   alt={banner.title || "Banner"}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="w-full h-auto md:absolute md:inset-0 md:h-full md:object-cover object-center"
                   loading="lazy"
                 />
                 {banner.link_url && (
@@ -158,33 +159,33 @@ export function HeroSection() {
                 )}
 
                 {showContent && (
-                  <div className="relative z-[2] h-full flex items-center pointer-events-none">
-                    <div className="container">
-                      <div className={`max-w-xl ${align.container}`}>
-                        <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-2xl p-6 md:p-8 pointer-events-auto">
+                  <div className="absolute inset-0 z-[2] flex items-end md:items-center pointer-events-none">
+                    <div className="container px-4 md:px-8 pb-4 md:pb-0">
+                      <div className={`max-w-lg md:max-w-xl ${align.container}`}>
+                        <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-xl md:rounded-2xl p-4 md:p-6 lg:p-8 pointer-events-auto">
                           {banner.title && (
-                            <h1 className="font-serif text-2xl md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-3">
+                            <h1 className="font-serif text-[1.5rem] md:text-4xl lg:text-5xl font-bold text-white leading-tight mb-2 md:mb-3">
                               {banner.title}
                             </h1>
                           )}
                           {banner.subtitle && (
-                            <p className="text-sm md:text-lg text-white/80 mb-6">
+                            <p className="text-xs md:text-lg text-white/80 mb-4 md:mb-6">
                               {banner.subtitle}
                             </p>
                           )}
-                          <div className={`flex flex-col sm:flex-row gap-3 ${align.flex}`}>
+                          <div className={`flex flex-col sm:flex-row gap-2 md:gap-3 ${align.flex}`}>
                             {banner.cta_primary_text && banner.cta_primary_link && (
                               <Link to={banner.cta_primary_link}>
-                                <Button variant="hero" size="lg" className="group/btn w-full sm:w-auto">
-                                  <Camera className="h-4 w-4 mr-2 transition-transform group-hover/btn:scale-110" />
+                                <Button variant="hero" size="default" className="group/btn w-full sm:w-auto text-sm md:text-base md:h-11">
+                                  <Camera className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2 transition-transform group-hover/btn:scale-110" />
                                   {banner.cta_primary_text}
                                 </Button>
                               </Link>
                             )}
                             {banner.cta_secondary_text && banner.cta_secondary_link && (
                               <Link to={banner.cta_secondary_link}>
-                                <Button variant="glass" size="lg" className="text-white w-full sm:w-auto">
-                                  <Users className="h-4 w-4 mr-2" />
+                                <Button variant="glass" size="default" className="text-white w-full sm:w-auto text-sm md:text-base md:h-11">
+                                  <Users className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
                                   {banner.cta_secondary_text}
                                 </Button>
                               </Link>
