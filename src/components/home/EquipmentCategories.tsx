@@ -81,7 +81,7 @@ export function EquipmentCategories() {
       <div className="container">
         <div className="text-center mb-12">
           <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">
-            器材<span className="text-gradient">討論區</span>
+            攝影<span className="text-gradient">討論區</span>
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
             依您使用的器材選擇專區，與同樣愛好者交流心得

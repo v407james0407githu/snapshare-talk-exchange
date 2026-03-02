@@ -55,7 +55,7 @@ const fallbackBanners: Banner[] = [
     image_url: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=1920&q=80",
     cta_primary_text: "逛逛市集",
     cta_primary_link: "/marketplace",
-    cta_secondary_text: "器材討論",
+    cta_secondary_text: "攝影討論",
     cta_secondary_link: "/forums",
     text_align: "left",
     gradient_type: "left-to-right",
