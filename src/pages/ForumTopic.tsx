@@ -100,7 +100,9 @@ export default function ForumTopic() {
 
   const handleReplyDragUpload = async (files: File[]) => {
     if (replyDragUploading) return;
-    const remaining = 5 - replyImages.length;
+    const isEditing = editingReplyId !== null;
+    const currentImages = isEditing ? editingImages : replyImages;
+    const remaining = 5 - currentImages.length;
     if (remaining <= 0) { toast.error('最多只能上傳 5 張圖片'); return; }
     const valid = files.filter(f => f.type.startsWith('image/') && f.size <= 10 * 1024 * 1024).slice(0, remaining);
     if (!valid.length) return;
@@ -116,7 +118,11 @@ export default function ForumTopic() {
         const { data } = supabase.storage.from('photos').getPublicUrl(path);
         newUrls.push(data.publicUrl);
       }
-      setReplyImages(prev => [...prev, ...newUrls]);
+      if (isEditing) {
+        setEditingImages(prev => [...prev, ...newUrls]);
+      } else {
+        setReplyImages(prev => [...prev, ...newUrls]);
+      }
       toast.success(`已上傳 ${newUrls.length} 張圖片`);
     } catch (err: any) { toast.error('上傳失敗：' + err.message); }
     finally { setReplyDragUploading(false); }
