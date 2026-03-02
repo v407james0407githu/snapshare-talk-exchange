@@ -1,33 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import {
-  ArrowRight,
-  MessageSquare,
-  Eye,
-  Clock,
-  TrendingUp,
-  Pin,
-  Loader2,
-} from "lucide-react";
+import { Smartphone, Camera, ChevronRight, MessageSquare, Eye, Clock, Loader2, Pin, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 
-interface ForumCategory {
-  id: string;
-  name: string;
-  slug: string;
-  icon: string;
-  color: string;
-  description: string | null;
-}
-
 interface TopicRow {
   id: string;
   title: string;
-  category: string;
-  category_id: string | null;
   user_id: string;
   reply_count: number;
   view_count: number;
@@ -37,72 +17,46 @@ interface TopicRow {
   author_name?: string;
 }
 
-const colorMap: Record<string, string> = {
-  blue: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  green: "bg-green-500/10 text-green-600 border-green-500/20",
-  purple: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-  orange: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-  red: "bg-red-500/10 text-red-600 border-red-500/20",
-};
-
-const iconComponents: Record<string, string> = {
-  Smartphone: "📱",
-  Camera: "📷",
-  Wrench: "🔧",
-  Coffee: "☕",
-};
-
-function resolveIcon(icon: string | null): string {
-  if (!icon) return "💬";
-  return iconComponents[icon] || icon;
+interface CategoryColumnProps {
+  icon: React.ReactNode;
+  title: string;
+  parentSlug: string;
+  linkPrefix: string;
 }
 
-export function EquipmentCategories() {
-  const [categories, setCategories] = useState<ForumCategory[]>([]);
+function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnProps) {
   const [topics, setTopics] = useState<TopicRow[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch top-level categories
   useEffect(() => {
-    async function fetchCategories() {
-      const { data } = await supabase
-        .from("forum_categories")
-        .select("id, name, slug, icon, color, description")
-        .is("parent_id", null)
-        .eq("is_active", true)
-        .order("sort_order");
-
-      if (data && data.length > 0) {
-        setCategories(data as ForumCategory[]);
-        setActiveCategory(data[0].slug);
-      }
-      setLoading(false);
-    }
-    fetchCategories();
-  }, []);
-
-  // Fetch latest topics when category changes
-  useEffect(() => {
-    if (!activeCategory) return;
-
     async function fetchTopics() {
-      // Find category and its children
-      const cat = categories.find((c) => c.slug === activeCategory);
-      if (!cat) return;
+      // Find the parent category
+      const { data: parentCat } = await supabase
+        .from("forum_categories")
+        .select("id")
+        .eq("slug", parentSlug)
+        .eq("is_active", true)
+        .limit(1);
+
+      if (!parentCat || parentCat.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const parentId = parentCat[0].id;
 
       // Get child category IDs
       const { data: children } = await supabase
         .from("forum_categories")
         .select("id")
-        .eq("parent_id", cat.id)
+        .eq("parent_id", parentId)
         .eq("is_active", true);
 
-      const categoryIds = [cat.id, ...(children?.map((c) => c.id) || [])];
+      const categoryIds = [parentId, ...(children?.map((c) => c.id) || [])];
 
       const { data: topicsData } = await supabase
         .from("forum_topics")
-        .select("id, title, category, category_id, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
+        .select("id, title, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
         .eq("is_hidden", false)
         .in("category_id", categoryIds)
         .order("is_pinned", { ascending: false })
@@ -111,17 +65,21 @@ export function EquipmentCategories() {
 
       if (!topicsData || topicsData.length === 0) {
         setTopics([]);
+        setLoading(false);
         return;
       }
 
       // Fetch author names
       const userIds = [...new Set(topicsData.map((t) => t.user_id))];
       const profileMap = new Map<string, string>();
-      for (const uid of userIds) {
-        const { data: profileData } = await supabase.rpc("get_public_profile", { target_user_id: uid });
-        if (profileData && profileData.length > 0) {
-          profileMap.set(uid, profileData[0].display_name || profileData[0].username);
-        }
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, username, display_name")
+          .in("user_id", userIds);
+        profiles?.forEach((p) => {
+          profileMap.set(p.user_id, p.display_name || p.username);
+        });
       }
 
       setTopics(
@@ -133,166 +91,111 @@ export function EquipmentCategories() {
           author_name: profileMap.get(t.user_id) || "匿名",
         }))
       );
+      setLoading(false);
     }
 
     fetchTopics();
-  }, [activeCategory, categories]);
+  }, [parentSlug]);
 
-  if (loading) {
-    return (
-      <section className="py-20 bg-background">
-        <div className="container flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  return (
+    <div className="bg-card rounded-2xl border border-border p-6 hover-lift">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center text-charcoal">
+          {icon}
         </div>
-      </section>
-    );
-  }
+        <div>
+          <h3 className="font-serif text-xl font-bold">{title}</h3>
+          <p className="text-sm text-muted-foreground">最新討論串</p>
+        </div>
+      </div>
 
-  if (categories.length === 0) return null;
+      <div className="space-y-1">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : topics.length === 0 ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">
+            尚無討論串，
+            <Link to={linkPrefix} className="text-primary hover:underline ml-1">前往發起</Link>
+          </div>
+        ) : (
+          topics.map((topic) => {
+            const isHot = topic.reply_count >= 10;
+            const lastActive = topic.last_reply_at || topic.created_at;
 
+            return (
+              <Link
+                key={topic.id}
+                to={`/forums/topic/${topic.id}`}
+                className="group flex items-center justify-between p-3 rounded-xl bg-secondary/50 hover:bg-primary/10 transition-colors"
+              >
+                <div className="flex-1 min-w-0 mr-3">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    {topic.is_pinned && <Pin className="h-3 w-3 text-primary flex-shrink-0" />}
+                    {isHot && <TrendingUp className="h-3 w-3 text-destructive flex-shrink-0" />}
+                    <span className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">
+                      {topic.title}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span>{topic.author_name}</span>
+                    <span className="flex items-center gap-0.5">
+                      <MessageSquare className="h-3 w-3" />{topic.reply_count}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Eye className="h-3 w-3" />{topic.view_count}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                  <Clock className="h-3 w-3" />
+                  <span className="hidden sm:inline">
+                    {formatDistanceToNow(new Date(lastActive), { addSuffix: true, locale: zhTW })}
+                  </span>
+                </div>
+              </Link>
+            );
+          })
+        )}
+      </div>
+
+      <Link
+        to={linkPrefix}
+        className="flex items-center justify-center gap-1 mt-4 text-sm text-primary hover:underline"
+      >
+        查看全部 <ChevronRight className="h-3.5 w-3.5" />
+      </Link>
+    </div>
+  );
+}
+
+export function EquipmentCategories() {
   return (
     <section className="py-20 bg-background">
       <div className="container">
-        <div className="flex items-center justify-between mb-10">
-          <div>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              攝影<span className="text-gradient">討論區</span>
-            </h2>
-            <p className="text-muted-foreground">
-              依主題分類瀏覽最新討論，與同好交流心得
-            </p>
-          </div>
-          <Link to="/forums">
-            <Button variant="outline" className="hidden sm:flex gap-2">
-              進入討論區
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        <div className="text-center mb-12">
+          <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">
+            攝影<span className="text-gradient">討論區</span>
+          </h2>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            瀏覽最新討論，與同好交流心得
+          </p>
         </div>
 
-        {/* Category Tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {categories.map((cat) => (
-            <button
-              key={cat.slug}
-              onClick={() => setActiveCategory(cat.slug)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all border ${
-                activeCategory === cat.slug
-                  ? "bg-primary text-primary-foreground border-primary shadow-md"
-                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
-              }`}
-            >
-              <span>{resolveIcon(cat.icon)}</span>
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Category Description */}
-        {(() => {
-          const activeCat = categories.find((c) => c.slug === activeCategory);
-          return activeCat?.description ? (
-            <p className="text-sm text-muted-foreground mb-6 pl-1">{activeCat.description}</p>
-          ) : null;
-        })()}
-
-        {/* Topics List */}
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Header */}
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b border-border text-sm font-medium text-muted-foreground">
-            <div className="col-span-7">主題</div>
-            <div className="col-span-2 text-center">回覆 / 瀏覽</div>
-            <div className="col-span-3 text-right">最後活動</div>
-          </div>
-
-          <div className="divide-y divide-border">
-            {topics.length === 0 ? (
-              <div className="px-6 py-12 text-center text-muted-foreground">
-                此分類尚無討論串，
-                <Link to="/forums" className="text-primary hover:underline ml-1">
-                  前往發起討論
-                </Link>
-              </div>
-            ) : (
-              topics.map((topic) => {
-                const isHot = (topic.reply_count ?? 0) >= 10;
-                const lastActive = topic.last_reply_at || topic.created_at;
-
-                return (
-                  <Link
-                    key={topic.id}
-                    to={`/forums/topic/${topic.id}`}
-                    className="block px-6 py-4 hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
-                      <div className="col-span-7">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              {topic.is_pinned && (
-                                <Pin className="h-3.5 w-3.5 text-primary" />
-                              )}
-                              {isHot && (
-                                <TrendingUp className="h-3.5 w-3.5 text-destructive" />
-                              )}
-                            </div>
-                            <h3 className="font-medium text-foreground line-clamp-1">
-                              {topic.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              {topic.author_name}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="col-span-2 hidden md:flex items-center justify-center gap-4">
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MessageSquare className="h-4 w-4" />
-                          {topic.reply_count}
-                        </span>
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Eye className="h-4 w-4" />
-                          {topic.view_count}
-                        </span>
-                      </div>
-
-                      <div className="col-span-3 hidden md:flex items-center justify-end gap-1 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        {formatDistanceToNow(new Date(lastActive), {
-                          addSuffix: true,
-                          locale: zhTW,
-                        })}
-                      </div>
-
-                      <div className="flex items-center gap-4 mt-2 md:hidden text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          {topic.reply_count}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formatDistanceToNow(new Date(lastActive), {
-                            addSuffix: true,
-                            locale: zhTW,
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="mt-8 text-center sm:hidden">
-          <Link to="/forums">
-            <Button variant="outline" className="gap-2">
-              進入討論區
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        <div className="grid md:grid-cols-2 gap-8">
+          <CategoryColumn
+            icon={<Smartphone className="h-6 w-6" />}
+            title="手機攝影"
+            parentSlug="mobile"
+            linkPrefix="/forums?category=phone"
+          />
+          <CategoryColumn
+            icon={<Camera className="h-6 w-6" />}
+            title="相機攝影"
+            parentSlug="camera"
+            linkPrefix="/forums?category=camera"
+          />
         </div>
       </div>
     </section>
