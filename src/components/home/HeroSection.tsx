@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { Camera, Users, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
@@ -134,6 +134,7 @@ export function HeroSection() {
     banner.title || banner.subtitle || (banner.cta_primary_text && banner.cta_primary_link);
 
   return (
+    <>
     <section className="relative min-h-[300px] h-auto md:min-h-[50vh] md:max-h-[60vh] overflow-hidden group">
       <div ref={emblaRef} className="overflow-hidden min-h-[300px] h-auto md:h-[55vh] md:max-h-[60vh]">
         <div className="flex h-full">
@@ -219,20 +220,34 @@ export function HeroSection() {
         <ChevronRight className="h-6 w-6" />
       </button>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-        {slides.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => emblaApi?.scrollTo(idx)}
-            className={`w-2.5 h-2.5 rounded-full transition-all ${
-              idx === selectedIndex
-                ? "bg-white w-6"
-                : "bg-white/50 hover:bg-white/70"
-            }`}
-            aria-label={`Go to slide ${idx + 1}`}
-          />
-        ))}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1.5">
+        <div className="flex gap-2">
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => emblaApi?.scrollTo(idx)}
+              className={`w-2.5 h-2.5 rounded-full transition-all ${
+                idx === selectedIndex
+                  ? "bg-white w-6"
+                  : "bg-white/50 hover:bg-white/70"
+              }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+        <button
+          onClick={() => {
+            const section = document.querySelector('.hero-scroll-target');
+            section?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className="md:hidden animate-bounce"
+          aria-label="向下滑動"
+        >
+          <ChevronDown className="h-5 w-5 text-white/60" />
+        </button>
       </div>
     </section>
+    <div className="hero-scroll-target" />
+    </>
   );
 }
