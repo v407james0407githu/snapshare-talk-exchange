@@ -92,6 +92,9 @@ export default function ForumTopic() {
   const [replyDragUploading, setReplyDragUploading] = useState(false);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [editingTopic, setEditingTopic] = useState(false);
+  const [editingTopicTitle, setEditingTopicTitle] = useState("");
+  const [editingTopicContent, setEditingTopicContent] = useState("");
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
 
   const handleReplyDragUpload = async (files: File[]) => {
@@ -240,6 +243,48 @@ export default function ForumTopic() {
     },
   });
 
+  // Update topic mutation
+  const updateTopicMutation = useMutation({
+    mutationFn: async ({ title, content }: { title: string; content: string }) => {
+      if (!user || !topicId) throw new Error("請先登入");
+      const { error } = await supabase
+        .from("forum_topics")
+        .update({ title, content } as any)
+        .eq("id", topicId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forum-topic", topicId] });
+      toast.success("主題已更新");
+      setEditingTopic(false);
+    },
+    onError: (error) => {
+      toast.error("更新失敗：" + (error as Error).message);
+    },
+  });
+
+  // Delete reply mutation
+  const deleteReplyMutation = useMutation({
+    mutationFn: async (replyId: string) => {
+      if (!user) throw new Error("請先登入");
+      const { error } = await supabase
+        .from("forum_replies")
+        .delete()
+        .eq("id", replyId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forum-replies", topicId] });
+      queryClient.invalidateQueries({ queryKey: ["forum-topic", topicId] });
+      toast.success("回覆已刪除");
+    },
+    onError: (error) => {
+      toast.error("刪除失敗：" + (error as Error).message);
+    },
+  });
+
   const handleSubmitReply = () => {
     if (!user) {
       toast.error("請先登入");
@@ -266,6 +311,18 @@ export default function ForumTopic() {
   const handleSaveEdit = () => {
     if (!editingReplyId || !editingContent.trim()) return;
     updateReplyMutation.mutate({ replyId: editingReplyId, content: editingContent });
+  };
+
+  const handleStartEditTopic = () => {
+    if (!topic) return;
+    setEditingTopic(true);
+    setEditingTopicTitle(topic.title);
+    setEditingTopicContent(topic.content);
+  };
+
+  const handleSaveEditTopic = () => {
+    if (!editingTopicTitle.trim() || !editingTopicContent.trim()) return;
+    updateTopicMutation.mutate({ title: editingTopicTitle, content: editingTopicContent });
   };
 
   const handleDeleteTopic = async () => {
@@ -359,46 +416,79 @@ export default function ForumTopic() {
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl font-bold mb-4">{topic.title}</h1>
-
-              <div className="flex items-center gap-4 mb-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={topic.profiles?.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {topic.profiles?.display_name?.[0] ||
-                      topic.profiles?.username?.[0] ||
-                      "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="font-medium">
-                    {topic.profiles?.display_name || topic.profiles?.username}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {formatFullDate(topic.created_at)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="prose prose-invert max-w-none">
-                <p className="whitespace-pre-wrap">{topic.content}</p>
-                {(() => {
-                  const imgs = topic.image_urls?.length ? topic.image_urls : topic.image_url ? [topic.image_url] : [];
-                  return imgs.length > 0 ? (
-                    <div className="flex flex-wrap gap-3 mt-4">
-                      {imgs.map((url, i) => (
-                        <img
-                          key={i}
-                          src={url}
-                          alt={`主題附圖 ${i + 1}`}
-                          className="max-h-64 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-cover"
-                          onClick={() => { setLightboxImages(imgs); setLightboxIndex(i); setLightboxOpen(true); }}
-                        />
-                      ))}
+              {editingTopic ? (
+                <>
+                  <input
+                    className="text-2xl font-bold mb-4 w-full bg-background border border-input rounded-md px-3 py-2"
+                    value={editingTopicTitle}
+                    onChange={(e) => setEditingTopicTitle(e.target.value)}
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-4 mb-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={topic.profiles?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {topic.profiles?.display_name?.[0] || topic.profiles?.username?.[0] || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{topic.profiles?.display_name || topic.profiles?.username}</div>
+                      <div className="text-sm text-muted-foreground">{formatFullDate(topic.created_at)}</div>
                     </div>
-                  ) : null;
-                })()}
-              </div>
+                  </div>
+                  <Textarea
+                    value={editingTopicContent}
+                    onChange={(e) => setEditingTopicContent(e.target.value)}
+                    rows={6}
+                  />
+                  <div className="flex gap-2 justify-end mt-3">
+                    <Button variant="ghost" size="sm" onClick={() => setEditingTopic(false)} disabled={updateTopicMutation.isPending}>
+                      <X className="h-4 w-4 mr-1" />取消
+                    </Button>
+                    <Button size="sm" onClick={handleSaveEditTopic} disabled={updateTopicMutation.isPending || !editingTopicTitle.trim() || !editingTopicContent.trim()}>
+                      {updateTopicMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                      儲存
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-bold mb-4">{topic.title}</h1>
+
+                  <div className="flex items-center gap-4 mb-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={topic.profiles?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {topic.profiles?.display_name?.[0] || topic.profiles?.username?.[0] || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{topic.profiles?.display_name || topic.profiles?.username}</div>
+                      <div className="text-sm text-muted-foreground">{formatFullDate(topic.created_at)}</div>
+                    </div>
+                  </div>
+
+                  <div className="prose prose-invert max-w-none">
+                    <p className="whitespace-pre-wrap">{topic.content}</p>
+                    {(() => {
+                      const imgs = topic.image_urls?.length ? topic.image_urls : topic.image_url ? [topic.image_url] : [];
+                      return imgs.length > 0 ? (
+                        <div className="flex flex-wrap gap-3 mt-4">
+                          {imgs.map((url, i) => (
+                            <img
+                              key={i}
+                              src={url}
+                              alt={`主題附圖 ${i + 1}`}
+                              className="max-h-64 rounded-lg border border-border cursor-pointer hover:opacity-90 transition-opacity object-cover"
+                              onClick={() => { setLightboxImages(imgs); setLightboxIndex(i); setLightboxOpen(true); }}
+                            />
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -412,6 +502,11 @@ export default function ForumTopic() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {user && user.id === topic.user_id && !editingTopic && (
+                    <Button variant="ghost" size="sm" className="gap-1" onClick={handleStartEditTopic}>
+                      <Pencil className="h-3.5 w-3.5" />編輯
+                    </Button>
+                  )}
                   {user && user.id !== topic.user_id && (
                     <ReportDialog
                       contentType="forum_topic"
@@ -554,9 +649,33 @@ export default function ForumTopic() {
                             {formatTime(reply.created_at)}
                           </span>
                           {user && user.id === reply.user_id && editingReplyId !== reply.id && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleStartEdit(reply)} title="編輯">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
+                            <>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleStartEdit(reply)} title="編輯">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="刪除">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>確定要刪除這則回覆嗎？</AlertDialogTitle>
+                                    <AlertDialogDescription>此操作無法復原，回覆將會被永久刪除。</AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteReplyMutation.mutate(reply.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      確定刪除
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
                           )}
                           <ReportDialog
                             contentType="forum_reply"
