@@ -12,6 +12,7 @@ interface Photo {
   id: string;
   title: string;
   image_url: string;
+  thumbnail_url: string | null;
   user_id: string;
   like_count: number;
   comment_count: number;
@@ -39,6 +40,7 @@ export default function Gallery() {
   const [selectedBrand, setSelectedBrand] = useState("全部品牌");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "most_liked" | "highest_rated">("newest");
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,18 +62,20 @@ export default function Gallery() {
     setPage(0);
     setHasMore(true);
     setIsLoading(true);
-  }, [selectedCategory, selectedBrand, debouncedSearch]);
+  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy]);
 
   // Fetch photos
   const fetchPhotos = useCallback(async (pageNum: number) => {
     const from = pageNum * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
+    const orderColumn = sortBy === "most_liked" ? "like_count" : sortBy === "highest_rated" ? "average_rating" : "created_at";
+
     let query = supabase
       .from("photos")
       .select("*")
       .eq("is_hidden", false)
-      .order("created_at", { ascending: false })
+      .order(orderColumn, { ascending: false })
       .range(from, to);
 
     if (selectedCategory !== "全部") {
@@ -105,7 +109,7 @@ export default function Gallery() {
       ...photo,
       profiles: profilesMap.get(photo.user_id),
     })) as Photo[];
-  }, [selectedCategory, selectedBrand, debouncedSearch]);
+  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy]);
 
   // Load page
   useEffect(() => {
@@ -189,6 +193,8 @@ export default function Gallery() {
         onCategoryChange={setSelectedCategory}
         selectedBrand={selectedBrand}
         onBrandChange={setSelectedBrand}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onUpload={handleUpload}
@@ -216,7 +222,7 @@ export default function Gallery() {
                   >
                     <div className={`overflow-hidden rounded-lg ${viewMode === "grid" ? "aspect-[4/3]" : ""}`}>
                       <img
-                        src={photo.image_url}
+                        src={photo.thumbnail_url || photo.image_url}
                         alt={photo.title}
                         className={`w-full transition-all duration-500 ease-out group-hover:scale-[1.03] group-hover:brightness-110 ${
                           viewMode === "grid" ? "h-full object-cover" : "h-auto object-contain"

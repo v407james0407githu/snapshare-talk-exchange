@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   Camera, 
@@ -80,9 +81,18 @@ export function Header() {
         {/* Right Side Actions */}
         <div className="flex items-center gap-2">
           {/* Search */}
-          <Button variant="ghost" size="icon" className="hidden sm:flex">
-            <Search className="h-5 w-5" />
-          </Button>
+          <div className="hidden sm:flex relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="搜尋..."
+              className="pl-9 w-44 h-9 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.target as HTMLInputElement).value) {
+                  navigate(`/gallery?q=${encodeURIComponent((e.target as HTMLInputElement).value)}`);
+                }
+              }}
+            />
+          </div>
 
           {user ? (
             <>
