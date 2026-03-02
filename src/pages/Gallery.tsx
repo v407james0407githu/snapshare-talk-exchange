@@ -1,29 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Search,
-  Filter,
-  Grid3X3,
-  LayoutGrid,
-  Heart,
-  MessageCircle,
-  Eye,
-  Star,
-  ImagePlus,
-  Loader2,
-} from "lucide-react";
+import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { GalleryFilters } from "@/components/gallery/GalleryFilters";
+import { PhotoCardSkeleton } from "@/components/gallery/PhotoCardSkeleton";
 
 interface Photo {
   id: string;
@@ -48,24 +31,12 @@ interface Photo {
 
 const PAGE_SIZE = 20;
 
-const categories = [
-  "全部",
-  "風景",
-  "城市",
-  "街拍",
-  "夜景",
-  "微距",
-  "生活",
-  "天文",
-  "人像",
-  "其他",
-];
-
 export default function Gallery() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry");
   const [selectedCategory, setSelectedCategory] = useState("全部");
+  const [selectedBrand, setSelectedBrand] = useState("全部品牌");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -89,7 +60,7 @@ export default function Gallery() {
     setPage(0);
     setHasMore(true);
     setIsLoading(true);
-  }, [selectedCategory, debouncedSearch]);
+  }, [selectedCategory, selectedBrand, debouncedSearch]);
 
   // Fetch photos
   const fetchPhotos = useCallback(async (pageNum: number) => {
@@ -107,6 +78,10 @@ export default function Gallery() {
       query = query.eq("category", selectedCategory);
     }
 
+    if (selectedBrand !== "全部品牌") {
+      query = query.eq("brand", selectedBrand);
+    }
+
     if (debouncedSearch) {
       query = query.or(
         `title.ilike.%${debouncedSearch}%,brand.ilike.%${debouncedSearch}%,camera_body.ilike.%${debouncedSearch}%,phone_model.ilike.%${debouncedSearch}%`
@@ -116,7 +91,6 @@ export default function Gallery() {
     const { data: photosData, error } = await query;
     if (error) throw error;
 
-    // Fetch profiles
     const userIds = [...new Set((photosData || []).map((p) => p.user_id))];
     let profilesMap = new Map<string, any>();
     if (userIds.length > 0) {
@@ -127,18 +101,15 @@ export default function Gallery() {
       profilesMap = new Map(profilesData?.map((p) => [p.user_id, p]) || []);
     }
 
-    const enriched = (photosData || []).map((photo) => ({
+    return (photosData || []).map((photo) => ({
       ...photo,
       profiles: profilesMap.get(photo.user_id),
     })) as Photo[];
-
-    return enriched;
-  }, [selectedCategory, debouncedSearch]);
+  }, [selectedCategory, selectedBrand, debouncedSearch]);
 
   // Load page
   useEffect(() => {
     let cancelled = false;
-
     const load = async () => {
       try {
         if (page === 0) setIsLoading(true);
@@ -147,11 +118,8 @@ export default function Gallery() {
         const data = await fetchPhotos(page);
         if (cancelled) return;
 
-        if (page === 0) {
-          setPhotos(data);
-        } else {
-          setPhotos((prev) => [...prev, ...data]);
-        }
+        if (page === 0) setPhotos(data);
+        else setPhotos((prev) => [...prev, ...data]);
         setHasMore(data.length === PAGE_SIZE);
       } catch (err) {
         console.error(err);
@@ -162,15 +130,13 @@ export default function Gallery() {
         }
       }
     };
-
     load();
     return () => { cancelled = true; };
   }, [page, fetchPhotos]);
 
-  // Intersection observer for infinite scroll
+  // Intersection observer
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
-
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
@@ -179,11 +145,7 @@ export default function Gallery() {
       },
       { rootMargin: "200px" }
     );
-
-    if (sentinelRef.current) {
-      observerRef.current.observe(sentinelRef.current);
-    }
-
+    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
     return () => observerRef.current?.disconnect();
   }, [hasMore, isLoading, isLoadingMore]);
 
@@ -195,12 +157,13 @@ export default function Gallery() {
   };
 
   const handleUpload = () => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+    if (!user) { navigate("/auth"); return; }
     navigate("/upload");
   };
+
+  const gridClass = viewMode === "masonry"
+    ? "columns-2 sm:columns-3 md:columns-4 xl:columns-5 gap-3 [column-fill:_balance]"
+    : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3";
 
   return (
     <MainLayout>
@@ -219,76 +182,30 @@ export default function Gallery() {
       </section>
 
       {/* Filters */}
-      <section className="sticky top-16 z-40 bg-background/95 backdrop-blur-sm border-b border-border py-4">
-        <div className="container">
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="flex flex-1 gap-3 w-full md:w-auto">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="搜尋作品、作者或器材..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-32">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center border border-border rounded-lg p-1">
-                <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("grid")}
-                  className="h-8 w-8"
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "masonry" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("masonry")}
-                  className="h-8 w-8"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-              </div>
-              <Button variant="gold" className="gap-2" onClick={handleUpload}>
-                <ImagePlus className="h-4 w-4" />
-                上傳作品
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <GalleryFilters
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        selectedBrand={selectedBrand}
+        onBrandChange={setSelectedBrand}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onUpload={handleUpload}
+      />
 
       {/* Gallery Grid */}
       <section className="py-8">
         <div className="container">
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <div className={gridClass}>
+              {Array.from({ length: 12 }).map((_, i) => (
+                <PhotoCardSkeleton key={i} index={i} viewMode={viewMode} />
+              ))}
             </div>
           ) : photos.length > 0 ? (
             <>
-              <div
-                className={
-                  viewMode === "masonry"
-                    ? "columns-2 sm:columns-3 md:columns-4 xl:columns-5 gap-3 [column-fill:_balance]"
-                    : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
-                }
-              >
+              <div className={gridClass}>
                 {photos.map((photo) => (
                   <Link
                     key={photo.id}
@@ -316,11 +233,7 @@ export default function Gallery() {
                       </h3>
                       <div className="flex items-center gap-2 mb-1.5">
                         {photo.profiles?.avatar_url ? (
-                          <img
-                            src={photo.profiles.avatar_url}
-                            alt=""
-                            className="w-5 h-5 rounded-full object-cover ring-1 ring-cream/30"
-                          />
+                          <img src={photo.profiles.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover ring-1 ring-cream/30" />
                         ) : (
                           <span className="text-sm">👤</span>
                         )}
@@ -329,15 +242,9 @@ export default function Gallery() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-cream/70">
-                        <span className="flex items-center gap-1">
-                          <Heart className="h-3 w-3" /> {photo.like_count || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <MessageCircle className="h-3 w-3" /> {photo.comment_count || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" /> {photo.view_count || 0}
-                        </span>
+                        <span className="flex items-center gap-1"><Heart className="h-3 w-3" /> {photo.like_count || 0}</span>
+                        <span className="flex items-center gap-1"><MessageCircle className="h-3 w-3" /> {photo.comment_count || 0}</span>
+                        <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {photo.view_count || 0}</span>
                       </div>
                     </div>
 
@@ -358,7 +265,6 @@ export default function Gallery() {
                 ))}
               </div>
 
-              {/* Infinite scroll sentinel */}
               <div ref={sentinelRef} className="h-4" />
               {isLoadingMore && (
                 <div className="flex items-center justify-center py-8">
@@ -373,7 +279,7 @@ export default function Gallery() {
           ) : (
             <div className="text-center py-20">
               <p className="text-muted-foreground mb-4">
-                {searchQuery || selectedCategory !== "全部"
+                {searchQuery || selectedCategory !== "全部" || selectedBrand !== "全部品牌"
                   ? "沒有找到符合條件的作品"
                   : "還沒有作品，來上傳第一張吧！"}
               </p>
