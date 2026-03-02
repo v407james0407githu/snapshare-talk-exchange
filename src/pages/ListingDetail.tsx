@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,6 +40,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
+  Upload,
+  X,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
@@ -95,6 +97,7 @@ export default function ListingDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -102,6 +105,9 @@ export default function ListingDetail() {
   const [editForm, setEditForm] = useState({
     title: '', description: '', brand: '', model: '', condition: '', price: '', location: '',
   });
+  const [editNewImages, setEditNewImages] = useState<File[]>([]);
+  const [editRemovedImages, setEditRemovedImages] = useState<string[]>([]);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
@@ -233,13 +239,42 @@ export default function ListingDetail() {
       price: String(listing.price),
       location: listing.location || '',
     });
+    setEditNewImages([]);
+    setEditRemovedImages([]);
     setEditDialogOpen(true);
   };
 
+  const handleEditImageAdd = (files: FileList | null) => {
+    if (!files) return;
+    const currentAdditional = (listing?.additional_images || []).filter(u => !editRemovedImages.includes(u));
+    const remaining = 5 - currentAdditional.length - editNewImages.length;
+    if (remaining <= 0) {
+      toast({ title: '最多 5 張附加圖片', variant: 'destructive' });
+      return;
+    }
+    const valid = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, remaining);
+    setEditNewImages(prev => [...prev, ...valid]);
+  };
+
   const handleSaveEdit = async () => {
-    if (!listing) return;
+    if (!listing || !user) return;
     setIsEditSaving(true);
     try {
+      // Upload new images
+      const newUrls: string[] = [];
+      for (const file of editNewImages) {
+        const ext = file.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('photos').upload(fileName, file);
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(fileName);
+        newUrls.push(publicUrl);
+      }
+
+      // Compute final additional_images
+      const kept = (listing.additional_images || []).filter(u => !editRemovedImages.includes(u));
+      const finalAdditional = [...kept, ...newUrls];
+
       const { error } = await supabase
         .from('marketplace_listings')
         .update({
@@ -250,13 +285,13 @@ export default function ListingDetail() {
           condition: editForm.condition,
           price: parseFloat(editForm.price),
           location: editForm.location || null,
+          additional_images: finalAdditional.length > 0 ? finalAdditional : null,
         })
         .eq('id', listing.id);
       if (error) throw error;
       toast({ title: '商品已更新' });
       setEditDialogOpen(false);
-      // Force refetch
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ['listing', listingId] });
     } catch {
       toast({ title: '更新失敗', variant: 'destructive' });
     } finally {
@@ -683,6 +718,57 @@ export default function ListingDetail() {
               <Label>地點</Label>
               <Input value={editForm.location} onChange={(e) => setEditForm(f => ({ ...f, location: e.target.value }))} />
             </div>
+
+            {/* Image Management */}
+            <div className="space-y-2">
+              <Label>附加圖片</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {(listing?.additional_images || [])
+                  .filter(url => !editRemovedImages.includes(url))
+                  .map((url, i) => (
+                    <div key={url} className="relative aspect-square rounded-lg overflow-hidden border">
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setEditRemovedImages(prev => [...prev, url])}
+                        className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                {editNewImages.map((file, i) => (
+                  <div key={i} className="relative aspect-square rounded-lg overflow-hidden border">
+                    <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setEditNewImages(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {((listing?.additional_images || []).filter(u => !editRemovedImages.includes(u)).length + editNewImages.length) < 5 && (
+                  <button
+                    type="button"
+                    onClick={() => editImageInputRef.current?.click()}
+                    className="aspect-square rounded-lg border-2 border-dashed border-border hover:border-primary transition-colors flex items-center justify-center"
+                  >
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={editImageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleEditImageAdd(e.target.files)}
+              />
+            </div>
+
             <Button onClick={handleSaveEdit} className="w-full" disabled={isEditSaving || !editForm.title || !editForm.price}>
               {isEditSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               {isEditSaving ? '儲存中...' : '儲存變更'}
