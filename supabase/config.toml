@@ -1,1 +1,4 @@
 project_id = "wiiaaettcyyxekicpyuh"
+
+[functions.geolocate]
+verify_jwt = false

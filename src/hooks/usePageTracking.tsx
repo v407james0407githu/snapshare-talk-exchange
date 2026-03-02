@@ -37,7 +37,7 @@ export function usePageTracking() {
       // Get user if logged in
       const { data: { user } } = await supabase.auth.getUser();
 
-      await (supabase.from("page_views") as any).insert({
+      const { data: inserted } = await (supabase.from("page_views") as any).insert({
         session_id: sessionId,
         user_id: user?.id || null,
         page_path: path,
@@ -48,7 +48,14 @@ export function usePageTracking() {
         language: navigator.language,
         screen_width: window.screen.width,
         screen_height: window.screen.height,
-      });
+      }).select("id").single();
+
+      // Fire-and-forget geolocation enrichment
+      if (inserted?.id) {
+        supabase.functions.invoke("geolocate", {
+          body: { page_view_id: inserted.id },
+        }).catch(() => {});
+      }
     };
 
     // Small delay to let page title update
