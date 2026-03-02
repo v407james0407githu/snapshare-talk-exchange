@@ -70,7 +70,7 @@ const recentTopics: ForumTopic[] = [
   {
     id: "demo-5",
     title: "Ricoh GR IIIx vs Fujifilm X100V 該怎麼選？",
-    category: "器材",
+    category: "攝影",
     author: "選擇困難症",
     avatar: "🤔",
     replies: 33,
@@ -83,7 +83,7 @@ const categoryColors: Record<string, string> = {
   相機: "bg-blue-500/10 text-blue-600",
   手機: "bg-green-500/10 text-green-600",
   技術: "bg-purple-500/10 text-purple-600",
-  器材: "bg-orange-500/10 text-orange-600",
+  攝影: "bg-orange-500/10 text-orange-600",
 };
 
 export function ForumPreview() {

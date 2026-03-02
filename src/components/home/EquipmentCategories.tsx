@@ -84,7 +84,7 @@ export function EquipmentCategories() {
             攝影<span className="text-gradient">討論區</span>
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            依您使用的器材選擇專區，與同樣愛好者交流心得
+            依您使用的裝備選擇專區，與同樣愛好者交流心得
           </p>
         </div>
 

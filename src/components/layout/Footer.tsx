@@ -14,7 +14,7 @@ const footerLinks = {
     { label: "二手交易", href: "/marketplace" },
     { label: "哈拉打屁", href: "/lounge" },
   ],
-  器材: [
+  攝影: [
     { label: "手機攝影", href: "/equipment/mobile" },
     { label: "相機討論", href: "/equipment/camera" },
     { label: "鏡頭評測", href: "/equipment/lens" },
@@ -43,7 +43,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              攝影愛好者的交流平台，分享作品、討論器材、結交同好。
+              攝影愛好者的交流平台，分享作品、交流心得、結交同好。
             </p>
             <div className="flex items-center gap-3">
               {socialLinks.map((social) => (

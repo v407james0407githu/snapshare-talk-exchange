@@ -56,7 +56,7 @@ const featuredListings: ListingItem[] = [
     imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400",
     condition: "全新",
     location: "高雄市",
-    seller: "器材達人",
+    seller: "攝影達人",
     isVerified: true,
     postedAt: "1 天前",
   },

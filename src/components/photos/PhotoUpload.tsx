@@ -172,8 +172,8 @@ export function PhotoUpload() {
 
     if (!category) {
       toast({
-        title: "請選擇器材類型",
-        description: "請選擇拍攝器材類型",
+        title: "請選擇拍攝類型",
+        description: "請選擇拍攝裝備類型",
         variant: "destructive",
       });
       return;
@@ -378,11 +378,11 @@ export function PhotoUpload() {
 
         <Card>
           <CardHeader>
-            <CardTitle>器材標籤</CardTitle>
+            <CardTitle>拍攝裝備</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>器材類型 *</Label>
+              <Label>拍攝類型 *</Label>
               <div className="flex gap-4">
                 <Button
                   type="button"
