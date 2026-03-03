@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Heart,
   Camera,
@@ -28,6 +29,8 @@ interface Photo {
   comment_count: number;
   view_count: number;
   average_rating: number;
+  category: string;
+  brand: string | null;
 }
 
 interface Listing {
@@ -38,6 +41,7 @@ interface Listing {
   currency: string;
   condition: string;
   is_sold: boolean;
+  category: string;
 }
 
 const conditionLabels: Record<string, string> = {
@@ -51,6 +55,8 @@ export default function Favorites() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('photos');
+  const [photoCategory, setPhotoCategory] = useState('all');
+  const [listingCategory, setListingCategory] = useState('all');
   const { favorites, favoritesLoading, removeFavorite } = useFavorites();
 
   useEffect(() => {
@@ -68,7 +74,7 @@ export default function Favorites() {
       
       const { data, error } = await supabase
         .from('photos')
-        .select('id, title, image_url, like_count, comment_count, view_count, average_rating')
+        .select('id, title, image_url, like_count, comment_count, view_count, average_rating, category, brand')
         .in('id', photoIds);
 
       if (error) throw error;
@@ -86,7 +92,7 @@ export default function Favorites() {
       
       const { data, error } = await supabase
         .from('marketplace_listings')
-        .select('id, title, verification_image_url, price, currency, condition, is_sold')
+        .select('id, title, verification_image_url, price, currency, condition, is_sold, category')
         .in('id', listingIds);
 
       if (error) throw error;
@@ -94,6 +100,31 @@ export default function Favorites() {
     },
     enabled: listingIds.length > 0,
   });
+
+  // Derive filter options
+  const photoCategoryOptions = useMemo(() => {
+    if (!favoritePhotos) return [];
+    const cats = [...new Set(favoritePhotos.map(p => p.category))];
+    return cats.sort();
+  }, [favoritePhotos]);
+
+  const listingCategoryOptions = useMemo(() => {
+    if (!favoriteListings) return [];
+    const cats = [...new Set(favoriteListings.map(l => l.category))];
+    return cats.sort();
+  }, [favoriteListings]);
+
+  const filteredPhotos = useMemo(() => {
+    if (!favoritePhotos) return [];
+    if (photoCategory === 'all') return favoritePhotos;
+    return favoritePhotos.filter(p => p.category === photoCategory);
+  }, [favoritePhotos, photoCategory]);
+
+  const filteredListings = useMemo(() => {
+    if (!favoriteListings) return [];
+    if (listingCategory === 'all') return favoriteListings;
+    return favoriteListings.filter(l => l.category === listingCategory);
+  }, [favoriteListings, listingCategory]);
 
   if (authLoading || !user) {
     return (
@@ -128,13 +159,28 @@ export default function Favorites() {
           </TabsList>
 
           <TabsContent value="photos">
+            {photoCategoryOptions.length > 1 && (
+              <div className="mb-4">
+                <Select value={photoCategory} onValueChange={setPhotoCategory}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="篩選分類" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全部分類</SelectItem>
+                    {photoCategoryOptions.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {favoritesLoading || photosLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : favoritePhotos?.length ? (
+            ) : filteredPhotos.length ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {favoritePhotos.map((photo) => (
+                {filteredPhotos.map((photo) => (
                   <div key={photo.id} className="group relative">
                     <Link
                       to={`/gallery/${photo.id}`}
@@ -196,13 +242,28 @@ export default function Favorites() {
           </TabsContent>
 
           <TabsContent value="listings">
+            {listingCategoryOptions.length > 1 && (
+              <div className="mb-4">
+                <Select value={listingCategory} onValueChange={setListingCategory}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="篩選分類" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全部分類</SelectItem>
+                    {listingCategoryOptions.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {favoritesLoading || listingsLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : favoriteListings?.length ? (
+            ) : filteredListings.length ? (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {favoriteListings.map((listing) => (
+                {filteredListings.map((listing) => (
                   <div key={listing.id} className="group relative">
                     <Link
                       to={`/marketplace/${listing.id}`}

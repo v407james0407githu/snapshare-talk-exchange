@@ -119,6 +119,8 @@ export default function PhotoDetailPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   // Dynamic OG meta tags
   useEffect(() => {
@@ -425,6 +427,23 @@ export default function PhotoDetailPage() {
       toast({ title: "刪除失敗", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "留言已刪除" });
+      loadComments();
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editContent.trim()) return;
+    const { error } = await supabase
+      .from("comments")
+      .update({ content: editContent.trim() })
+      .eq("id", commentId);
+
+    if (error) {
+      toast({ title: "編輯失敗", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "留言已更新" });
+      setEditingCommentId(null);
+      setEditContent("");
       loadComments();
     }
   };
@@ -850,7 +869,28 @@ export default function PhotoDetailPage() {
                               })}
                             </span>
                           </div>
-                          <p className="text-sm mt-1">{comment.content}</p>
+                          <p className="text-sm mt-1">
+                            {editingCommentId === comment.id ? (
+                              <div className="flex gap-2 mt-1">
+                                <Textarea
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  rows={2}
+                                  className="flex-1"
+                                />
+                                <div className="flex flex-col gap-1">
+                                  <Button size="sm" onClick={() => handleEditComment(comment.id)} disabled={!editContent.trim()}>
+                                    儲存
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => { setEditingCommentId(null); setEditContent(""); }}>
+                                    取消
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              comment.content
+                            )}
+                          </p>
                           <div className="flex items-center gap-2 mt-1">
                             {user && (
                               <button
@@ -858,6 +898,14 @@ export default function PhotoDetailPage() {
                                 className="text-xs text-muted-foreground hover:text-foreground"
                               >
                                 回覆
+                              </button>
+                            )}
+                            {user && user.id === comment.user_id && editingCommentId !== comment.id && (
+                              <button
+                                onClick={() => { setEditingCommentId(comment.id); setEditContent(comment.content); }}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                              >
+                                編輯
                               </button>
                             )}
                             {(canModerate || (user && user.id === comment.user_id)) && (
@@ -911,9 +959,38 @@ export default function PhotoDetailPage() {
                                     })}
                                   </span>
                                 </div>
-                                <p className="text-sm mt-1">{reply.content}</p>
-                                {(canModerate || (user && user.id === reply.user_id)) && (
-                                  <div className="mt-1">
+                                <p className="text-sm mt-1">
+                                  {editingCommentId === reply.id ? (
+                                    <div className="flex gap-2 mt-1">
+                                      <Textarea
+                                        value={editContent}
+                                        onChange={(e) => setEditContent(e.target.value)}
+                                        rows={2}
+                                        className="flex-1"
+                                      />
+                                      <div className="flex flex-col gap-1">
+                                        <Button size="sm" onClick={() => handleEditComment(reply.id)} disabled={!editContent.trim()}>
+                                          儲存
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => { setEditingCommentId(null); setEditContent(""); }}>
+                                          取消
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    reply.content
+                                  )}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  {user && user.id === reply.user_id && editingCommentId !== reply.id && (
+                                    <button
+                                      onClick={() => { setEditingCommentId(reply.id); setEditContent(reply.content); }}
+                                      className="text-xs text-muted-foreground hover:text-foreground"
+                                    >
+                                      編輯
+                                    </button>
+                                  )}
+                                  {(canModerate || (user && user.id === reply.user_id)) && (
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <button className="text-xs text-muted-foreground hover:text-foreground">
@@ -927,14 +1004,16 @@ export default function PhotoDetailPage() {
                                             隱藏留言
                                           </DropdownMenuItem>
                                         )}
-                                        <DropdownMenuItem onClick={() => handleDeleteComment(reply.id)} className="text-destructive">
-                                          <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                          刪除留言
-                                        </DropdownMenuItem>
+                                        {(canModerate || (user && user.id === reply.user_id)) && (
+                                          <DropdownMenuItem onClick={() => handleDeleteComment(reply.id)} className="text-destructive">
+                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                            刪除留言
+                                          </DropdownMenuItem>
+                                        )}
                                       </DropdownMenuContent>
                                     </DropdownMenu>
-                                  </div>
-                                )}
+                                  )}
+                                </div>
                               </div>
                             </div>
                           ))}
