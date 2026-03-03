@@ -17,7 +17,7 @@ import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination";
-import { Search, Plus, MessageSquare, Clock, TrendingUp, Loader2, Tag } from "lucide-react";
+import { Search, Plus, MessageSquare, Clock, TrendingUp, Loader2, Tag, ArrowUpDown, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,7 +42,8 @@ export default function Forums() {
   const [newTopicTags, setNewTopicTags] = useState<string[]>([]);
   const [newTopicImages, setNewTopicImages] = useState<ImageItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  
+  const [sortBy, setSortBy] = useState<string>("latest");
+
 
   const handleDragUploadFiles = (files: File[]) => {
     const remaining = 5 - newTopicImages.length;
@@ -192,8 +193,34 @@ export default function Forums() {
     onError: (error) => toast.error("發表失敗：" + (error as Error).message),
   });
 
+  // Sort helper
+  const sortTopics = (list: ForumTopic[] | undefined) => {
+    if (!list) return undefined;
+    const sorted = [...list];
+    switch (sortBy) {
+      case "last_reply":
+        sorted.sort((a, b) => {
+          const aTime = a.last_reply_at || a.created_at;
+          const bTime = b.last_reply_at || b.created_at;
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
+        });
+        break;
+      case "most_views":
+        sorted.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
+        break;
+      case "most_replies":
+        sorted.sort((a, b) => (b.reply_count || 0) - (a.reply_count || 0));
+        break;
+      // "latest" is default order from DB (created_at desc)
+      default:
+        break;
+    }
+    // Keep pinned at top
+    return sorted.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0));
+  };
+
   // Filter topics
-  const filteredTopics = topics?.filter((topic) => {
+  const filteredTopics = sortTopics(topics?.filter((topic) => {
     if (searchQuery && !topic.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (selectedTag && !(topic.tags || []).includes(selectedTag)) return false;
     if (selectedCategory) {
@@ -206,7 +233,7 @@ export default function Forums() {
       }
     }
     return true;
-  });
+  }));
 
   const hotTopics = filteredTopics?.filter((t) => (t.reply_count || 0) > 10);
   const unansweredTopics = filteredTopics?.filter((t) => (t.reply_count || 0) === 0);
@@ -386,15 +413,31 @@ export default function Forums() {
           </aside>
 
           <main className="lg:col-span-3">
-            {selectedTag && (
-              <div className="mb-4 flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">篩選標籤：</span>
-                <Badge variant="default" className="gap-1">
-                  #{selectedTag}
-                  <button onClick={() => handleTagChange(null)} className="ml-1 hover:text-destructive">✕</button>
-                </Badge>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              {selectedTag ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">篩選標籤：</span>
+                  <Badge variant="default" className="gap-1">
+                    #{selectedTag}
+                    <button onClick={() => handleTagChange(null)} className="ml-1 hover:text-destructive">✕</button>
+                  </Badge>
+                </div>
+              ) : <div />}
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+                <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[160px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="latest">最新發表</SelectItem>
+                    <SelectItem value="last_reply">最新回覆</SelectItem>
+                    <SelectItem value="most_views">最多瀏覽</SelectItem>
+                    <SelectItem value="most_replies">最多回覆</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            )}
+            </div>
 
             {isLoading ? (
               <div className="flex items-center justify-center py-20">
