@@ -4,6 +4,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminActions } from "@/hooks/useAdminActions";
+import { useFavorites } from "@/hooks/useFavorites";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +40,9 @@ import {
   Aperture,
   Timer,
   Focus,
+  Heart,
+  EyeOff,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -98,7 +102,7 @@ export default function PhotoDetailPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { canModerate, checkAdminStatus, togglePhotoFeatured, loading: adminLoading } = useAdminActions();
-
+  const { isFavorited, toggleFavorite, isToggling } = useFavorites('photo', photoId);
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [photographer, setPhotographer] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -397,6 +401,34 @@ export default function PhotoDetailPage() {
     }
   };
 
+  const handleHideComment = async (commentId: string) => {
+    const { error } = await supabase
+      .from("comments")
+      .update({ is_hidden: true })
+      .eq("id", commentId);
+
+    if (error) {
+      toast({ title: "隱藏失敗", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "留言已隱藏" });
+      loadComments();
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const { error } = await supabase
+      .from("comments")
+      .delete()
+      .eq("id", commentId);
+
+    if (error) {
+      toast({ title: "刪除失敗", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "留言已刪除" });
+      loadComments();
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -527,6 +559,16 @@ export default function PhotoDetailPage() {
                   {format(new Date(photo.created_at), "yyyy年MM月dd日", { locale: zhTW })}
                 </div>
                 <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`gap-1.5 ${isFavorited ? 'text-red-500 hover:text-red-600' : ''}`}
+                    onClick={() => toggleFavorite('photo', photo.id)}
+                    disabled={isToggling}
+                  >
+                    <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
+                    {isFavorited ? '已收藏' : '收藏'}
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -809,14 +851,39 @@ export default function PhotoDetailPage() {
                             </span>
                           </div>
                           <p className="text-sm mt-1">{comment.content}</p>
-                          {user && (
-                            <button
-                              onClick={() => setReplyingTo(comment.id)}
-                              className="text-xs text-muted-foreground hover:text-foreground mt-1"
-                            >
-                              回覆
-                            </button>
-                          )}
+                          <div className="flex items-center gap-2 mt-1">
+                            {user && (
+                              <button
+                                onClick={() => setReplyingTo(comment.id)}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                              >
+                                回覆
+                              </button>
+                            )}
+                            {(canModerate || (user && user.id === comment.user_id)) && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="text-xs text-muted-foreground hover:text-foreground">
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-32">
+                                  {canModerate && (
+                                    <DropdownMenuItem onClick={() => handleHideComment(comment.id)}>
+                                      <EyeOff className="h-3.5 w-3.5 mr-2" />
+                                      隱藏留言
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(canModerate || (user && user.id === comment.user_id)) && (
+                                    <DropdownMenuItem onClick={() => handleDeleteComment(comment.id)} className="text-destructive">
+                                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                      刪除留言
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -845,6 +912,29 @@ export default function PhotoDetailPage() {
                                   </span>
                                 </div>
                                 <p className="text-sm mt-1">{reply.content}</p>
+                                {(canModerate || (user && user.id === reply.user_id)) && (
+                                  <div className="mt-1">
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button className="text-xs text-muted-foreground hover:text-foreground">
+                                          <MoreHorizontal className="h-3.5 w-3.5" />
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="start" className="w-32">
+                                        {canModerate && (
+                                          <DropdownMenuItem onClick={() => handleHideComment(reply.id)}>
+                                            <EyeOff className="h-3.5 w-3.5 mr-2" />
+                                            隱藏留言
+                                          </DropdownMenuItem>
+                                        )}
+                                        <DropdownMenuItem onClick={() => handleDeleteComment(reply.id)} className="text-destructive">
+                                          <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                          刪除留言
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
