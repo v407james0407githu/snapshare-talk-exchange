@@ -10,6 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import {
   Star,
@@ -492,35 +498,55 @@ export default function PhotoDetailPage() {
                   <Calendar className="h-4 w-4" />
                   {format(new Date(photo.created_at), "yyyy年MM月dd日", { locale: zhTW })}
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      const url = window.location.href;
-                      navigator.clipboard.writeText(url).then(() => {
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-1.5">
+                      <Share2 className="h-4 w-4" />
+                      分享
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => {
+                      navigator.clipboard.writeText(window.location.href).then(() => {
                         toast({ title: "已複製連結", description: "作品連結已複製到剪貼簿" });
                       });
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                    複製連結
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => {
-                      const url = encodeURIComponent(window.location.href);
-                      const text = encodeURIComponent(photo.title);
-                      window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank", "width=600,height=400");
-                    }}
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    分享
-                  </Button>
-                </div>
+                    }}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      複製連結
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const u = encodeURIComponent(window.location.href);
+                      window.open(`https://www.facebook.com/sharer/sharer.php?u=${u}`, "_blank", "width=600,height=400");
+                    }}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Facebook
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const u = encodeURIComponent(window.location.href);
+                      const t = encodeURIComponent(photo.title);
+                      window.open(`https://twitter.com/intent/tweet?url=${u}&text=${t}`, "_blank", "width=600,height=400");
+                    }}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      X (Twitter)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const u = encodeURIComponent(window.location.href);
+                      const t = encodeURIComponent(photo.title);
+                      window.open(`https://social-plugins.line.me/lineit/share?url=${u}&text=${t}`, "_blank", "width=600,height=400");
+                    }}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      LINE
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const u = encodeURIComponent(window.location.href);
+                      const t = encodeURIComponent(photo.title);
+                      window.open(`https://api.whatsapp.com/send?text=${t}%20${u}`, "_blank", "width=600,height=400");
+                    }}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      WhatsApp
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               {/* Admin Controls */}
