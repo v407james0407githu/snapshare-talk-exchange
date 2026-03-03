@@ -27,7 +27,7 @@ import { TopicList, type ForumTopic } from "@/components/forums/TopicList";
 import { TagInput } from "@/components/forums/TagInput";
 import { ForumImageUpload, useTextareaDrop, filesToItems, uploadPendingItems, type ImageItem } from "@/components/forums/ForumImageUpload";
 
-const TOPICS_PER_PAGE = 10;
+const TOPICS_PER_PAGE = 24;
 
 export default function Forums() {
   const { user } = useAuth();
