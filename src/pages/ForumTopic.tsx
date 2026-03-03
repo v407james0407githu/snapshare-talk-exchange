@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -185,6 +185,32 @@ export default function ForumTopic() {
     },
     enabled: !!topicId,
   });
+
+  // Realtime subscription for forum replies
+  useEffect(() => {
+    if (!topicId) return;
+
+    const channel = supabase
+      .channel(`forum-replies-${topicId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'forum_replies',
+          filter: `topic_id=eq.${topicId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["forum-replies", topicId] });
+          queryClient.invalidateQueries({ queryKey: ["forum-topic", topicId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [topicId, queryClient]);
 
   // Create reply mutation
   const createReplyMutation = useMutation({
