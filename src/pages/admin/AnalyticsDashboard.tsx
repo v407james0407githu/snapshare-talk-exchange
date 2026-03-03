@@ -19,7 +19,17 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell,
 } from "recharts";
-import { format, subDays } from "date-fns";
+import { format, subDays, differenceInDays, startOfDay } from "date-fns";
+import { zhTW } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // ── Types ──
 interface Stats {
@@ -40,6 +50,7 @@ const RANGE_OPTIONS = [
   { value: "7", label: "近 7 天" },
   { value: "14", label: "近 14 天" },
   { value: "30", label: "近 30 天" },
+  { value: "custom", label: "自訂範圍" },
 ];
 
 export default function AnalyticsDashboard() {
@@ -61,8 +72,11 @@ export default function AnalyticsDashboard() {
   const [todayUV, setTodayUV] = useState(0);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(14);
+  const [rangeMode, setRangeMode] = useState<string>("14");
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(subDays(new Date(), 14));
+  const [customTo, setCustomTo] = useState<Date | undefined>(new Date());
 
-  useEffect(() => { fetchAll(); }, [rangeDays]);
+  useEffect(() => { fetchAll(); }, [rangeDays, customFrom, customTo]);
 
   async function fetchAll() {
     setLoading(true);
@@ -114,9 +128,16 @@ export default function AnalyticsDashboard() {
     setActiveUsers(sorted.map(([uid, count]) => ({ user_id: uid, username: pMap.get(uid)?.username || "未知", display_name: pMap.get(uid)?.display_name || "未知", photo_count: count })));
   }
 
+  function getDateRange(): { startDate: string; days: number } {
+    if (rangeMode === "custom" && customFrom && customTo) {
+      const days = Math.max(1, differenceInDays(customTo, customFrom) + 1);
+      return { startDate: startOfDay(customFrom).toISOString(), days };
+    }
+    return { startDate: subDays(new Date(), rangeDays).toISOString(), days: rangeDays };
+  }
+
   async function fetchTrends() {
-    const days = rangeDays;
-    const startDate = subDays(new Date(), days).toISOString();
+    const { startDate, days } = getDateRange();
     const [{ data: recentPhotos }, { data: recentTopics }] = await Promise.all([
       supabase.from("photos").select("created_at").gte("created_at", startDate),
       supabase.from("forum_topics").select("created_at").gte("created_at", startDate),
@@ -132,8 +153,7 @@ export default function AnalyticsDashboard() {
   }
 
   async function fetchTrafficData() {
-    const days = rangeDays;
-    const startDate = subDays(new Date(), days).toISOString();
+    const { startDate, days } = getDateRange();
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
     const { data: views } = await (supabase.from("page_views") as any)
@@ -197,7 +217,9 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  const rangeLabel = RANGE_OPTIONS.find(r => r.value === String(rangeDays))?.label || `近 ${rangeDays} 天`;
+  const rangeLabel = rangeMode === "custom" && customFrom && customTo
+    ? `${format(customFrom, "MM/dd")} ~ ${format(customTo, "MM/dd")}`
+    : RANGE_OPTIONS.find(r => r.value === String(rangeDays))?.label || `近 ${rangeDays} 天`;
 
   const statCards = [
     { label: "總會員", value: stats?.totalUsers || 0, icon: <Users className="h-5 w-5" /> },
@@ -231,18 +253,50 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* Date range selector */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
         <h3 className="text-lg font-semibold">流量分析</h3>
-        <Select value={String(rangeDays)} onValueChange={(v) => setRangeDays(Number(v))}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {RANGE_OPTIONS.map((o) => (
-              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={rangeMode} onValueChange={(v) => {
+            setRangeMode(v);
+            if (v !== "custom") setRangeDays(Number(v));
+          }}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {RANGE_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {rangeMode === "custom" && (
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("w-[130px] justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                    {customFrom ? format(customFrom, "yyyy/MM/dd") : "起始日"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customFrom} onSelect={setCustomFrom} disabled={(date) => date > new Date()} initialFocus className="p-3 pointer-events-auto" locale={zhTW} />
+                </PopoverContent>
+              </Popover>
+              <span className="text-muted-foreground text-sm">~</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("w-[130px] justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                    {customTo ? format(customTo, "yyyy/MM/dd") : "結束日"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={customTo} onSelect={setCustomTo} disabled={(date) => date > new Date() || (customFrom ? date < customFrom : false)} initialFocus className="p-3 pointer-events-auto" locale={zhTW} />
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Traffic stat cards */}
