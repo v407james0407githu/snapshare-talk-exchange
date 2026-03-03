@@ -152,6 +152,31 @@ export default function PhotoDetailPage() {
     }
   }, [photoId]);
 
+  // Realtime subscription for comments
+  useEffect(() => {
+    if (!photoId) return;
+
+    const channel = supabase
+      .channel(`comments-${photoId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'comments',
+          filter: `photo_id=eq.${photoId}`,
+        },
+        () => {
+          loadComments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [photoId]);
+
   useEffect(() => {
     if (user) {
       checkAdminStatus();
