@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DynamicMeta } from "@/components/layout/DynamicMeta";
 import { usePageTracking } from "@/hooks/usePageTracking";
+import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import Index from "./pages/Index";
 import Gallery from "./pages/Gallery";
 import PhotoDetail from "./pages/PhotoDetail";
@@ -47,6 +48,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <PageTracker />
           <DynamicMeta />
           <Routes>
