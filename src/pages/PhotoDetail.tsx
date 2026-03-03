@@ -111,6 +111,29 @@ export default function PhotoDetailPage() {
   const [replyContent, setReplyContent] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Dynamic OG meta tags
+  useEffect(() => {
+    if (!photo) return;
+    const originalTitle = document.title;
+    document.title = `${photo.title} - 光影社群`;
+
+    const setMeta = (selector: string, attr: string, value: string) => {
+      const el = document.querySelector(selector);
+      if (el) el.setAttribute(attr, value);
+    };
+
+    setMeta('meta[property="og:title"]', "content", photo.title);
+    setMeta('meta[property="og:description"]', "content", photo.description || `由 ${photographer?.display_name || photographer?.username || "攝影師"} 拍攝的作品`);
+    setMeta('meta[property="og:image"]', "content", photo.image_url);
+    setMeta('meta[property="og:type"]', "content", "article");
+    setMeta('meta[name="description"]', "content", photo.description || photo.title);
+    setMeta('meta[name="twitter:image"]', "content", photo.image_url);
+
+    return () => {
+      document.title = originalTitle;
+    };
+  }, [photo, photographer]);
+
   useEffect(() => {
     if (photoId) {
       loadPhoto();
