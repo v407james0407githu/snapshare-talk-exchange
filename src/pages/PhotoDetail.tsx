@@ -26,6 +26,9 @@ import {
   Pin,
   PinOff,
   Trash2,
+  Share2,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -484,9 +487,40 @@ export default function PhotoDetailPage() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                {format(new Date(photo.created_at), "yyyy年MM月dd日", { locale: zhTW })}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  {format(new Date(photo.created_at), "yyyy年MM月dd日", { locale: zhTW })}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      const url = window.location.href;
+                      navigator.clipboard.writeText(url).then(() => {
+                        toast({ title: "已複製連結", description: "作品連結已複製到剪貼簿" });
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    複製連結
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      const url = encodeURIComponent(window.location.href);
+                      const text = encodeURIComponent(photo.title);
+                      window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank", "width=600,height=400");
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    分享
+                  </Button>
+                </div>
               </div>
 
               {/* Admin Controls */}
