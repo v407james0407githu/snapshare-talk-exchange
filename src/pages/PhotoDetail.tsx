@@ -390,10 +390,15 @@ export default function PhotoDetailPage() {
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
-        <Link to="/gallery" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(-1)}
+          className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" />
-          返回圖庫
-        </Link>
+          返回上一頁
+        </Button>
 
         <div className="grid lg:grid-cols-[1fr,400px] gap-8">
           {/* Image Section */}
