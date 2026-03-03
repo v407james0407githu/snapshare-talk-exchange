@@ -35,6 +35,10 @@ import {
   Share2,
   Copy,
   ExternalLink,
+  Download,
+  Aperture,
+  Timer,
+  Focus,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -67,6 +71,7 @@ interface Photo {
   average_rating: number;
   rating_count: number;
   is_featured: boolean;
+  exif_data: any;
   created_at: string;
 }
 
@@ -521,56 +526,123 @@ export default function PhotoDetailPage() {
                   <Calendar className="h-4 w-4" />
                   {format(new Date(photo.created_at), "yyyy年MM月dd日", { locale: zhTW })}
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-1.5">
-                      <Share2 className="h-4 w-4" />
-                      分享
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => {
-                      navigator.clipboard.writeText(window.location.href).then(() => {
-                        toast({ title: "已複製連結", description: "作品連結已複製到剪貼簿" });
-                      });
-                    }}>
-                      <Copy className="h-4 w-4 mr-2" />
-                      複製連結
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      const u = encodeURIComponent(window.location.href);
-                      window.open(`https://www.facebook.com/sharer/sharer.php?u=${u}`, "_blank", "width=600,height=400");
-                    }}>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Facebook
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      const u = encodeURIComponent(window.location.href);
-                      const t = encodeURIComponent(photo.title);
-                      window.open(`https://twitter.com/intent/tweet?url=${u}&text=${t}`, "_blank", "width=600,height=400");
-                    }}>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      X (Twitter)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      const u = encodeURIComponent(window.location.href);
-                      const t = encodeURIComponent(photo.title);
-                      window.open(`https://social-plugins.line.me/lineit/share?url=${u}&text=${t}`, "_blank", "width=600,height=400");
-                    }}>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      LINE
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      const u = encodeURIComponent(window.location.href);
-                      const t = encodeURIComponent(photo.title);
-                      window.open(`https://api.whatsapp.com/send?text=${t}%20${u}`, "_blank", "width=600,height=400");
-                    }}>
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      WhatsApp
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(photo.image_url);
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${photo.title}.jpg`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        toast({ title: "下載開始", description: "圖片即將下載" });
+                      } catch {
+                        toast({ title: "下載失敗", variant: "destructive" });
+                      }
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                    下載
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-1.5">
+                        <Share2 className="h-4 w-4" />
+                        分享
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={() => {
+                        navigator.clipboard.writeText(window.location.href).then(() => {
+                          toast({ title: "已複製連結", description: "作品連結已複製到剪貼簿" });
+                        });
+                      }}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        複製連結
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const u = encodeURIComponent(window.location.href);
+                        window.open(`https://www.facebook.com/sharer/sharer.php?u=${u}`, "_blank", "width=600,height=400");
+                      }}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Facebook
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const u = encodeURIComponent(window.location.href);
+                        const t = encodeURIComponent(photo.title);
+                        window.open(`https://twitter.com/intent/tweet?url=${u}&text=${t}`, "_blank", "width=600,height=400");
+                      }}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        X (Twitter)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const u = encodeURIComponent(window.location.href);
+                        const t = encodeURIComponent(photo.title);
+                        window.open(`https://social-plugins.line.me/lineit/share?url=${u}&text=${t}`, "_blank", "width=600,height=400");
+                      }}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        LINE
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        const u = encodeURIComponent(window.location.href);
+                        const t = encodeURIComponent(photo.title);
+                        window.open(`https://api.whatsapp.com/send?text=${t}%20${u}`, "_blank", "width=600,height=400");
+                      }}>
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        WhatsApp
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
+
+              {/* EXIF Data */}
+              {photo.exif_data && Object.keys(photo.exif_data).length > 0 && (
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <Camera className="h-4 w-4 text-primary" />
+                    拍攝參數
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    {photo.exif_data.aperture && (
+                      <div className="flex items-center gap-2">
+                        <Aperture className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">光圈</span>
+                        <span className="font-medium ml-auto">f/{photo.exif_data.aperture}</span>
+                      </div>
+                    )}
+                    {photo.exif_data.shutterSpeed && (
+                      <div className="flex items-center gap-2">
+                        <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">快門</span>
+                        <span className="font-medium ml-auto">{photo.exif_data.shutterSpeed}</span>
+                      </div>
+                    )}
+                    {photo.exif_data.iso && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-muted-foreground w-3.5 text-center">ISO</span>
+                        <span className="text-muted-foreground">感光度</span>
+                        <span className="font-medium ml-auto">{photo.exif_data.iso}</span>
+                      </div>
+                    )}
+                    {photo.exif_data.focalLength && (
+                      <div className="flex items-center gap-2">
+                        <Focus className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground">焦距</span>
+                        <span className="font-medium ml-auto">{photo.exif_data.focalLength}mm</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Admin Controls */}
               {canModerate && (
