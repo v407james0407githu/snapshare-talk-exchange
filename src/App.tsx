@@ -32,6 +32,7 @@ import PhotoManagement from "./pages/admin/PhotoManagement";
 import HomepageSectionManagement from "./pages/admin/HomepageSectionManagement";
 import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
 import SystemSettings from "./pages/admin/SystemSettings";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
             <Route path="/favorites" element={<Favorites />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/messages/:conversationId" element={<Messages />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/users" element={<UserManagement />} />
             <Route path="/admin/reports" element={<ReportManagement />} />
