@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Camera, Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import VerificationPending from '@/components/auth/VerificationPending';
+import ForgotPasswordDialog from '@/components/auth/ForgotPasswordDialog';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的電子郵件'),
@@ -36,6 +37,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -252,6 +254,16 @@ export default function Auth() {
                     '登入'
                   )}
                 </Button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    忘記密碼？
+                  </button>
+                </div>
               </form>
             </TabsContent>
 
@@ -379,6 +391,8 @@ export default function Auth() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <ForgotPasswordDialog open={showForgotPassword} onOpenChange={setShowForgotPassword} />
     </div>
   );
 }
