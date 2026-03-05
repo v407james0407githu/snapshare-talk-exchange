@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, Loader2, Settings, Globe, ToggleLeft, Mail } from "lucide-react";
+import { LogoUpload } from "@/components/admin/LogoUpload";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -158,7 +159,12 @@ export default function SystemSettings() {
                           )}
                         </div>
 
-                        {setting.setting_type === "boolean" ? (
+                        {setting.setting_type === "image" ? (
+                          <LogoUpload
+                            value={val}
+                            onChange={(url) => setValue(setting, url)}
+                          />
+                        ) : setting.setting_type === "boolean" ? (
                           <div className="flex items-center gap-3">
                             <Switch
                               checked={val === "true"}

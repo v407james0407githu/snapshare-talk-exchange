@@ -35,7 +35,7 @@ export function Header() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { isAdmin, isModerator } = useAdmin();
-  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
+  const { forumEnabled, marketplaceEnabled, siteLogo } = useSystemSettings();
 
   const navItems = [
     { label: "首頁", href: "/" },
@@ -54,13 +54,19 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="relative">
-            <Camera className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-          </div>
-          <span className="font-serif text-xl font-bold tracking-tight">
-            光影<span className="text-gradient">論壇</span>
-          </span>
+          {siteLogo ? (
+            <img src={siteLogo} alt="Logo" className="h-8 max-w-[160px] object-contain" />
+          ) : (
+            <>
+              <div className="relative">
+                <Camera className="h-8 w-8 text-primary transition-transform group-hover:scale-110" />
+                <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <span className="font-serif text-xl font-bold tracking-tight">
+                光影<span className="text-gradient">論壇</span>
+              </span>
+            </>
+          )}
         </Link>
 
         {/* Desktop Navigation */}
