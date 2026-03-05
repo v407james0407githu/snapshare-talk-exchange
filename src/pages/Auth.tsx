@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +54,7 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState('');
 
   const { signIn, signUp, user } = useAuth();
+  const { siteLogo } = useSystemSettings();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -176,12 +178,18 @@ export default function Auth() {
 
       <Card className="w-full max-w-md relative z-10 border-border/50 shadow-2xl">
         <CardHeader className="text-center space-y-4">
-          <Link to="/" className="mx-auto flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Camera className="h-10 w-10 text-primary" />
-            <span className="font-serif text-2xl font-bold">
-              光影<span className="text-gradient">論壇</span>
-            </span>
-          </Link>
+           <Link to="/" className="mx-auto flex items-center gap-2 hover:opacity-80 transition-opacity">
+              {siteLogo ? (
+                <img src={siteLogo} alt="Logo" className="h-10 max-w-[180px] object-contain" />
+              ) : (
+                <>
+                  <Camera className="h-10 w-10 text-primary" />
+                  <span className="font-serif text-2xl font-bold">
+                    光影<span className="text-gradient">論壇</span>
+                  </span>
+                </>
+              )}
+            </Link>
           <CardDescription className="text-muted-foreground">
             加入攝影愛好者社群，分享你的精彩瞬間
           </CardDescription>
