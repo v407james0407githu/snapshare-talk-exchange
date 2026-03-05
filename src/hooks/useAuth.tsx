@@ -120,11 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
 
-    toast({
-      title: "註冊成功！",
-      description: "歡迎加入光影論壇，請開始探索！",
-    });
-
     return { error: null };
   };
 

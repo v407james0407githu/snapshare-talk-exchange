@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Camera, Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import VerificationPending from '@/components/auth/VerificationPending';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的電子郵件'),
@@ -34,6 +35,7 @@ export default function Auth() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [verificationEmail, setVerificationEmail] = useState<string | null>(null);
   
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
@@ -81,7 +83,7 @@ export default function Auth() {
         if (error.message.includes('Invalid login credentials')) {
           setErrors({ form: '電子郵件或密碼錯誤' });
         } else if (error.message.includes('Email not confirmed')) {
-          setErrors({ form: '請先驗證您的電子郵件' });
+          setErrors({ form: '您的電子郵件尚未驗證，請檢查收件匣中的驗證連結' });
         } else {
           setErrors({ form: error.message });
         }
@@ -132,7 +134,7 @@ export default function Auth() {
           setErrors({ form: error.message });
         }
       } else {
-        navigate('/');
+        setVerificationEmail(registerEmail);
       }
     } catch (err) {
       setErrors({ form: '發生未知錯誤，請稍後再試' });
@@ -140,6 +142,26 @@ export default function Auth() {
       setIsLoading(false);
     }
   };
+
+  if (verificationEmail) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        </div>
+        <div className="relative z-10">
+          <VerificationPending
+            email={verificationEmail}
+            onBack={() => {
+              setVerificationEmail(null);
+              setActiveTab('login');
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
