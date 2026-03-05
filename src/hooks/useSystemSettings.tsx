@@ -42,5 +42,6 @@ export function useSystemSettings() {
     marketplaceEnabled: getBool("marketplace_enabled"),
     registrationEnabled: getBool("registration_enabled"),
     siteName: get("site_name", "光影社群"),
+    siteLogo: get("site_logo_url", ""),
   };
 }
