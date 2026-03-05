@@ -28,6 +28,7 @@ import {
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 const navItems = [
   { label: "總覽", href: "/admin", icon: LayoutDashboard },
@@ -53,6 +54,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { loading, user, isAdmin, isModerator } = useAdmin();
+  const { siteLogo } = useSystemSettings();
 
   useEffect(() => {
     if (loading) return;
@@ -100,8 +102,14 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
         >
           <div className="flex flex-col h-full">
             <div className="p-6 border-b border-border flex items-center justify-between">
-              <Link to="/admin" className="font-serif text-xl font-bold">
-                光影<span className="text-gradient">管理</span>
+              <Link to="/admin" className="flex items-center gap-2">
+                {siteLogo ? (
+                  <img src={siteLogo} alt="Logo" className="h-7 max-w-[120px] object-contain" />
+                ) : (
+                  <span className="font-serif text-xl font-bold">
+                    光影<span className="text-gradient">管理</span>
+                  </span>
+                )}
               </Link>
               <Button
                 variant="ghost"

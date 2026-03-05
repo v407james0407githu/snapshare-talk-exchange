@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Camera, Facebook, Instagram, Twitter, Youtube } from "lucide-react";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
 const footerLinks = {
   關於: [
@@ -30,6 +31,8 @@ const socialLinks = [
 ];
 
 export function Footer() {
+  const { siteLogo } = useSystemSettings();
+
   return (
     <footer className="border-t border-border bg-card">
       <div className="container py-12 md:py-16">
@@ -37,10 +40,16 @@ export function Footer() {
           {/* Logo & Description */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <Camera className="h-7 w-7 text-primary" />
-              <span className="font-serif text-lg font-bold">
-                光影<span className="text-gradient">論壇</span>
-              </span>
+              {siteLogo ? (
+                <img src={siteLogo} alt="Logo" className="h-7 max-w-[140px] object-contain" />
+              ) : (
+                <>
+                  <Camera className="h-7 w-7 text-primary" />
+                  <span className="font-serif text-lg font-bold">
+                    光影<span className="text-gradient">論壇</span>
+                  </span>
+                </>
+              )}
             </Link>
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               攝影愛好者的交流平台，分享作品、交流心得、結交同好。
