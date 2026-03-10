@@ -109,8 +109,7 @@ export function FeaturedGallery() {
         .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, featured_order")
         .eq("is_featured", true)
         .eq("is_hidden", false)
-        .order("featured_order", { ascending: true })
-        .order("like_count", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(13);
 
       if (error) {
