@@ -140,7 +140,7 @@ export function Footer() {
             © {new Date().getFullYear()} {siteName}. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
-            Made with ❤️ for photographers
+            {get("footer_copyright", "Made with ❤️ for photographers")}
           </p>
         </div>
       </div>
