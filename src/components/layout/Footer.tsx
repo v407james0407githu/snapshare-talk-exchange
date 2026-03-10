@@ -31,7 +31,7 @@ const socialLinks = [
 ];
 
 export function Footer() {
-  const { siteLogo } = useSystemSettings();
+  const { siteLogo, siteName } = useSystemSettings();
 
   return (
     <footer className="border-t border-border bg-card">
