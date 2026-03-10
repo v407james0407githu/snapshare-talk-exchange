@@ -195,15 +195,21 @@ export function FeaturedCarousel() {
                     </div>
                   )}
 
-                  {/* Rating Badge */}
-                  {(photo.average_rating || 0) > 0 && (
-                    <div className="absolute top-3 right-3">
+                  {/* Featured + Rating Badges */}
+                  <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+                    {photo.is_featured && (
+                      <Badge className="gap-1 bg-amber-500/90 text-zinc-900 border-0">
+                        <Award className="h-3 w-3" />
+                        精選
+                      </Badge>
+                    )}
+                    {(photo.average_rating || 0) > 0 && (
                       <Badge className="gap-1 bg-primary/90 text-zinc-900">
                         <Star className="h-3 w-3 fill-current" />
                         {Number(photo.average_rating).toFixed(1)}
                       </Badge>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </Link>
               </CarouselItem>
             ))}
