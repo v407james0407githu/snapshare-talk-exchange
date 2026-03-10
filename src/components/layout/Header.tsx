@@ -35,7 +35,7 @@ export function Header() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { isAdmin, isModerator } = useAdmin();
-  const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo } = useSystemSettings();
+  const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo, siteName } = useSystemSettings();
 
   const navItems = [
     { label: "首頁", href: "/" },
