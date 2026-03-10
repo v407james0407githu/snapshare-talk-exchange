@@ -43,6 +43,7 @@ export default function Gallery() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
   const [sortBy, setSortBy] = useState<"newest" | "most_liked" | "highest_rated">("newest");
+  const [featuredOnly, setFeaturedOnly] = useState(false);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +65,7 @@ export default function Gallery() {
     setPage(0);
     setHasMore(true);
     setIsLoading(true);
-  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy]);
+  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly]);
 
   // Fetch photos
   const fetchPhotos = useCallback(async (pageNum: number) => {
@@ -94,6 +95,10 @@ export default function Gallery() {
       );
     }
 
+    if (featuredOnly) {
+      query = query.eq("is_featured", true);
+    }
+
     const { data: photosData, error } = await query;
     if (error) throw error;
 
@@ -111,7 +116,7 @@ export default function Gallery() {
       ...photo,
       profiles: profilesMap.get(photo.user_id),
     })) as Photo[];
-  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy]);
+  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly]);
 
   // Load page
   useEffect(() => {
@@ -210,6 +215,8 @@ export default function Gallery() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onUpload={handleUpload}
+        featuredOnly={featuredOnly}
+        onFeaturedOnlyChange={setFeaturedOnly}
       />
 
       {/* Gallery Grid */}
