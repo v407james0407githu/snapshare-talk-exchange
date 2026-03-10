@@ -67,7 +67,7 @@ export function Footer() {
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               {get("site_description", "攝影愛好者的交流平台，分享作品、交流心得、結交同好。")}
             </p>
-            {visibleSocials.length > 0 && (
+            {getBool("footer_social_enabled") && visibleSocials.length > 0 && (
               <div className="flex items-center gap-3">
                 {visibleSocials.map((social) => (
                   <a
@@ -86,7 +86,7 @@ export function Footer() {
           </div>
 
           {/* About Links - dynamic */}
-          {(() => {
+          {getBool("footer_about_enabled") && (() => {
             const visibleAbout = aboutLinks.filter((l) => get(l.key, l.fallback));
             return visibleAbout.length > 0 ? (
               <div>
