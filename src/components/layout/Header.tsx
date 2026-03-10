@@ -55,7 +55,7 @@ export function Header() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
           {siteLogo ? (
-            <img src={siteLogo} alt="Logo" className="h-8 max-w-[160px] object-contain" />
+            <img src={siteLogo} alt={siteName} className="h-8 max-w-[160px] object-contain" />
           ) : (
             <>
               <div className="relative">
@@ -63,7 +63,7 @@ export function Header() {
                 <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <span className="font-serif text-xl font-bold tracking-tight">
-                光影<span className="text-gradient">論壇</span>
+                {siteName}
               </span>
             </>
           )}
