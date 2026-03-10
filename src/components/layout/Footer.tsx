@@ -31,7 +31,7 @@ const socialLinks = [
 ];
 
 export function Footer() {
-  const { siteLogo, siteName } = useSystemSettings();
+  const { siteLogo, siteName, get } = useSystemSettings();
 
   return (
     <footer className="border-t border-border bg-card">
@@ -52,7 +52,7 @@ export function Footer() {
               )}
             </Link>
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
-              攝影愛好者的交流平台，分享作品、交流心得、結交同好。
+              {get("site_description", "攝影愛好者的交流平台，分享作品、交流心得、結交同好。")}
             </p>
             <div className="flex items-center gap-3">
               {socialLinks.map((social) => (
