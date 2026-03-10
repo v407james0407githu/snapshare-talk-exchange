@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2, Aperture, Clock, Sun } from "lucide-react";
+import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2, Aperture, Clock, Sun, Award } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,7 @@ interface Photo {
   lens: string | null;
   phone_model: string | null;
   exif_data: Record<string, any> | null;
+  is_featured: boolean;
   profiles?: {
     username: string;
     display_name: string | null;
@@ -296,8 +297,16 @@ export default function Gallery() {
                       </span>
                     </div>
 
+                    {photo.is_featured && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/90 text-[10px] md:text-xs font-medium text-zinc-900 shadow-md backdrop-blur-sm">
+                          <Award className="h-2.5 w-2.5" /> 精選
+                        </span>
+                      </div>
+                    )}
+
                     {(photo.average_rating || 0) > 0 && (
-                      <div className="absolute top-2 right-2">
+                      <div className={`absolute ${photo.is_featured ? 'top-8' : 'top-2'} right-2`}>
                         <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/90 text-[10px] md:text-xs font-medium text-primary-foreground shadow-md">
                           <Star className="h-2.5 w-2.5 fill-current" /> {Number(photo.average_rating).toFixed(1)}
                         </span>
