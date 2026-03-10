@@ -65,7 +65,7 @@ export default function Gallery() {
     setPage(0);
     setHasMore(true);
     setIsLoading(true);
-  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy]);
+  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly]);
 
   // Fetch photos
   const fetchPhotos = useCallback(async (pageNum: number) => {
