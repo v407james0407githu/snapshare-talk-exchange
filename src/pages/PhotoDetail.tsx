@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { getSafeErrorMessage } from "@/lib/errorSanitizer";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -307,7 +308,7 @@ export default function PhotoDetailPage() {
     if (error) {
       toast({
         title: "評分失敗",
-        description: error.message,
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } else {
@@ -364,7 +365,7 @@ export default function PhotoDetailPage() {
     if (error) {
       toast({
         title: "留言失敗",
-        description: error.message,
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } else {
@@ -419,7 +420,7 @@ export default function PhotoDetailPage() {
     if (error) {
       toast({
         title: "回覆失敗",
-        description: error.message,
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } else {
@@ -436,7 +437,7 @@ export default function PhotoDetailPage() {
       .eq("id", commentId);
 
     if (error) {
-      toast({ title: "隱藏失敗", description: error.message, variant: "destructive" });
+      toast({ title: "隱藏失敗", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "留言已隱藏" });
       loadComments();
@@ -450,7 +451,7 @@ export default function PhotoDetailPage() {
       .eq("id", commentId);
 
     if (error) {
-      toast({ title: "刪除失敗", description: error.message, variant: "destructive" });
+      toast({ title: "刪除失敗", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "留言已刪除" });
       loadComments();
@@ -465,7 +466,7 @@ export default function PhotoDetailPage() {
       .eq("id", commentId);
 
     if (error) {
-      toast({ title: "編輯失敗", description: error.message, variant: "destructive" });
+      toast({ title: "編輯失敗", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "留言已更新" });
       setEditingCommentId(null);
@@ -771,7 +772,7 @@ export default function PhotoDetailPage() {
                           .update({ is_hidden: newVal })
                           .eq("id", photo.id);
                         if (error) {
-                          toast({ title: "操作失敗", description: error.message, variant: "destructive" });
+                          toast({ title: "操作失敗", description: getSafeErrorMessage(error), variant: "destructive" });
                         } else {
                           setPhoto(prev => prev ? { ...prev, is_hidden: newVal } : prev);
                           toast({ title: newVal ? "作品已隱藏" : "作品已恢復顯示" });

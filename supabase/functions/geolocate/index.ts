@@ -21,7 +21,51 @@ serve(async (req) => {
       });
     }
 
-    // Use the connecting IP from Deno request headers
+    // Validate UUID format to prevent injection
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(page_view_id)) {
+      return new Response(JSON.stringify({ error: "invalid page_view_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Verify the page_view exists and was created recently (within 60 seconds)
+    const { data: pageView, error: fetchError } = await supabase
+      .from("page_views")
+      .select("id, created_at, country")
+      .eq("id", page_view_id)
+      .single();
+
+    if (fetchError || !pageView) {
+      return new Response(JSON.stringify({ error: "page view not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Only enrich if created within the last 60 seconds (prevent replay attacks)
+    const createdAt = new Date(pageView.created_at).getTime();
+    const now = Date.now();
+    if (now - createdAt > 60_000) {
+      return new Response(JSON.stringify({ error: "page view too old" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Skip if already enriched
+    if (pageView.country) {
+      return new Response(JSON.stringify({ country: pageView.country, city: null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Use the connecting IP from request headers
     const clientIp =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       req.headers.get("cf-connecting-ip") ||
@@ -33,7 +77,6 @@ serve(async (req) => {
 
     if (clientIp && clientIp !== "127.0.0.1" && clientIp !== "::1") {
       try {
-        // Free IP geolocation API (no key required)
         const geoRes = await fetch(`http://ip-api.com/json/${clientIp}?fields=status,country,city&lang=zh-CN`);
         if (geoRes.ok) {
           const geo = await geoRes.json();
@@ -47,11 +90,6 @@ serve(async (req) => {
       }
     }
 
-    // Update the page_view record
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
-
     await supabase
       .from("page_views")
       .update({ country, city })
@@ -61,8 +99,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("geolocate error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
