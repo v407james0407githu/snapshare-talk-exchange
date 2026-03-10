@@ -105,24 +105,30 @@ export function Footer() {
             ) : null;
           })()}
 
-          {/* Static Links */}
-          {Object.entries(staticFooterGroups).map(([title, links]) => (
-            <div key={title}>
-              <h4 className="font-semibold mb-4 text-foreground">{title}</h4>
-              <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      to={link.href}
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Dynamic Nav Links */}
+          {footerSections.map((section) => {
+            const visibleLinks = section.links.filter((l) => get(l.urlKey, l.defaultUrl));
+            if (visibleLinks.length === 0) return null;
+            return (
+              <div key={section.titleKey}>
+                <h4 className="font-semibold mb-4 text-foreground">
+                  {get(section.titleKey, section.defaultTitle)}
+                </h4>
+                <ul className="space-y-2.5">
+                  {visibleLinks.map((link) => (
+                    <li key={link.urlKey}>
+                      <Link
+                        to={get(link.urlKey, link.defaultUrl)}
+                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {get(link.labelKey, link.defaultLabel)}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
 
         {/* Bottom */}
