@@ -109,6 +109,7 @@ export function Footer() {
 
           {/* Dynamic Nav Links */}
           {footerSections.map((section) => {
+            if (!getBool(section.enabledKey)) return null;
             const visibleLinks = section.links.filter((l) => get(l.urlKey, l.defaultUrl));
             if (visibleLinks.length === 0) return null;
             return (
