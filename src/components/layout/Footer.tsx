@@ -9,20 +9,28 @@ const aboutLinks = [
   { label: "隱私政策", key: "footer_privacy_url", fallback: "/privacy" },
 ];
 
-const staticFooterGroups = {
-  社群: [
-    { label: "討論區", href: "/forums" },
-    { label: "作品分享", href: "/gallery" },
-    { label: "二手交易", href: "/marketplace" },
-    { label: "哈拉打屁", href: "/lounge" },
-  ],
-  攝影: [
-    { label: "手機攝影", href: "/equipment/mobile" },
-    { label: "相機討論", href: "/equipment/camera" },
-    { label: "鏡頭評測", href: "/equipment/lens" },
-    { label: "配件週邊", href: "/equipment/accessories" },
-  ],
-};
+const footerSections = [
+  {
+    titleKey: "footer_community_title",
+    defaultTitle: "社群",
+    links: [
+      { labelKey: "footer_community_label_1", urlKey: "footer_community_url_1", defaultLabel: "討論區", defaultUrl: "/forums" },
+      { labelKey: "footer_community_label_2", urlKey: "footer_community_url_2", defaultLabel: "作品分享", defaultUrl: "/gallery" },
+      { labelKey: "footer_community_label_3", urlKey: "footer_community_url_3", defaultLabel: "二手交易", defaultUrl: "/marketplace" },
+      { labelKey: "footer_community_label_4", urlKey: "footer_community_url_4", defaultLabel: "哈拉打屁", defaultUrl: "/lounge" },
+    ],
+  },
+  {
+    titleKey: "footer_photo_title",
+    defaultTitle: "攝影",
+    links: [
+      { labelKey: "footer_photo_label_1", urlKey: "footer_photo_url_1", defaultLabel: "手機攝影", defaultUrl: "/equipment/mobile" },
+      { labelKey: "footer_photo_label_2", urlKey: "footer_photo_url_2", defaultLabel: "相機討論", defaultUrl: "/equipment/camera" },
+      { labelKey: "footer_photo_label_3", urlKey: "footer_photo_url_3", defaultLabel: "鏡頭評測", defaultUrl: "/equipment/lens" },
+      { labelKey: "footer_photo_label_4", urlKey: "footer_photo_url_4", defaultLabel: "配件週邊", defaultUrl: "/equipment/accessories" },
+    ],
+  },
+];
 
 export function Footer() {
   const { siteLogo, siteName, get } = useSystemSettings();
@@ -97,24 +105,30 @@ export function Footer() {
             ) : null;
           })()}
 
-          {/* Static Links */}
-          {Object.entries(staticFooterGroups).map(([title, links]) => (
-            <div key={title}>
-              <h4 className="font-semibold mb-4 text-foreground">{title}</h4>
-              <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      to={link.href}
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Dynamic Nav Links */}
+          {footerSections.map((section) => {
+            const visibleLinks = section.links.filter((l) => get(l.urlKey, l.defaultUrl));
+            if (visibleLinks.length === 0) return null;
+            return (
+              <div key={section.titleKey}>
+                <h4 className="font-semibold mb-4 text-foreground">
+                  {get(section.titleKey, section.defaultTitle)}
+                </h4>
+                <ul className="space-y-2.5">
+                  {visibleLinks.map((link) => (
+                    <li key={link.urlKey}>
+                      <Link
+                        to={get(link.urlKey, link.defaultUrl)}
+                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {get(link.labelKey, link.defaultLabel)}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
 
         {/* Bottom */}

@@ -28,6 +28,7 @@ const groupConfig: Record<string, { label: string; icon: React.ReactNode }> = {
   general: { label: "基本設定", icon: <Settings className="h-4 w-4" /> },
   seo: { label: "SEO 設定", icon: <Globe className="h-4 w-4" /> },
   features: { label: "功能開關", icon: <ToggleLeft className="h-4 w-4" /> },
+  footer: { label: "頁尾連結", icon: <Globe className="h-4 w-4" /> },
   email: { label: "郵件模板", icon: <Mail className="h-4 w-4" /> },
 };
 
