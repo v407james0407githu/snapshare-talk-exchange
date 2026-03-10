@@ -215,6 +215,8 @@ export default function Gallery() {
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onUpload={handleUpload}
+        featuredOnly={featuredOnly}
+        onFeaturedOnlyChange={setFeaturedOnly}
       />
 
       {/* Gallery Grid */}
