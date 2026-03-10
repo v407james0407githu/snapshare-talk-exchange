@@ -31,7 +31,7 @@ const socialLinks = [
 ];
 
 export function Footer() {
-  const { siteLogo } = useSystemSettings();
+  const { siteLogo, siteName } = useSystemSettings();
 
   return (
     <footer className="border-t border-border bg-card">
@@ -91,7 +91,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2024 光影論壇. All rights reserved.
+            © {new Date().getFullYear()} {siteName}. All rights reserved.
           </p>
           <p className="text-xs text-muted-foreground">
             Made with ❤️ for photographers
