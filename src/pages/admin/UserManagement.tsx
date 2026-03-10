@@ -272,6 +272,7 @@ export default function UserManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>會員</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>角色</TableHead>
                 <TableHead>狀態</TableHead>
                 <TableHead>VIP</TableHead>
