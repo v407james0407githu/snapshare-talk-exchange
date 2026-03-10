@@ -65,10 +65,15 @@ export function FeaturedCarousel() {
         profilesData?.map((p) => [p.user_id, p]) || []
       );
 
-      return photosData.map((photo) => ({
-        ...photo,
-        profiles: profilesMap.get(photo.user_id),
-      })) as FeaturedPhoto[];
+      // 隨機排序，每次顯示不同順序
+      const shuffled = photosData
+        .map((photo) => ({
+          ...photo,
+          profiles: profilesMap.get(photo.user_id),
+        }))
+        .sort(() => Math.random() - 0.5);
+
+      return shuffled as FeaturedPhoto[];
     },
   });
 
