@@ -95,26 +95,25 @@ export default function UserManagement() {
 
   async function fetchUsers() {
     try {
-      // Fetch profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Fetch profiles, roles, and emails in parallel
+      const [profilesRes, rolesRes, emailsRes] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.rpc("get_user_emails"),
+      ]);
 
-      if (profilesError) throw profilesError;
+      if (profilesRes.error) throw profilesRes.error;
+      if (rolesRes.error) throw rolesRes.error;
 
-      // Fetch all user roles
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
+      const roleMap = new Map(rolesRes.data?.map((r) => [r.user_id, r.role]) || []);
+      const emailMap = new Map(
+        (emailsRes.data as { user_id: string; email: string }[] || []).map((e) => [e.user_id, e.email])
+      );
 
-      if (rolesError) throw rolesError;
-
-      const roleMap = new Map(roles?.map((r) => [r.user_id, r.role]) || []);
-
-      const usersWithRoles: UserWithRole[] = (profiles || []).map((profile) => ({
+      const usersWithRoles: UserWithRole[] = (profilesRes.data || []).map((profile) => ({
         ...profile,
         role: roleMap.get(profile.user_id) || "user",
+        email: emailMap.get(profile.user_id) || "",
       }));
 
       setUsers(usersWithRoles);
