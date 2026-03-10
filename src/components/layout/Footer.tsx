@@ -75,8 +75,30 @@ export function Footer() {
             )}
           </div>
 
-          {/* Links */}
-          {Object.entries(footerLinks).map(([title, links]) => (
+          {/* About Links - dynamic */}
+          {(() => {
+            const visibleAbout = aboutLinks.filter((l) => get(l.key, l.fallback));
+            return visibleAbout.length > 0 ? (
+              <div>
+                <h4 className="font-semibold mb-4 text-foreground">關於</h4>
+                <ul className="space-y-2.5">
+                  {visibleAbout.map((link) => (
+                    <li key={link.key}>
+                      <Link
+                        to={get(link.key, link.fallback)}
+                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null;
+          })()}
+
+          {/* Static Links */}
+          {Object.entries(staticFooterGroups).map(([title, links]) => (
             <div key={title}>
               <h4 className="font-semibold mb-4 text-foreground">{title}</h4>
               <ul className="space-y-2.5">
