@@ -420,7 +420,7 @@ export default function PhotoDetailPage() {
     if (error) {
       toast({
         title: "回覆失敗",
-        description: error.message,
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } else {
