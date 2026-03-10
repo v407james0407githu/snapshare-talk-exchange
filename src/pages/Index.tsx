@@ -40,9 +40,10 @@ const sectionFeatureMap: Record<string, string> = {
 };
 
 const Index = () => {
-  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
+  const { galleryEnabled, forumEnabled, marketplaceEnabled } = useSystemSettings();
 
   const featureFlags: Record<string, boolean> = {
+    gallery_enabled: galleryEnabled,
     forum_enabled: forumEnabled,
     marketplace_enabled: marketplaceEnabled,
   };

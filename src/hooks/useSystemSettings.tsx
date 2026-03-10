@@ -38,6 +38,7 @@ export function useSystemSettings() {
     get,
     getBool,
     getNum,
+    galleryEnabled: getBool("gallery_enabled"),
     forumEnabled: getBool("forum_enabled"),
     marketplaceEnabled: getBool("marketplace_enabled"),
     registrationEnabled: getBool("registration_enabled"),

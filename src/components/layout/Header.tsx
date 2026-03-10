@@ -35,11 +35,11 @@ export function Header() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { isAdmin, isModerator } = useAdmin();
-  const { forumEnabled, marketplaceEnabled, siteLogo } = useSystemSettings();
+  const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo } = useSystemSettings();
 
   const navItems = [
     { label: "首頁", href: "/" },
-    { label: "作品分享", href: "/gallery" },
+    ...(galleryEnabled ? [{ label: "作品分享", href: "/gallery" }] : []),
     ...(forumEnabled ? [{ label: "討論區", href: "/forums" }] : []),
     ...(marketplaceEnabled ? [{ label: "二手交易", href: "/marketplace" }] : []),
   ];
