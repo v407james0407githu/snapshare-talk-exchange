@@ -136,9 +136,11 @@ export default function UserManagement() {
   };
 
   const filteredUsers = users.filter((user) => {
+    const q = searchQuery.toLowerCase();
     const matchesSearch =
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (user.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+      user.username.toLowerCase().includes(q) ||
+      (user.display_name?.toLowerCase().includes(q) ?? false) ||
+      (user.email?.toLowerCase().includes(q) ?? false);
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const status = getStatus(user);
     const matchesStatus = statusFilter === "all" || status === statusFilter;
