@@ -95,6 +95,10 @@ export default function Gallery() {
       );
     }
 
+    if (featuredOnly) {
+      query = query.eq("is_featured", true);
+    }
+
     const { data: photosData, error } = await query;
     if (error) throw error;
 
