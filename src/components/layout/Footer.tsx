@@ -35,7 +35,7 @@ const footerSections = [
 ];
 
 export function Footer() {
-  const { siteLogo, siteName, get } = useSystemSettings();
+  const { siteLogo, siteName, get, getBool } = useSystemSettings();
 
   const socialLinks = [
     { icon: Facebook, key: "social_facebook", label: "Facebook" },
