@@ -751,12 +751,12 @@ export default function PhotoDetailPage() {
                       {photo.is_featured ? (
                         <>
                           <PinOff className="h-4 w-4" />
-                          取消置頂
+                          取消精選
                         </>
                       ) : (
                         <>
                           <Pin className="h-4 w-4" />
-                          設為置頂
+                          設為精選
                         </>
                       )}
                     </Button>
