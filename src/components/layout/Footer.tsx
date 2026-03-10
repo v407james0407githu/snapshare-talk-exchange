@@ -11,6 +11,7 @@ const aboutLinks = [
 
 const footerSections = [
   {
+    enabledKey: "footer_community_enabled",
     titleKey: "footer_community_title",
     defaultTitle: "社群",
     links: [
@@ -21,6 +22,7 @@ const footerSections = [
     ],
   },
   {
+    enabledKey: "footer_photo_enabled",
     titleKey: "footer_photo_title",
     defaultTitle: "攝影",
     links: [
