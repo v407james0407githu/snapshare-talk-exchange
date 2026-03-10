@@ -451,7 +451,7 @@ export default function PhotoDetailPage() {
       .eq("id", commentId);
 
     if (error) {
-      toast({ title: "刪除失敗", description: error.message, variant: "destructive" });
+      toast({ title: "刪除失敗", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "留言已刪除" });
       loadComments();
