@@ -105,12 +105,14 @@ export function Header() {
           {user ? (
             <>
               {/* Upload Button */}
-              <Link to="/upload">
-                <Button variant="gold" size="sm" className="hidden sm:flex gap-2">
-                  <ImagePlus className="h-4 w-4" />
-                  上傳作品
-                </Button>
-              </Link>
+              {galleryEnabled && (
+                <Link to="/upload">
+                  <Button variant="gold" size="sm" className="hidden sm:flex gap-2">
+                    <ImagePlus className="h-4 w-4" />
+                    上傳作品
+                  </Button>
+                </Link>
+              )}
 
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative">
