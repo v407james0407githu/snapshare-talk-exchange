@@ -43,6 +43,7 @@ export default function Gallery() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
   const [sortBy, setSortBy] = useState<"newest" | "most_liked" | "highest_rated">("newest");
+  const [featuredOnly, setFeaturedOnly] = useState(false);
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);

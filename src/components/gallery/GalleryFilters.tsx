@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Grid3X3, LayoutGrid, ImagePlus, ArrowUpDown } from "lucide-react";
+import { Search, Filter, Grid3X3, LayoutGrid, ImagePlus, ArrowUpDown, Star } from "lucide-react";
 
 const categories = [
   "全部", "風景", "城市", "街拍", "夜景", "微距", "生活", "天文", "人像", "其他",
@@ -30,6 +30,8 @@ interface GalleryFiltersProps {
   viewMode: "grid" | "masonry";
   onViewModeChange: (mode: "grid" | "masonry") => void;
   onUpload: () => void;
+  featuredOnly: boolean;
+  onFeaturedOnlyChange: (value: boolean) => void;
 }
 
 export function GalleryFilters({
@@ -44,6 +46,8 @@ export function GalleryFilters({
   viewMode,
   onViewModeChange,
   onUpload,
+  featuredOnly,
+  onFeaturedOnlyChange,
 }: GalleryFiltersProps) {
   return (
     <section className="sticky top-16 z-40 bg-background/95 backdrop-blur-sm border-b border-border py-4">
@@ -93,6 +97,15 @@ export function GalleryFilters({
                   <SelectItem value="highest_rated">最高評分</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant={featuredOnly ? "default" : "outline"}
+                size="default"
+                onClick={() => onFeaturedOnlyChange(!featuredOnly)}
+                className="gap-1.5"
+              >
+                <Star className={`h-4 w-4 ${featuredOnly ? "fill-current" : ""}`} />
+                精選
+              </Button>
             </div>
 
             <div className="flex items-center gap-3">
