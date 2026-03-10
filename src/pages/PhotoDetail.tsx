@@ -772,7 +772,7 @@ export default function PhotoDetailPage() {
                           .update({ is_hidden: newVal })
                           .eq("id", photo.id);
                         if (error) {
-                          toast({ title: "操作失敗", description: error.message, variant: "destructive" });
+                          toast({ title: "操作失敗", description: getSafeErrorMessage(error), variant: "destructive" });
                         } else {
                           setPhoto(prev => prev ? { ...prev, is_hidden: newVal } : prev);
                           toast({ title: newVal ? "作品已隱藏" : "作品已恢復顯示" });
