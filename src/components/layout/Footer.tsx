@@ -23,15 +23,17 @@ const footerLinks = {
   ],
 };
 
-const socialLinks = [
-  { icon: Facebook, href: "#", label: "Facebook" },
-  { icon: Instagram, href: "#", label: "Instagram" },
-  { icon: Twitter, href: "#", label: "Twitter" },
-  { icon: Youtube, href: "#", label: "Youtube" },
-];
-
 export function Footer() {
   const { siteLogo, siteName, get } = useSystemSettings();
+
+  const socialLinks = [
+    { icon: Facebook, key: "social_facebook", label: "Facebook" },
+    { icon: Instagram, key: "social_instagram", label: "Instagram" },
+    { icon: Twitter, key: "social_twitter", label: "Twitter" },
+    { icon: Youtube, key: "social_youtube", label: "YouTube" },
+  ];
+
+  const visibleSocials = socialLinks.filter((s) => get(s.key));
 
   return (
     <footer className="border-t border-border bg-card">
@@ -54,18 +56,22 @@ export function Footer() {
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
               {get("site_description", "攝影愛好者的交流平台，分享作品、交流心得、結交同好。")}
             </p>
-            <div className="flex items-center gap-3">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                  aria-label={social.label}
-                >
-                  <social.icon className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
+            {visibleSocials.length > 0 && (
+              <div className="flex items-center gap-3">
+                {visibleSocials.map((social) => (
+                  <a
+                    key={social.key}
+                    href={get(social.key)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    aria-label={social.label}
+                  >
+                    <social.icon className="h-4 w-4" />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Links */}
