@@ -86,7 +86,7 @@ export function Footer() {
           </div>
 
           {/* About Links - dynamic */}
-          {(() => {
+          {getBool("footer_about_enabled") && (() => {
             const visibleAbout = aboutLinks.filter((l) => get(l.key, l.fallback));
             return visibleAbout.length > 0 ? (
               <div>
