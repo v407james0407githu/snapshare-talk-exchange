@@ -32,15 +32,18 @@ const defaultOrder = [
 
 // Map section keys to the feature toggle that controls them
 const sectionFeatureMap: Record<string, string> = {
+  featured_gallery: "gallery_enabled",
+  featured_carousel: "gallery_enabled",
   forum_preview: "forum_enabled",
   equipment_categories: "forum_enabled",
   marketplace_preview: "marketplace_enabled",
 };
 
 const Index = () => {
-  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
+  const { galleryEnabled, forumEnabled, marketplaceEnabled } = useSystemSettings();
 
   const featureFlags: Record<string, boolean> = {
+    gallery_enabled: galleryEnabled,
     forum_enabled: forumEnabled,
     marketplace_enabled: marketplaceEnabled,
   };

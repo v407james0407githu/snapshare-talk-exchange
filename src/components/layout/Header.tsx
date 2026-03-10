@@ -35,11 +35,11 @@ export function Header() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { isAdmin, isModerator } = useAdmin();
-  const { forumEnabled, marketplaceEnabled, siteLogo } = useSystemSettings();
+  const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo } = useSystemSettings();
 
   const navItems = [
     { label: "首頁", href: "/" },
-    { label: "作品分享", href: "/gallery" },
+    ...(galleryEnabled ? [{ label: "作品分享", href: "/gallery" }] : []),
     ...(forumEnabled ? [{ label: "討論區", href: "/forums" }] : []),
     ...(marketplaceEnabled ? [{ label: "二手交易", href: "/marketplace" }] : []),
   ];
@@ -105,12 +105,14 @@ export function Header() {
           {user ? (
             <>
               {/* Upload Button */}
-              <Link to="/upload">
-                <Button variant="gold" size="sm" className="hidden sm:flex gap-2">
-                  <ImagePlus className="h-4 w-4" />
-                  上傳作品
-                </Button>
-              </Link>
+              {galleryEnabled && (
+                <Link to="/upload">
+                  <Button variant="gold" size="sm" className="hidden sm:flex gap-2">
+                    <ImagePlus className="h-4 w-4" />
+                    上傳作品
+                  </Button>
+                </Link>
+              )}
 
               {/* Notifications */}
               <Button variant="ghost" size="icon" className="relative">
