@@ -301,6 +301,9 @@ export default function UserManagement() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <span className="text-sm text-muted-foreground">{user.email}</span>
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="outline" className={roleColors[user.role]}>
                         {roleLabels[user.role]}
                       </Badge>
