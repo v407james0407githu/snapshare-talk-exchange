@@ -61,6 +61,7 @@ interface UserWithRole {
   is_vip: boolean | null;
   created_at: string;
   role: AppRole;
+  email?: string;
 }
 
 const roleColors: Record<string, string> = {
