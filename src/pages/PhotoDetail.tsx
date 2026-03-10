@@ -75,6 +75,7 @@ interface Photo {
   average_rating: number;
   rating_count: number;
   is_featured: boolean;
+  is_hidden: boolean;
   exif_data: any;
   created_at: string;
 }
@@ -734,30 +735,62 @@ export default function PhotoDetailPage() {
               {canModerate && (
                 <div className="mt-4 pt-4 border-t border-border">
                   <p className="text-sm text-muted-foreground mb-2">管理員操作</p>
-                  <Button
-                    variant={photo.is_featured ? "destructive" : "outline"}
-                    size="sm"
-                    onClick={async () => {
-                      const success = await togglePhotoFeatured(photo.id, photo.is_featured);
-                      if (success) {
-                        setPhoto(prev => prev ? { ...prev, is_featured: !prev.is_featured } : prev);
-                      }
-                    }}
-                    disabled={adminLoading}
-                    className="gap-2"
-                  >
-                    {photo.is_featured ? (
-                      <>
-                        <PinOff className="h-4 w-4" />
-                        取消置頂
-                      </>
-                    ) : (
-                      <>
-                        <Pin className="h-4 w-4" />
-                        設為置頂
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      variant={photo.is_featured ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={async () => {
+                        const success = await togglePhotoFeatured(photo.id, photo.is_featured);
+                        if (success) {
+                          setPhoto(prev => prev ? { ...prev, is_featured: !prev.is_featured } : prev);
+                        }
+                      }}
+                      disabled={adminLoading}
+                      className="gap-2"
+                    >
+                      {photo.is_featured ? (
+                        <>
+                          <PinOff className="h-4 w-4" />
+                          取消置頂
+                        </>
+                      ) : (
+                        <>
+                          <Pin className="h-4 w-4" />
+                          設為置頂
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={async () => {
+                        const newVal = !photo.is_hidden;
+                        const { error } = await supabase
+                          .from("photos")
+                          .update({ is_hidden: newVal })
+                          .eq("id", photo.id);
+                        if (error) {
+                          toast({ title: "操作失敗", description: error.message, variant: "destructive" });
+                        } else {
+                          setPhoto(prev => prev ? { ...prev, is_hidden: newVal } : prev);
+                          toast({ title: newVal ? "作品已隱藏" : "作品已恢復顯示" });
+                        }
+                      }}
+                    >
+                      {photo.is_hidden ? (
+                        <>
+                          <Eye className="h-4 w-4" />
+                          恢復顯示
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-4 w-4" />
+                          隱藏作品
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
 
