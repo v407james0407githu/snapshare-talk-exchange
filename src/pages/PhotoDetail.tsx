@@ -466,7 +466,7 @@ export default function PhotoDetailPage() {
       .eq("id", commentId);
 
     if (error) {
-      toast({ title: "編輯失敗", description: error.message, variant: "destructive" });
+      toast({ title: "編輯失敗", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
       toast({ title: "留言已更新" });
       setEditingCommentId(null);
