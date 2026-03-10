@@ -46,7 +46,7 @@ export function Footer() {
                 <>
                   <Camera className="h-7 w-7 text-primary" />
                   <span className="font-serif text-lg font-bold">
-                    光影<span className="text-gradient">論壇</span>
+                    {siteName}
                   </span>
                 </>
               )}
