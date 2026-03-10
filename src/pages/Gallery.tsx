@@ -24,6 +24,7 @@ interface Photo {
   lens: string | null;
   phone_model: string | null;
   exif_data: Record<string, any> | null;
+  is_featured: boolean;
   profiles?: {
     username: string;
     display_name: string | null;
