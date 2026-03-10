@@ -365,7 +365,7 @@ export default function PhotoDetailPage() {
     if (error) {
       toast({
         title: "留言失敗",
-        description: error.message,
+        description: getSafeErrorMessage(error),
         variant: "destructive",
       });
     } else {
