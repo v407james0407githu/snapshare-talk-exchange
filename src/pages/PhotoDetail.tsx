@@ -75,6 +75,7 @@ interface Photo {
   average_rating: number;
   rating_count: number;
   is_featured: boolean;
+  is_hidden: boolean;
   exif_data: any;
   created_at: string;
 }
