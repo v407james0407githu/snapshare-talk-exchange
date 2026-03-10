@@ -11,6 +11,7 @@ const aboutLinks = [
 
 const footerSections = [
   {
+    enabledKey: "footer_community_enabled",
     titleKey: "footer_community_title",
     defaultTitle: "社群",
     links: [
@@ -21,6 +22,7 @@ const footerSections = [
     ],
   },
   {
+    enabledKey: "footer_photo_enabled",
     titleKey: "footer_photo_title",
     defaultTitle: "攝影",
     links: [
@@ -33,7 +35,7 @@ const footerSections = [
 ];
 
 export function Footer() {
-  const { siteLogo, siteName, get } = useSystemSettings();
+  const { siteLogo, siteName, get, getBool } = useSystemSettings();
 
   const socialLinks = [
     { icon: Facebook, key: "social_facebook", label: "Facebook" },
@@ -107,6 +109,7 @@ export function Footer() {
 
           {/* Dynamic Nav Links */}
           {footerSections.map((section) => {
+            if (!getBool(section.enabledKey)) return null;
             const visibleLinks = section.links.filter((l) => get(l.urlKey, l.defaultUrl));
             if (visibleLinks.length === 0) return null;
             return (
