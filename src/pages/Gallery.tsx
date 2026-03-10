@@ -116,7 +116,7 @@ export default function Gallery() {
       ...photo,
       profiles: profilesMap.get(photo.user_id),
     })) as Photo[];
-  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy]);
+  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly]);
 
   // Load page
   useEffect(() => {
