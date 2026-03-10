@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2, Aperture, Clock, Sun } from "lucide-react";
+import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2, Aperture, Clock, Sun, Award } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
