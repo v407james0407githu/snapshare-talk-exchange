@@ -27,6 +27,7 @@ interface FeaturedPhoto {
   camera_body: string | null;
   phone_model: string | null;
   brand: string | null;
+  is_featured: boolean;
   profiles?: {
     username: string;
     display_name: string | null;
