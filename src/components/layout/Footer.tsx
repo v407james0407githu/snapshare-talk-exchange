@@ -2,13 +2,14 @@ import { Link } from "react-router-dom";
 import { Camera, Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
-const footerLinks = {
-  關於: [
-    { label: "關於我們", href: "/about" },
-    { label: "聯絡我們", href: "/contact" },
-    { label: "使用條款", href: "/terms" },
-    { label: "隱私政策", href: "/privacy" },
-  ],
+const aboutLinks = [
+  { label: "關於我們", key: "footer_about_url", fallback: "/about" },
+  { label: "聯絡我們", key: "footer_contact_url", fallback: "/contact" },
+  { label: "使用條款", key: "footer_terms_url", fallback: "/terms" },
+  { label: "隱私政策", key: "footer_privacy_url", fallback: "/privacy" },
+];
+
+const staticFooterGroups = {
   社群: [
     { label: "討論區", href: "/forums" },
     { label: "作品分享", href: "/gallery" },
