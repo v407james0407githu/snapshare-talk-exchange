@@ -35,7 +35,7 @@ interface FeaturedPhoto {
   };
 }
 
-export function FeaturedCarousel() {
+export function FeaturedCarousel({ sectionTitle }: { sectionTitle?: string } = {}) {
   const [api, setApi] = useState<any>(null);
   const [current, setCurrent] = useState(0);
 

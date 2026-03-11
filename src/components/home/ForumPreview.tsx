@@ -35,7 +35,7 @@ const fallbackCategoryColors: Record<string, string> = {
   camera: "bg-blue-500/10 text-blue-600",
 };
 
-export function ForumPreview() {
+export function ForumPreview({ sectionTitle }: { sectionTitle?: string } = {}) {
   const [topics, setTopics] = useState<TopicRow[]>([]);
   const [loading, setLoading] = useState(true);
 

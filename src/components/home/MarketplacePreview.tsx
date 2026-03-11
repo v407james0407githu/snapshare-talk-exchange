@@ -42,7 +42,7 @@ const conditionColors: Record<string, string> = {
   fair: "bg-muted text-muted-foreground border-border",
 };
 
-export function MarketplacePreview() {
+export function MarketplacePreview({ sectionTitle }: { sectionTitle?: string } = {}) {
   const [listings, setListings] = useState<ListingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
