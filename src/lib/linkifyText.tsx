@@ -21,7 +21,7 @@ export function LinkifyText({ text }: { text: string }) {
             href={part}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline break-all"
+            className="text-blue-600 hover:underline break-all"
             title={part}
           >
             {truncateUrl(part)}
