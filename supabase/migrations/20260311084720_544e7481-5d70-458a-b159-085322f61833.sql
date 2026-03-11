@@ -1,0 +1,1 @@
+UPDATE public.homepage_sections SET section_label = '精選作品' WHERE section_key = 'featured_gallery';
