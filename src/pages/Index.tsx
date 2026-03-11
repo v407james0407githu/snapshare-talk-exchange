@@ -42,6 +42,7 @@ const sectionFeatureMap: Record<string, string> = {
 interface SectionData {
   section_key: string;
   section_label: string;
+  section_subtitle: string;
   is_visible: boolean;
   sort_order: number;
 }
