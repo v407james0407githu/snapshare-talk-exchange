@@ -372,7 +372,7 @@ export default function ContentManagement() {
         const s = sections[i];
         await supabase
           .from("homepage_sections")
-          .update({ sort_order: i + 1, is_visible: s.is_visible, section_label: s.section_label, updated_at: new Date().toISOString() })
+          .update({ sort_order: i + 1, is_visible: s.is_visible, section_label: s.section_label, section_subtitle: s.section_subtitle || "", updated_at: new Date().toISOString() } as any)
           .eq("id", s.id);
       }
     },
