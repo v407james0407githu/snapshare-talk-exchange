@@ -422,6 +422,11 @@ export default function ContentManagement() {
     setSectionsDirty(true);
   };
 
+  const renameSubtitle = (id: string, newSubtitle: string) => {
+    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, section_subtitle: newSubtitle } : s)));
+    setSectionsDirty(true);
+  };
+
   // ── Filtered & Grouped ──
   const filtered = contents.filter(
     (c) =>
