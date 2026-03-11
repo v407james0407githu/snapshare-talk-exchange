@@ -179,7 +179,7 @@ export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { section
             {sectionTitle || "攝影討論區"}
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            瀏覽最新討論，與同好交流心得
+            {sectionSubtitle || "瀏覽最新討論，與同好交流心得"}
           </p>
         </div>
 
