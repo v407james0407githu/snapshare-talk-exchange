@@ -97,7 +97,7 @@ function BannerLink({ url, children, className }: { url: string; children?: Reac
   return <Link to={url} className={className}>{children}</Link>;
 }
 
-export function HeroSection() {
+export function HeroSection({ sectionTitle: _sectionTitle }: { sectionTitle?: string } = {}) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   ]);

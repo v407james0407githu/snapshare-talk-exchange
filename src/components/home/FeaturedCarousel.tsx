@@ -35,7 +35,7 @@ interface FeaturedPhoto {
   };
 }
 
-export function FeaturedCarousel() {
+export function FeaturedCarousel({ sectionTitle }: { sectionTitle?: string } = {}) {
   const [api, setApi] = useState<any>(null);
   const [current, setCurrent] = useState(0);
 
@@ -109,13 +109,15 @@ export function FeaturedCarousel() {
     return null;
   }
 
+  const displayTitle = sectionTitle || "精選輪播";
+
   return (
     <section className="py-12 bg-muted/30">
       <div className="container">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              精選<span className="text-gradient">輪播</span>
+              {displayTitle}
             </h2>
             <p className="text-muted-foreground">
               社群精選的優質攝影作品

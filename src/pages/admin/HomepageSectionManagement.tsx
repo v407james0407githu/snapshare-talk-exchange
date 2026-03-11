@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { GripVertical, Save, Loader2, Eye, EyeOff } from "lucide-react";
+import { GripVertical, Save, Loader2, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -36,10 +37,15 @@ interface HomepageSection {
 function SortableRow({
   section,
   onToggleVisible,
+  onRenameLabel,
 }: {
   section: HomepageSection;
   onToggleVisible: (id: string, val: boolean) => void;
+  onRenameLabel: (id: string, newLabel: string) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [tempLabel, setTempLabel] = useState(section.section_label);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: section.id });
 
@@ -48,6 +54,19 @@ function SortableRow({
     transition,
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.7 : 1,
+  };
+
+  const handleConfirm = () => {
+    const trimmed = tempLabel.trim();
+    if (trimmed && trimmed !== section.section_label) {
+      onRenameLabel(section.id, trimmed);
+    }
+    setEditing(false);
+  };
+
+  const handleCancel = () => {
+    setTempLabel(section.section_label);
+    setEditing(false);
   };
 
   return (
@@ -68,7 +87,37 @@ function SortableRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium">{section.section_label}</span>
+          {editing ? (
+            <div className="flex items-center gap-1.5">
+              <Input
+                value={tempLabel}
+                onChange={(e) => setTempLabel(e.target.value)}
+                className="h-8 w-40 text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirm();
+                  if (e.key === "Escape") handleCancel();
+                }}
+              />
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleConfirm}>
+                <Check className="h-3.5 w-3.5 text-green-600" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCancel}>
+                <X className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span className="font-medium">{section.section_label}</span>
+              <button
+                onClick={() => { setTempLabel(section.section_label); setEditing(true); }}
+                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="編輯名稱"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
           <Badge variant="outline" className="text-[10px]">
             {section.section_key}
           </Badge>
@@ -125,7 +174,7 @@ export default function HomepageSectionManagement() {
         const s = sections[i];
         await supabase
           .from("homepage_sections")
-          .update({ sort_order: i + 1, is_visible: s.is_visible, updated_at: new Date().toISOString() })
+          .update({ sort_order: i + 1, is_visible: s.is_visible, section_label: s.section_label, updated_at: new Date().toISOString() })
           .eq("id", s.id);
       }
     },
@@ -156,8 +205,15 @@ export default function HomepageSectionManagement() {
     setDirty(true);
   };
 
+  const renameLabel = (id: string, newLabel: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, section_label: newLabel } : s))
+    );
+    setDirty(true);
+  };
+
   return (
-    <AdminLayout title="區塊排序" subtitle="拖拉調整首頁各區塊的顯示順序與可見性">
+    <AdminLayout title="區塊排序" subtitle="拖拉調整首頁各區塊的顯示順序、可見性與顯示名稱">
       {dirty && (
         <div className="mb-6 flex items-center gap-4 p-4 bg-primary/10 rounded-xl border border-primary/20">
           <span className="text-sm font-medium flex-1">您有未儲存的變更</span>
@@ -171,7 +227,7 @@ export default function HomepageSectionManagement() {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            儲存排序
+            儲存變更
           </Button>
         </div>
       )}
@@ -189,6 +245,7 @@ export default function HomepageSectionManagement() {
                   key={section.id}
                   section={section}
                   onToggleVisible={toggleVisible}
+                  onRenameLabel={renameLabel}
                 />
               ))}
             </div>

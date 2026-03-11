@@ -35,7 +35,7 @@ const fallbackCategoryColors: Record<string, string> = {
   camera: "bg-blue-500/10 text-blue-600",
 };
 
-export function ForumPreview() {
+export function ForumPreview({ sectionTitle }: { sectionTitle?: string } = {}) {
   const [topics, setTopics] = useState<TopicRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -113,7 +113,7 @@ export function ForumPreview() {
         <div className="flex items-center justify-between mb-12">
           <div>
             <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              熱門<span className="text-gradient">討論</span>
+              {sectionTitle || "熱門討論"}
             </h2>
             <p className="text-muted-foreground">
               社群最新話題與交流
