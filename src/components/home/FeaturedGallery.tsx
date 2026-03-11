@@ -110,7 +110,7 @@ export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}
         .eq("is_featured", true)
         .eq("is_hidden", false)
         .order("created_at", { ascending: false })
-        .limit(13);
+        .limit(12);
 
       if (error) {
         console.error("載入精選作品失敗:", error);
