@@ -71,7 +71,7 @@ const Index = () => {
 
   const visibleSections = sections
     ? sections.filter((s) => s.is_visible)
-    : defaultOrder.map((key) => ({ section_key: key, section_label: "", is_visible: true, sort_order: 0 }));
+    : defaultOrder.map((key) => ({ section_key: key, section_label: "", section_subtitle: "", is_visible: true, sort_order: 0 }));
 
   const filteredSections = visibleSections.filter((s) => {
     const featureKey = sectionFeatureMap[s.section_key];
