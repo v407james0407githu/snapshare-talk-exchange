@@ -488,6 +488,7 @@ export default function ContentManagement() {
                       section={section}
                       onToggleVisible={toggleVisible}
                       onRenameLabel={renameLabel}
+                      onRenameSubtitle={renameSubtitle}
                     />
                   ))}
                 </div>
