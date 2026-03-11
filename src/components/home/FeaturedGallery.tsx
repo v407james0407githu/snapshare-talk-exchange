@@ -110,7 +110,7 @@ export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}
         .eq("is_featured", true)
         .eq("is_hidden", false)
         .order("created_at", { ascending: false })
-        .limit(13);
+        .limit(12);
 
       if (error) {
         console.error("載入精選作品失敗:", error);
@@ -162,10 +162,9 @@ export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}
   // 不顯示空區塊
   if (!loading && photos.length === 0) return null;
 
-  // 分配到三行: 4-5-4
-  const row1 = photos.slice(0, 4);
-  const row2 = photos.slice(4, 9);
-  const row3 = photos.slice(9, 13);
+  // 分配到兩行: 6-6
+  const row1 = photos.slice(0, 6);
+  const row2 = photos.slice(6, 12);
 
   return (
     <section className="py-20 bg-muted/30">
@@ -189,31 +188,23 @@ export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}
 
         {loading ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 5 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
             </div>
           </div>
         ) : (
           <>
             {row1.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                 {row1.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
               </div>
             )}
             {row2.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mt-4">
                 {row2.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
-              </div>
-            )}
-            {row3.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                {row3.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
               </div>
             )}
           </>
