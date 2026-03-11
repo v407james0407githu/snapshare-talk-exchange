@@ -188,31 +188,23 @@ export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}
 
         {loading ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 5 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
             </div>
           </div>
         ) : (
           <>
             {row1.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                 {row1.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
               </div>
             )}
             {row2.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mt-4">
                 {row2.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
-              </div>
-            )}
-            {row3.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                {row3.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
               </div>
             )}
           </>
