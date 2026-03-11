@@ -205,8 +205,15 @@ export default function HomepageSectionManagement() {
     setDirty(true);
   };
 
+  const renameLabel = (id: string, newLabel: string) => {
+    setSections((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, section_label: newLabel } : s))
+    );
+    setDirty(true);
+  };
+
   return (
-    <AdminLayout title="區塊排序" subtitle="拖拉調整首頁各區塊的顯示順序與可見性">
+    <AdminLayout title="區塊排序" subtitle="拖拉調整首頁各區塊的顯示順序、可見性與顯示名稱">
       {dirty && (
         <div className="mb-6 flex items-center gap-4 p-4 bg-primary/10 rounded-xl border border-primary/20">
           <span className="text-sm font-medium flex-1">您有未儲存的變更</span>
@@ -220,7 +227,7 @@ export default function HomepageSectionManagement() {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            儲存排序
+            儲存變更
           </Button>
         </div>
       )}
@@ -238,6 +245,7 @@ export default function HomepageSectionManagement() {
                   key={section.id}
                   section={section}
                   onToggleVisible={toggleVisible}
+                  onRenameLabel={renameLabel}
                 />
               ))}
             </div>
