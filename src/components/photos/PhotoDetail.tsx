@@ -495,6 +495,7 @@ export function PhotoDetail({ photo, open, onClose }: PhotoDetailProps) {
                   rows={2}
                   className="flex-1"
                   disabled={!user || isSubmittingComment}
+                  maxLength={5000}
                 />
                 <Button
                   onClick={handleSubmitComment}

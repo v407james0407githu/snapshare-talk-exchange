@@ -1089,6 +1089,7 @@ export default function PhotoDetailPage() {
                             placeholder="寫下您的回覆..."
                             rows={2}
                             className="flex-1"
+                            maxLength={5000}
                           />
                           <div className="flex flex-col gap-1">
                             <Button
