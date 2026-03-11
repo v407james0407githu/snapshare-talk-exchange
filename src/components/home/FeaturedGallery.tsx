@@ -162,10 +162,9 @@ export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}
   // 不顯示空區塊
   if (!loading && photos.length === 0) return null;
 
-  // 分配到三行: 4-5-4
-  const row1 = photos.slice(0, 4);
-  const row2 = photos.slice(4, 9);
-  const row3 = photos.slice(9, 13);
+  // 分配到兩行: 6-6
+  const row1 = photos.slice(0, 6);
+  const row2 = photos.slice(6, 12);
 
   return (
     <section className="py-20 bg-muted/30">
