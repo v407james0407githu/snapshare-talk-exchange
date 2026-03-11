@@ -98,13 +98,12 @@ export function PhotoUpload() {
   const processFiles = useCallback((files: FileList | null) => {
     if (!files) return;
 
-    const maxFiles = profile?.is_vip ? 10 : 3;
-    const remainingSlots = maxFiles - uploadedFiles.length;
+    const remainingSlots = dailyRemaining - uploadedFiles.length;
 
     if (remainingSlots <= 0) {
       toast({
         title: "上傳限制",
-        description: `今日上傳額度已滿（${maxFiles} 張）`,
+        description: `今日上傳額度已滿（每日 ${dailyMax} 張，台灣時間重置）`,
         variant: "destructive",
       });
       return;
