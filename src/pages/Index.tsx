@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
-const sectionComponents: Record<string, React.FC> = {
+const sectionComponents: Record<string, React.FC<{ sectionTitle?: string }>> = {
   hero: HeroSection,
   equipment_categories: EquipmentCategories,
   featured_carousel: FeaturedCarousel,
@@ -39,6 +39,13 @@ const sectionFeatureMap: Record<string, string> = {
   marketplace_preview: "marketplace_enabled",
 };
 
+interface SectionData {
+  section_key: string;
+  section_label: string;
+  is_visible: boolean;
+  sort_order: number;
+}
+
 const Index = () => {
   const { galleryEnabled, forumEnabled, marketplaceEnabled } = useSystemSettings();
 
@@ -53,27 +60,28 @@ const Index = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("homepage_sections")
-        .select("section_key, is_visible, sort_order")
+        .select("section_key, section_label, is_visible, sort_order")
         .order("sort_order");
       if (error) throw error;
-      return data as { section_key: string; is_visible: boolean; sort_order: number }[];
+      return data as SectionData[];
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  const orderedKeys = (sections
-    ? sections.filter((s) => s.is_visible).map((s) => s.section_key)
-    : defaultOrder
-  ).filter((key) => {
-    const featureKey = sectionFeatureMap[key];
+  const visibleSections = sections
+    ? sections.filter((s) => s.is_visible)
+    : defaultOrder.map((key) => ({ section_key: key, section_label: "", is_visible: true, sort_order: 0 }));
+
+  const filteredSections = visibleSections.filter((s) => {
+    const featureKey = sectionFeatureMap[s.section_key];
     return !featureKey || featureFlags[featureKey] !== false;
   });
 
   return (
     <MainLayout>
-      {orderedKeys.map((key) => {
-        const Component = sectionComponents[key];
-        return Component ? <Component key={key} /> : null;
+      {filteredSections.map((s) => {
+        const Component = sectionComponents[s.section_key];
+        return Component ? <Component key={s.section_key} sectionTitle={s.section_label || undefined} /> : null;
       })}
     </MainLayout>
   );

@@ -176,7 +176,7 @@ export function EquipmentCategories() {
       <div className="container">
         <div className="text-center mb-12">
           <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">
-            攝影<span className="text-gradient">討論區</span>
+            {sectionTitle || "攝影討論區"}
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
             瀏覽最新討論，與同好交流心得

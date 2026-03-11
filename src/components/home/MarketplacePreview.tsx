@@ -89,7 +89,7 @@ export function MarketplacePreview() {
         <div className="flex items-center justify-between mb-12">
           <div>
             <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              二手<span className="text-gradient">交易區</span>
+              {sectionTitle || "二手交易區"}
             </h2>
             <p className="text-muted-foreground">
               社群認證的安心買賣平台

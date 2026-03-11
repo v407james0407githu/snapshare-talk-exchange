@@ -173,7 +173,7 @@ export function FeaturedGallery() {
         <div className="flex items-center justify-between mb-12">
           <div>
             <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              精選<span className="text-gradient">作品</span>
+              {sectionTitle || "精選作品"}
             </h2>
             <p className="text-muted-foreground">
               社群精選的優質攝影作品
