@@ -61,6 +61,19 @@ export function PhotoUpload() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+
+  // 計算今日剩餘上傳額度（台灣時區）
+  const getTodayTW = () => {
+    const now = new Date();
+    const twTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    return twTime.toISOString().split('T')[0];
+  };
+
+  const todayTW = getTodayTW();
+  const isToday = profile?.last_upload_date === todayTW;
+  const dailyUsed = isToday ? (profile?.daily_upload_count || 0) : 0;
+  const dailyMax = profile?.is_vip ? 10 : 3;
+  const dailyRemaining = Math.max(0, dailyMax - dailyUsed);
   
   // Form state
   const [title, setTitle] = useState('');
@@ -85,13 +98,12 @@ export function PhotoUpload() {
   const processFiles = useCallback((files: FileList | null) => {
     if (!files) return;
 
-    const maxFiles = profile?.is_vip ? 10 : 3;
-    const remainingSlots = maxFiles - uploadedFiles.length;
+    const remainingSlots = dailyRemaining - uploadedFiles.length;
 
     if (remainingSlots <= 0) {
       toast({
         title: "上傳限制",
-        description: `今日上傳額度已滿（${maxFiles} 張）`,
+        description: `今日上傳額度已滿（每日 ${dailyMax} 張，台灣時間重置）`,
         variant: "destructive",
       });
       return;
@@ -318,7 +330,7 @@ export function PhotoUpload() {
               onChange={handleFileSelect}
             />
             <p className="text-sm text-muted-foreground mt-4">
-              今日可上傳：{(profile?.is_vip ? 10 : 3) - (profile?.daily_upload_count || 0)} 張
+              今日可上傳：{dailyRemaining} / {dailyMax} 張（台灣時間每日重置）
             </p>
           </div>
         </CardContent>
