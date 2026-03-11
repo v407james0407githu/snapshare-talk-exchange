@@ -412,6 +412,7 @@ export default function Messages() {
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder="輸入訊息..."
                       disabled={sendMessage.isPending}
+                      maxLength={2000}
                     />
                     <Button
                       type="submit"

@@ -793,6 +793,7 @@ export default function ForumTopic() {
                 onChange={(e) => setReplyContent(e.target.value)}
                 rows={4}
                 disabled={!user}
+                maxLength={10000}
               />
               {replyDrag.dragOver && (
                 <div className="absolute inset-0 bg-primary/10 rounded-md flex items-center justify-center pointer-events-none">
