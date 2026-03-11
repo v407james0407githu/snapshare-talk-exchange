@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
-const sectionComponents: Record<string, React.FC<{ sectionTitle?: string }>> = {
+const sectionComponents: Record<string, React.FC<{ sectionTitle?: string; sectionSubtitle?: string }>> = {
   hero: HeroSection,
   equipment_categories: EquipmentCategories,
   featured_carousel: FeaturedCarousel,
