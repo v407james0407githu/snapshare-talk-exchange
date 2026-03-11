@@ -17,7 +17,6 @@ import {
   Bell,
   ChevronDown,
   FileText,
-  Layers,
 } from "lucide-react";
 import {
   DropdownMenu,
