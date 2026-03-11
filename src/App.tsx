@@ -77,7 +77,7 @@ const App = () => (
             <Route path="/admin/categories" element={<CategoryManagement />} />
             <Route path="/admin/content" element={<ContentManagement />} />
             <Route path="/admin/photos" element={<PhotoManagement />} />
-            <Route path="/admin/sections" element={<HomepageSectionManagement />} />
+            <Route path="/admin/sections" element={<ContentManagement />} />
             <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
             <Route path="/admin/settings" element={<SystemSettings />} />
             <Route path="*" element={<NotFound />} />
