@@ -404,6 +404,7 @@ export type Database = {
           is_visible: boolean
           section_key: string
           section_label: string
+          section_subtitle: string
           sort_order: number
           updated_at: string | null
         }
@@ -413,6 +414,7 @@ export type Database = {
           is_visible?: boolean
           section_key: string
           section_label: string
+          section_subtitle?: string
           sort_order?: number
           updated_at?: string | null
         }
@@ -422,6 +424,7 @@ export type Database = {
           is_visible?: boolean
           section_key?: string
           section_label?: string
+          section_subtitle?: string
           sort_order?: number
           updated_at?: string | null
         }
