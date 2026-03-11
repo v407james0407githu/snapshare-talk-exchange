@@ -98,7 +98,7 @@ function PhotoCardSkeleton() {
   );
 }
 
-export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}) {
+export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const [photos, setPhotos] = useState<FeaturedPhoto[]>([]);
   const [loading, setLoading] = useState(true);
 
