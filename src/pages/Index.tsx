@@ -61,7 +61,7 @@ const Index = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("homepage_sections")
-        .select("section_key, section_label, is_visible, sort_order")
+        .select("section_key, section_label, section_subtitle, is_visible, sort_order")
         .order("sort_order");
       if (error) throw error;
       return data as SectionData[];
