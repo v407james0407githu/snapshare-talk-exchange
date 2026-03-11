@@ -566,7 +566,7 @@ export default function PhotoDetailPage() {
               </Link>
 
               {photo.description && (
-                <p className="text-muted-foreground mb-4">{photo.description}</p>
+                <p className="text-muted-foreground mb-4 whitespace-pre-wrap"><LinkifyText text={photo.description} /></p>
               )}
 
               {/* Equipment Tags */}
