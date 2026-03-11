@@ -86,6 +86,7 @@ interface HomepageSection {
   id: string;
   section_key: string;
   section_label: string;
+  section_subtitle: string;
   sort_order: number;
   is_visible: boolean;
 }
