@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { getSafeErrorMessage } from "@/lib/errorSanitizer";
+import { LinkifyText } from "@/lib/linkifyText";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
@@ -565,7 +566,7 @@ export default function PhotoDetailPage() {
               </Link>
 
               {photo.description && (
-                <p className="text-muted-foreground mb-4">{photo.description}</p>
+                <p className="text-muted-foreground mb-4 whitespace-pre-wrap"><LinkifyText text={photo.description} /></p>
               )}
 
               {/* Equipment Tags */}

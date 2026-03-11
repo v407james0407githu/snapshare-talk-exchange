@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LinkifyText } from '@/lib/linkifyText';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -293,7 +294,7 @@ export function PhotoDetail({ photo, open, onClose }: PhotoDetailProps) {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Description */}
               {photo.description && (
-                <p className="text-sm">{photo.description}</p>
+                <p className="text-sm whitespace-pre-wrap"><LinkifyText text={photo.description} /></p>
               )}
 
               {/* Equipment Tags */}
