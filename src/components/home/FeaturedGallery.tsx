@@ -103,17 +103,17 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchFeatured() {
+    async function fetchLatest() {
+      // Fetch more than 13 to account for deduplication by user
       const { data, error } = await supabase
         .from("photos")
-        .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, featured_order")
-        .eq("is_featured", true)
+        .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, created_at")
         .eq("is_hidden", false)
         .order("created_at", { ascending: false })
-        .limit(13);
+        .limit(60);
 
       if (error) {
-        console.error("載入精選作品失敗:", error);
+        console.error("載入最新作品失敗:", error);
         setLoading(false);
         return;
       }
@@ -124,8 +124,16 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
         return;
       }
 
-      // 取得所有作者的 user_id，用 RPC 查詢公開資料
-      const userIds = [...new Set(data.map((p) => p.user_id))];
+      // Deduplicate: keep only the latest photo per user
+      const seenUsers = new Set<string>();
+      const unique = data.filter((p) => {
+        if (seenUsers.has(p.user_id)) return false;
+        seenUsers.add(p.user_id);
+        return true;
+      }).slice(0, 13);
+
+      // Fetch author profiles
+      const userIds = [...new Set(unique.map((p) => p.user_id))];
       const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {};
 
       for (const uid of userIds) {
@@ -135,7 +143,7 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
         }
       }
 
-      const mapped: FeaturedPhoto[] = data.map((p: any) => {
+      const mapped: FeaturedPhoto[] = unique.map((p: any) => {
         const profile = profileMap[p.user_id];
         return {
           id: p.id,
@@ -156,7 +164,7 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
       setLoading(false);
     }
 
-    fetchFeatured();
+    fetchLatest();
   }, []);
 
   // 不顯示空區塊
