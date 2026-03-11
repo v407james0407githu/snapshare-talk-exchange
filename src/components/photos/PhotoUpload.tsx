@@ -330,7 +330,7 @@ export function PhotoUpload() {
               onChange={handleFileSelect}
             />
             <p className="text-sm text-muted-foreground mt-4">
-              今日可上傳：{(profile?.is_vip ? 10 : 3) - (profile?.daily_upload_count || 0)} 張
+              今日可上傳：{dailyRemaining} / {dailyMax} 張（台灣時間每日重置）
             </p>
           </div>
         </CardContent>
