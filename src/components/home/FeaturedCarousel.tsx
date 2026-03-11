@@ -35,7 +35,7 @@ interface FeaturedPhoto {
   };
 }
 
-export function FeaturedCarousel({ sectionTitle }: { sectionTitle?: string } = {}) {
+export function FeaturedCarousel({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const [api, setApi] = useState<any>(null);
   const [current, setCurrent] = useState(0);
 
@@ -120,7 +120,7 @@ export function FeaturedCarousel({ sectionTitle }: { sectionTitle?: string } = {
               {displayTitle}
             </h2>
             <p className="text-muted-foreground">
-              社群精選的優質攝影作品
+              {sectionSubtitle || "社群精選的優質攝影作品"}
             </p>
           </div>
           <Link to="/gallery">

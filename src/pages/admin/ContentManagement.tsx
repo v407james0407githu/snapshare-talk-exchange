@@ -86,6 +86,7 @@ interface HomepageSection {
   id: string;
   section_key: string;
   section_label: string;
+  section_subtitle: string;
   sort_order: number;
   is_visible: boolean;
 }
@@ -95,13 +96,17 @@ function SortableRow({
   section,
   onToggleVisible,
   onRenameLabel,
+  onRenameSubtitle,
 }: {
   section: HomepageSection;
   onToggleVisible: (id: string, val: boolean) => void;
   onRenameLabel: (id: string, newLabel: string) => void;
+  onRenameSubtitle: (id: string, newSubtitle: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editingLabel, setEditingLabel] = useState(false);
+  const [editingSubtitle, setEditingSubtitle] = useState(false);
   const [tempLabel, setTempLabel] = useState(section.section_label);
+  const [tempSubtitle, setTempSubtitle] = useState(section.section_subtitle || "");
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: section.id });
@@ -113,17 +118,30 @@ function SortableRow({
     opacity: isDragging ? 0.7 : 1,
   };
 
-  const handleConfirm = () => {
+  const handleConfirmLabel = () => {
     const trimmed = tempLabel.trim();
     if (trimmed && trimmed !== section.section_label) {
       onRenameLabel(section.id, trimmed);
     }
-    setEditing(false);
+    setEditingLabel(false);
   };
 
-  const handleCancel = () => {
+  const handleCancelLabel = () => {
     setTempLabel(section.section_label);
-    setEditing(false);
+    setEditingLabel(false);
+  };
+
+  const handleConfirmSubtitle = () => {
+    const trimmed = tempSubtitle.trim();
+    if (trimmed !== (section.section_subtitle || "")) {
+      onRenameSubtitle(section.id, trimmed);
+    }
+    setEditingSubtitle(false);
+  };
+
+  const handleCancelSubtitle = () => {
+    setTempSubtitle(section.section_subtitle || "");
+    setEditingSubtitle(false);
   };
 
   return (
@@ -142,9 +160,10 @@ function SortableRow({
         <GripVertical className="h-5 w-5 text-muted-foreground" />
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 space-y-1">
+        {/* Title row */}
         <div className="flex items-center gap-2 flex-wrap">
-          {editing ? (
+          {editingLabel ? (
             <div className="flex items-center gap-1.5">
               <Input
                 value={tempLabel}
@@ -152,14 +171,14 @@ function SortableRow({
                 className="h-8 w-40 text-sm"
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleConfirm();
-                  if (e.key === "Escape") handleCancel();
+                  if (e.key === "Enter") handleConfirmLabel();
+                  if (e.key === "Escape") handleCancelLabel();
                 }}
               />
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleConfirm}>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleConfirmLabel}>
                 <Check className="h-3.5 w-3.5 text-green-600" />
               </Button>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCancel}>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleCancelLabel}>
                 <X className="h-3.5 w-3.5 text-destructive" />
               </Button>
             </div>
@@ -167,9 +186,9 @@ function SortableRow({
             <>
               <span className="font-medium">{section.section_label}</span>
               <button
-                onClick={() => { setTempLabel(section.section_label); setEditing(true); }}
+                onClick={() => { setTempLabel(section.section_label); setEditingLabel(true); }}
                 className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                title="編輯顯示名稱"
+                title="編輯標題"
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
@@ -178,6 +197,44 @@ function SortableRow({
           <Badge variant="outline" className="text-[10px]">
             {section.section_key}
           </Badge>
+        </div>
+
+        {/* Subtitle row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {editingSubtitle ? (
+            <div className="flex items-center gap-1.5">
+              <Input
+                value={tempSubtitle}
+                onChange={(e) => setTempSubtitle(e.target.value)}
+                placeholder="輸入副標題..."
+                className="h-7 w-52 text-xs"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirmSubtitle();
+                  if (e.key === "Escape") handleCancelSubtitle();
+                }}
+              />
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleConfirmSubtitle}>
+                <Check className="h-3 w-3 text-green-600" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancelSubtitle}>
+                <X className="h-3 w-3 text-destructive" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span className="text-xs text-muted-foreground">
+                {section.section_subtitle ? `副標題：${section.section_subtitle}` : "未設定副標題"}
+              </span>
+              <button
+                onClick={() => { setTempSubtitle(section.section_subtitle || ""); setEditingSubtitle(true); }}
+                className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="編輯副標題"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -315,7 +372,7 @@ export default function ContentManagement() {
         const s = sections[i];
         await supabase
           .from("homepage_sections")
-          .update({ sort_order: i + 1, is_visible: s.is_visible, section_label: s.section_label, updated_at: new Date().toISOString() })
+          .update({ sort_order: i + 1, is_visible: s.is_visible, section_label: s.section_label, section_subtitle: s.section_subtitle || "", updated_at: new Date().toISOString() } as any)
           .eq("id", s.id);
       }
     },
@@ -362,6 +419,11 @@ export default function ContentManagement() {
 
   const renameLabel = (id: string, newLabel: string) => {
     setSections((prev) => prev.map((s) => (s.id === id ? { ...s, section_label: newLabel } : s)));
+    setSectionsDirty(true);
+  };
+
+  const renameSubtitle = (id: string, newSubtitle: string) => {
+    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, section_subtitle: newSubtitle } : s)));
     setSectionsDirty(true);
   };
 
@@ -426,6 +488,7 @@ export default function ContentManagement() {
                       section={section}
                       onToggleVisible={toggleVisible}
                       onRenameLabel={renameLabel}
+                      onRenameSubtitle={renameSubtitle}
                     />
                   ))}
                 </div>

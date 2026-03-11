@@ -98,7 +98,7 @@ function PhotoCardSkeleton() {
   );
 }
 
-export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}) {
+export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const [photos, setPhotos] = useState<FeaturedPhoto[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -176,7 +176,7 @@ export function FeaturedGallery({ sectionTitle }: { sectionTitle?: string } = {}
               {sectionTitle || "精選作品"}
             </h2>
             <p className="text-muted-foreground">
-              社群精選的優質攝影作品
+              {sectionSubtitle || "社群精選的優質攝影作品"}
             </p>
           </div>
           <Link to="/gallery">

@@ -42,7 +42,7 @@ const conditionColors: Record<string, string> = {
   fair: "bg-muted text-muted-foreground border-border",
 };
 
-export function MarketplacePreview({ sectionTitle }: { sectionTitle?: string } = {}) {
+export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const [listings, setListings] = useState<ListingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -92,7 +92,7 @@ export function MarketplacePreview({ sectionTitle }: { sectionTitle?: string } =
               {sectionTitle || "二手交易區"}
             </h2>
             <p className="text-muted-foreground">
-              社群認證的安心買賣平台
+              {sectionSubtitle || "社群認證的安心買賣平台"}
             </p>
           </div>
           <Link to="/marketplace">

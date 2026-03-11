@@ -1,0 +1,1 @@
+ALTER TABLE public.homepage_sections ADD COLUMN section_subtitle text NOT NULL DEFAULT '';

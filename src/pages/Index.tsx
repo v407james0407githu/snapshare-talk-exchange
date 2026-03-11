@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
-const sectionComponents: Record<string, React.FC<{ sectionTitle?: string }>> = {
+const sectionComponents: Record<string, React.FC<{ sectionTitle?: string; sectionSubtitle?: string }>> = {
   hero: HeroSection,
   equipment_categories: EquipmentCategories,
   featured_carousel: FeaturedCarousel,
@@ -42,6 +42,7 @@ const sectionFeatureMap: Record<string, string> = {
 interface SectionData {
   section_key: string;
   section_label: string;
+  section_subtitle: string;
   is_visible: boolean;
   sort_order: number;
 }
@@ -60,7 +61,7 @@ const Index = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("homepage_sections")
-        .select("section_key, section_label, is_visible, sort_order")
+        .select("section_key, section_label, section_subtitle, is_visible, sort_order")
         .order("sort_order");
       if (error) throw error;
       return data as SectionData[];
@@ -70,7 +71,7 @@ const Index = () => {
 
   const visibleSections = sections
     ? sections.filter((s) => s.is_visible)
-    : defaultOrder.map((key) => ({ section_key: key, section_label: "", is_visible: true, sort_order: 0 }));
+    : defaultOrder.map((key) => ({ section_key: key, section_label: "", section_subtitle: "", is_visible: true, sort_order: 0 }));
 
   const filteredSections = visibleSections.filter((s) => {
     const featureKey = sectionFeatureMap[s.section_key];
@@ -81,7 +82,7 @@ const Index = () => {
     <MainLayout>
       {filteredSections.map((s) => {
         const Component = sectionComponents[s.section_key];
-        return Component ? <Component key={s.section_key} sectionTitle={s.section_label || undefined} /> : null;
+        return Component ? <Component key={s.section_key} sectionTitle={s.section_label || undefined} sectionSubtitle={s.section_subtitle || undefined} /> : null;
       })}
     </MainLayout>
   );

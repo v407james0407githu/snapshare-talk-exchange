@@ -35,7 +35,7 @@ const fallbackCategoryColors: Record<string, string> = {
   camera: "bg-blue-500/10 text-blue-600",
 };
 
-export function ForumPreview({ sectionTitle }: { sectionTitle?: string } = {}) {
+export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const [topics, setTopics] = useState<TopicRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -116,7 +116,7 @@ export function ForumPreview({ sectionTitle }: { sectionTitle?: string } = {}) {
               {sectionTitle || "熱門討論"}
             </h2>
             <p className="text-muted-foreground">
-              社群最新話題與交流
+              {sectionSubtitle || "社群最新話題與交流"}
             </p>
           </div>
           <Link to="/forums">

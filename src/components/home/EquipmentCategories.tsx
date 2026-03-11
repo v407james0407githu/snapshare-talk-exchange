@@ -170,7 +170,7 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnP
   );
 }
 
-export function EquipmentCategories({ sectionTitle }: { sectionTitle?: string } = {}) {
+export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   return (
     <section className="py-20 bg-background">
       <div className="container">
@@ -179,7 +179,7 @@ export function EquipmentCategories({ sectionTitle }: { sectionTitle?: string } 
             {sectionTitle || "攝影討論區"}
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            瀏覽最新討論，與同好交流心得
+            {sectionSubtitle || "瀏覽最新討論，與同好交流心得"}
           </p>
         </div>
 
