@@ -116,7 +116,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
               {sectionTitle || "熱門討論"}
             </h2>
             <p className="text-muted-foreground">
-              社群最新話題與交流
+              {sectionSubtitle || "社群最新話題與交流"}
             </p>
           </div>
           <Link to="/forums">

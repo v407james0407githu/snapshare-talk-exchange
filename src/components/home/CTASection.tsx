@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Camera, Sparkles } from "lucide-react";
 import { useSiteContent } from "@/hooks/useSiteContent";
 
-export function CTASection({ sectionTitle: _sectionTitle }: { sectionTitle?: string } = {}) {
+export function CTASection({ sectionTitle: _sectionTitle, sectionSubtitle: _sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const { get } = useSiteContent();
 
   const title = get("cta_title", "準備好分享您的攝影故事了嗎？");

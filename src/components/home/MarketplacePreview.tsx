@@ -92,7 +92,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
               {sectionTitle || "二手交易區"}
             </h2>
             <p className="text-muted-foreground">
-              社群認證的安心買賣平台
+              {sectionSubtitle || "社群認證的安心買賣平台"}
             </p>
           </div>
           <Link to="/marketplace">
