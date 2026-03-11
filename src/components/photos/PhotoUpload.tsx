@@ -61,6 +61,19 @@ export function PhotoUpload() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+
+  // 計算今日剩餘上傳額度（台灣時區）
+  const getTodayTW = () => {
+    const now = new Date();
+    const twTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+    return twTime.toISOString().split('T')[0];
+  };
+
+  const todayTW = getTodayTW();
+  const isToday = profile?.last_upload_date === todayTW;
+  const dailyUsed = isToday ? (profile?.daily_upload_count || 0) : 0;
+  const dailyMax = profile?.is_vip ? 10 : 3;
+  const dailyRemaining = Math.max(0, dailyMax - dailyUsed);
   
   // Form state
   const [title, setTitle] = useState('');
