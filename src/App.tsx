@@ -29,7 +29,7 @@ import BannerManagement from "./pages/admin/BannerManagement";
 import CategoryManagement from "./pages/admin/CategoryManagement";
 import ContentManagement from "./pages/admin/ContentManagement";
 import PhotoManagement from "./pages/admin/PhotoManagement";
-import HomepageSectionManagement from "./pages/admin/HomepageSectionManagement";
+
 import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
 import SystemSettings from "./pages/admin/SystemSettings";
 import ResetPassword from "./pages/ResetPassword";
