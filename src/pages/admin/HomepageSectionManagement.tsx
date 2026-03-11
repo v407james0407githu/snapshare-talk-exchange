@@ -174,7 +174,7 @@ export default function HomepageSectionManagement() {
         const s = sections[i];
         await supabase
           .from("homepage_sections")
-          .update({ sort_order: i + 1, is_visible: s.is_visible, updated_at: new Date().toISOString() })
+          .update({ sort_order: i + 1, is_visible: s.is_visible, section_label: s.section_label, updated_at: new Date().toISOString() })
           .eq("id", s.id);
       }
     },
