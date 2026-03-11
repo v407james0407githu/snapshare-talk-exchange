@@ -65,7 +65,7 @@ const Index = () => {
       if (error) throw error;
       return data as SectionData[];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 
   const visibleSections = sections
