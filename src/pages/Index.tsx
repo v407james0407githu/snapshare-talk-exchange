@@ -82,7 +82,7 @@ const Index = () => {
     <MainLayout>
       {filteredSections.map((s) => {
         const Component = sectionComponents[s.section_key];
-        return Component ? <Component key={s.section_key} sectionTitle={s.section_label || undefined} /> : null;
+        return Component ? <Component key={s.section_key} sectionTitle={s.section_label || undefined} sectionSubtitle={s.section_subtitle || undefined} /> : null;
       })}
     </MainLayout>
   );
