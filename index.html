@@ -28,7 +28,8 @@
     <!-- Preload LCP hero image — mobile-optimized size -->
     <link rel="preload" as="image" href="https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=640&auto=format&q=75" fetchpriority="high" />
 
-    <!-- Preconnect to Supabase for faster API/image loading -->
+    <!-- Preconnect to image/API origins for faster LCP -->
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="preconnect" href="https://wiiaaettcyyxekicpyuh.supabase.co" />
   </head>
 
