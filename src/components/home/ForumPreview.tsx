@@ -51,7 +51,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
         .select("id, title, category, category_id, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
         .eq("is_hidden", false)
         .order("reply_count", { ascending: false })
-        .limit(15);
+        .limit(6);
 
       if (error || !data || data.length === 0) {
         setLoading(false);
