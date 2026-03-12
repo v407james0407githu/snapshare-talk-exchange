@@ -117,8 +117,9 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   ]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
 
-  const { data: banners } = useQuery({
+  const { data: banners, isLoading } = useQuery({
     queryKey: ["hero-banners"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -133,6 +134,7 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
         image_url: optimizeUnsplashUrl(b.image_url),
       }));
     },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const slides = banners ?? fallbackBanners;
@@ -149,8 +151,30 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     return () => { emblaApi.off("select", onSelect); };
   }, [emblaApi, onSelect]);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const hasTextContent = (banner: Banner) =>
     banner.title || banner.subtitle || (banner.cta_primary_text && banner.cta_primary_link);
+
+  // 初始渲染時只顯示第一張圖片，避免 SSR/水合問題
+  if (!isMounted && isLoading) {
+    const banner = fallbackBanners[0];
+    return (
+      <section className="relative h-[300px] md:h-[50vh] md:max-h-[60vh] overflow-hidden group mt-16 bg-muted">
+        <img
+          src={banner.image_url}
+          width={1280}
+          height={720}
+          alt={banner.title || "Banner"}
+          className="w-full h-full object-cover object-center"
+          loading="eager"
+          fetchPriority="high"
+        />
+      </section>
+    );
+  }
 
   return (
     <>
