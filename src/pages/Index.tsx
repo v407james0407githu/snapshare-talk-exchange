@@ -43,6 +43,7 @@ const sectionFeatureMap: Record<string, string> = {
 /** Loading placeholder matching approximate section heights to prevent CLS */
 function SectionFallback({ sectionKey }: { sectionKey: string }) {
   const heights: Record<string, string> = {
+    featured_carousel: "min-h-[620px]",
     equipment_categories: "min-h-[500px]",
     featured_gallery: "min-h-[480px]",
     forum_preview: "min-h-[500px]",
@@ -52,23 +53,31 @@ function SectionFallback({ sectionKey }: { sectionKey: string }) {
   return <div className={`${heights[sectionKey] || "min-h-[400px]"}`} />;
 }
 
-/** Wrapper that renders a lazy section only when it's near the viewport */
-function LazyWrapper({ 
-  children, 
-  sectionKey 
-}: { 
-  children: React.ReactNode; 
+/** Wrapper that mounts a section only when it's near the viewport */
+function LazyWrapper({
+  children,
+  sectionKey
+}: {
+  children: React.ReactNode;
   sectionKey: string;
 }) {
-  // Hero and first carousel don't need lazy wrapper
-  if (sectionKey === 'hero' || sectionKey === 'featured_carousel') {
-    return <>{children}</>;
-  }
-  
+  const isCritical = sectionKey === "hero";
+  const [sectionRef, isVisible] = useLazySection(
+    sectionKey === "featured_carousel" ? "180px 0px" : "420px 0px"
+  );
+
+  if (isCritical) return <>{children}</>;
+
   return (
-    <Suspense fallback={<SectionFallback sectionKey={sectionKey} />}>
-      {children}
-    </Suspense>
+    <div ref={sectionRef}>
+      {isVisible ? (
+        <Suspense fallback={<SectionFallback sectionKey={sectionKey} />}>
+          {children}
+        </Suspense>
+      ) : (
+        <SectionFallback sectionKey={sectionKey} />
+      )}
+    </div>
   );
 }
 
