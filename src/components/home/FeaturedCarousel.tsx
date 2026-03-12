@@ -317,21 +317,44 @@ export function FeaturedCarousel({
 
   if (isLoading) {
     return (
-      <section className="py-12 bg-muted/30 min-h-[600px]">
+      <section className="py-12 bg-muted/30 min-h-[680px]">
         <div className="container">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <div className="h-10 w-48 bg-muted animate-pulse rounded mb-2" />
+              <div className="h-5 w-64 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="hidden sm:block h-10 w-24 bg-muted animate-pulse rounded" />
+          </div>
+          
+          {/* Row 1 Skeleton - 與 ClassicCarouselRow 一致 */}
           <div className="mb-8">
-            <div className="h-10 w-40 bg-muted animate-pulse rounded" />
-            <div className="h-5 w-60 bg-muted animate-pulse rounded mt-2" />
+            <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+              ))}
+            </div>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full bg-muted animate-pulse" />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="aspect-[4/3] bg-muted animate-pulse rounded-xl" />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="aspect-[4/3] bg-muted animate-pulse rounded-xl" />
-            ))}
+          
+          {/* Row 2 Skeleton - 與 FreeScrollCarouselRow 一致 */}
+          <div>
+            <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+            <div className="flex gap-4 overflow-hidden">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+              ))}
+            </div>
+            <div className="flex items-center justify-center gap-2 mt-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full bg-muted animate-pulse" />
+              ))}
+            </div>
           </div>
         </div>
       </section>
