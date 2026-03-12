@@ -424,6 +424,96 @@ export default function AnalyticsDashboard() {
         </Card>
       </div>
 
+      {/* Bandwidth Estimation */}
+      {bandwidth && (
+        <>
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Activity className="h-5 w-5" /> 頻寬流量估算</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-2"><Download className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize(bandwidth.totalEstimatedMB)}</div>
+                <div className="text-xs text-muted-foreground">{rangeLabel}估算總流量</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center mb-2"><Image className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize(bandwidth.photoViewsMB)}</div>
+                <div className="text-xs text-muted-foreground">圖片瀏覽流量</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center mb-2"><FileText className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize(bandwidth.pageViewsMB)}</div>
+                <div className="text-xs text-muted-foreground">頁面瀏覽流量</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center mb-2"><HardDrive className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize((bandwidth.totalStoragePhotos * AVG_PHOTO_WEIGHT_KB) / 1024)}</div>
+                <div className="text-xs text-muted-foreground">估算儲存空間（{bandwidth.totalStoragePhotos} 張）</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 mb-8">
+            <Card>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Activity className="h-4 w-4" /> 每日頻寬估算（{rangeLabel}）</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={bandwidth.dailyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} unit=" MB" />
+                    <Tooltip formatter={(value: number) => [`${value} MB`, "頻寬"]} />
+                    <Bar dataKey="mb" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="MB" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" /> 流量組成分析</CardTitle></CardHeader>
+              <CardContent>
+                {(() => {
+                  const bwBreakdown = [
+                    { name: "圖片瀏覽", count: Math.round(bandwidth.photoViewsMB) },
+                    { name: "頁面載入", count: Math.round(bandwidth.pageViewsMB) },
+                  ].filter(d => d.count > 0);
+                  return bwBreakdown.length > 0 ? (
+                    <>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <PieChart>
+                          <Pie data={bwBreakdown} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                            {bwBreakdown.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => [`${value} MB`, "流量"]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex justify-center gap-4 mt-2">
+                        {bwBreakdown.map((d, i) => (
+                          <div key={d.name} className="flex items-center gap-1.5 text-xs">
+                            <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                            {d.name}: {formatSize(d.count)}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-10 text-center text-sm text-muted-foreground">尚無資料</div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
+          <p className="text-xs text-muted-foreground mb-8">
+            * 頻寬為估算值，基於平均頁面大小 {AVG_PAGE_WEIGHT_KB}KB 和平均圖片大小 {(AVG_PHOTO_WEIGHT_KB / 1024).toFixed(1)}MB 計算。實際流量可能因快取、CDN 和壓縮而有所不同。
+          </p>
+        </>
+      )}
+
       {/* Pages, Referrers, Countries, Devices */}
       <div className="grid lg:grid-cols-2 xl:grid-cols-4 gap-8 mb-8">
         {/* Top Pages */}
