@@ -25,6 +25,7 @@ interface PhotoCardProps {
 
 function PhotoCard({ photo }: PhotoCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
     <Link
