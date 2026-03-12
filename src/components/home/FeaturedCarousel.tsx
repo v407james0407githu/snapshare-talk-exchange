@@ -57,7 +57,7 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
           <div className="absolute inset-0 animate-pulse bg-muted" />
         )}
         <img
-          src={photo.image_url}
+          src={photo.thumbnail_url || photo.image_url}
           alt={photo.title}
           className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImgLoaded(true)}
