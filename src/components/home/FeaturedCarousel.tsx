@@ -211,7 +211,7 @@ function FreeScrollCarouselRow({
       >
         <CarouselContent className="-ml-5">
           {photos.map((photo) => (
-            <CarouselItem key={photo.id} className="pl-5 basis-[85%] md:basis-[46%]">
+            <CarouselItem key={photo.id} className="pl-5 basis-[85%] md:basis-[45.45%]">
               <PhotoCard photo={photo} />
             </CarouselItem>
           ))}
