@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Eye, Star, ArrowRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { optimizeImageUrl } from '@/lib/responsiveImage';
 
 interface FeaturedPhoto {
   id: string;
@@ -39,7 +40,7 @@ function PhotoCard({ photo }: PhotoCardProps) {
           <div className="absolute inset-0 animate-pulse bg-muted" />
         )}
         <img
-          src={photo.thumbnailUrl || photo.imageUrl}
+          src={optimizeImageUrl(photo.thumbnailUrl || photo.imageUrl)}
           sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
           alt={photo.title}
           className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
