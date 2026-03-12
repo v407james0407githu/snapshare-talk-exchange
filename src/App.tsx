@@ -1,11 +1,8 @@
-import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { DynamicMeta } from "@/components/layout/DynamicMeta";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { Loader2 } from "lucide-react";
@@ -16,7 +13,10 @@ import Index from "./pages/Index";
 // Auth is not needed on initial homepage load
 const Auth = lazy(() => import("./pages/Auth"));
 
-// Lazy loaded pages
+// Defer non-critical overlays/effects
+const Toaster = lazy(() => import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })));
+const Sonner = lazy(() => import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })));
+const DynamicMeta = lazy(() => import("@/components/layout/DynamicMeta").then((m) => ({ default: m.DynamicMeta })));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const PhotoDetail = lazy(() => import("./pages/PhotoDetail"));
 const Forums = lazy(() => import("./pages/Forums"));
@@ -68,16 +68,33 @@ function PageTracker() {
   return null;
 }
 
+function DeferredNonCritical() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEnabled(true), 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (!enabled) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <DynamicMeta />
+      <Toaster />
+      <Sonner />
+    </Suspense>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
         <BrowserRouter>
           <ScrollToTop />
           <PageTracker />
-          <DynamicMeta />
+          <DeferredNonCritical />
           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />

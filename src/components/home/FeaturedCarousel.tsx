@@ -349,7 +349,7 @@ export function FeaturedCarousel({
   if (isEmpty) return null;
 
   return (
-    <section className="py-12 bg-muted/30">
+    <section className="py-12 bg-muted/30 min-h-[820px] md:min-h-[720px]">
       <div className="container">
         <div className="flex items-center justify-between mb-8">
           {l1 ? (

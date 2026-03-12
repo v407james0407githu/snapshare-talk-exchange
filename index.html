@@ -17,19 +17,12 @@
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- Preconnect to Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Load only essential font weight (400) eagerly, defer rest -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400&display=swap" />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&family=Playfair+Display:wght@700&display=swap" onload="this.rel='stylesheet'" />
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&family=Playfair+Display:wght@700&display=swap" />
-    </noscript>
+    <!-- Performance-first: use local/system font stack to avoid render-blocking font requests on mobile -->
     <!-- Preload LCP hero image — mobile-optimized size -->
     <link rel="preload" as="image" href="https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=640&auto=format&q=75" fetchpriority="high" />
 
-    <!-- Preconnect to Supabase for faster API/image loading -->
+    <!-- Preconnect to image/API origins for faster LCP -->
+    <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="preconnect" href="https://wiiaaettcyyxekicpyuh.supabase.co" />
   </head>
 
