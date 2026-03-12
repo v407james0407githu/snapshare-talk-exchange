@@ -151,7 +151,6 @@ export default function PhotoDetailPage() {
   // Adjacent photo navigation
   const [prevPhotoId, setPrevPhotoId] = useState<string | null>(null);
   const [nextPhotoId, setNextPhotoId] = useState<string | null>(null);
-  const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(null);
 
   // Dynamic OG meta tags
   useEffect(() => {
@@ -221,10 +220,8 @@ export default function PhotoDetailPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "ArrowLeft" && prevPhotoId) {
-        setSlideDirection("right");
         navigate(`/gallery/${prevPhotoId}`);
       } else if (e.key === "ArrowRight" && nextPhotoId) {
-        setSlideDirection("left");
         navigate(`/gallery/${nextPhotoId}`);
       }
     };
@@ -673,33 +670,24 @@ export default function PhotoDetailPage() {
               {/* Previous Photo Arrow */}
               {prevPhotoId && (
                 <button
-                  onClick={() => { setSlideDirection("right"); navigate(`/gallery/${prevPhotoId}`); }}
+                  onClick={() => navigate(`/gallery/${prevPhotoId}`)}
                   className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
                   aria-label="上一張照片"
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
               )}
+              {/* Next Photo Arrow */}
               {nextPhotoId && (
                 <button
-                  onClick={() => { setSlideDirection("left"); navigate(`/gallery/${nextPhotoId}`); }}
+                  onClick={() => navigate(`/gallery/${nextPhotoId}`)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
                   aria-label="下一張照片"
                 >
                   <ChevronRight className="h-6 w-6" />
                 </button>
               )}
-              <div
-                key={photoId}
-                className={`bg-card rounded-xl border border-border overflow-hidden ${
-                  slideDirection === "left"
-                    ? "animate-slide-in-from-right"
-                    : slideDirection === "right"
-                    ? "animate-slide-in-from-left"
-                    : "animate-fade-in"
-                }`}
-                onAnimationEnd={() => setSlideDirection(null)}
-              >
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
                 <img
                   src={photo.image_url}
                   alt={photo.title}
