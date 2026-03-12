@@ -151,6 +151,7 @@ export default function PhotoDetailPage() {
   // Adjacent photo navigation
   const [prevPhotoId, setPrevPhotoId] = useState<string | null>(null);
   const [nextPhotoId, setNextPhotoId] = useState<string | null>(null);
+  const [slideDirection, setSlideDirection] = useState<"left" | "right" | null>(null);
 
   // Dynamic OG meta tags
   useEffect(() => {
