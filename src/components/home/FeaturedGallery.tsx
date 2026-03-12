@@ -134,15 +134,16 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
         return true;
       }).slice(0, 13);
 
-      // Fetch author profiles
+      // Batch fetch author profiles (single query instead of N+1)
       const userIds = [...new Set(unique.map((p) => p.user_id))];
       const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {};
 
-      for (const uid of userIds) {
-        const { data: profileData } = await supabase.rpc("get_public_profile", { target_user_id: uid });
-        if (profileData && profileData.length > 0) {
-          profileMap[uid] = profileData[0];
-        }
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("user_id, username, display_name, avatar_url")
+          .in("user_id", userIds);
+        profilesData?.forEach((p) => { profileMap[p.user_id] = p; });
       }
 
       const mapped: FeaturedPhoto[] = unique.map((p: any) => {
