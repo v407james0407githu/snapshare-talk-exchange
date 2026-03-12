@@ -1,24 +1,26 @@
+import { lazy, Suspense } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { HeroSection } from "@/components/home/HeroSection";
-import { EquipmentCategories } from "@/components/home/EquipmentCategories";
 import { FeaturedCarousel } from "@/components/home/FeaturedCarousel";
-import { FeaturedGallery } from "@/components/home/FeaturedGallery";
-import { ForumPreview } from "@/components/home/ForumPreview";
-import { MarketplacePreview } from "@/components/home/MarketplacePreview";
-import { CTASection } from "@/components/home/CTASection";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useLazySection } from "@/hooks/useLazySection";
 
-const sectionComponents: Record<string, React.FC<{ sectionTitle?: string; sectionSubtitle?: string }>> = {
-  hero: HeroSection,
-  equipment_categories: EquipmentCategories,
-  featured_carousel: FeaturedCarousel,
-  featured_gallery: FeaturedGallery,
-  forum_preview: ForumPreview,
-  marketplace_preview: MarketplacePreview,
-  cta: CTASection,
-};
+// Lazy load below-fold sections to reduce initial JS bundle
+const EquipmentCategories = lazy(() => import("@/components/home/EquipmentCategories").then(m => ({ default: m.EquipmentCategories })));
+const FeaturedGallery = lazy(() => import("@/components/home/FeaturedGallery").then(m => ({ default: m.FeaturedGallery })));
+const ForumPreview = lazy(() => import("@/components/home/ForumPreview").then(m => ({ default: m.ForumPreview })));
+const MarketplacePreview = lazy(() => import("@/components/home/MarketplacePreview").then(m => ({ default: m.MarketplacePreview })));
+const CTASection = lazy(() => import("@/components/home/CTASection").then(m => ({ default: m.CTASection })));
+
+interface SectionData {
+  section_key: string;
+  section_label: string;
+  section_subtitle: string;
+  is_visible: boolean;
+  sort_order: number;
+}
 
 const defaultOrder = [
   "hero",
@@ -30,7 +32,6 @@ const defaultOrder = [
   "cta",
 ];
 
-// Map section keys to the feature toggle that controls them
 const sectionFeatureMap: Record<string, string> = {
   featured_gallery: "gallery_enabled",
   featured_carousel: "gallery_enabled",
@@ -39,12 +40,29 @@ const sectionFeatureMap: Record<string, string> = {
   marketplace_preview: "marketplace_enabled",
 };
 
-interface SectionData {
-  section_key: string;
-  section_label: string;
-  section_subtitle: string;
-  is_visible: boolean;
-  sort_order: number;
+/** Minimal loading placeholder for lazy sections */
+function SectionFallback() {
+  return <div className="py-12 min-h-[200px]" />;
+}
+
+/** Wrapper that renders a lazy section only when it's near the viewport */
+function LazyWrapper({ 
+  children, 
+  sectionKey 
+}: { 
+  children: React.ReactNode; 
+  sectionKey: string;
+}) {
+  // Hero and first carousel don't need lazy wrapper
+  if (sectionKey === 'hero' || sectionKey === 'featured_carousel') {
+    return <>{children}</>;
+  }
+  
+  return (
+    <Suspense fallback={<SectionFallback />}>
+      {children}
+    </Suspense>
+  );
 }
 
 const Index = () => {
@@ -78,11 +96,30 @@ const Index = () => {
     return !featureKey || featureFlags[featureKey] !== false;
   });
 
+  // Map section keys to components (eagerly loaded for critical, lazy for rest)
+  const sectionComponents: Record<string, React.FC<{ sectionTitle?: string; sectionSubtitle?: string }>> = {
+    hero: HeroSection,
+    featured_carousel: FeaturedCarousel,
+    equipment_categories: EquipmentCategories,
+    featured_gallery: FeaturedGallery,
+    forum_preview: ForumPreview,
+    marketplace_preview: MarketplacePreview,
+    cta: CTASection,
+  };
+
   return (
     <MainLayout>
       {filteredSections.map((s) => {
         const Component = sectionComponents[s.section_key];
-        return Component ? <Component key={s.section_key} sectionTitle={s.section_label || undefined} sectionSubtitle={s.section_subtitle || undefined} /> : null;
+        if (!Component) return null;
+        return (
+          <LazyWrapper key={s.section_key} sectionKey={s.section_key}>
+            <Component 
+              sectionTitle={s.section_label || undefined} 
+              sectionSubtitle={s.section_subtitle || undefined} 
+            />
+          </LazyWrapper>
+        );
       })}
     </MainLayout>
   );

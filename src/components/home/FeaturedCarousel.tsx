@@ -12,10 +12,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, Eye, Star, ArrowRight, Loader2, Award } from 'lucide-react';
+import { Heart, Eye, Star, ArrowRight, Award } from 'lucide-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { optimizeImageUrl } from '@/lib/responsiveImage';
+import { pickImageSrc, SIZES } from '@/lib/responsiveImage';
+import { useLazySection } from '@/hooks/useLazySection';
 
 interface FeaturedPhoto {
   id: string;
@@ -45,45 +46,48 @@ function getEquipmentDisplay(photo: FeaturedPhoto) {
   return null;
 }
 
-function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
+function PhotoCard({ photo, sizes }: { photo: FeaturedPhoto; sizes: string }) {
   const equipment = getEquipmentDisplay(photo);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const imgSrc = pickImageSrc(photo.image_url, photo.thumbnail_url);
+
   return (
     <Link
       to={`/gallery/${photo.id}`}
-      className="group relative block overflow-hidden rounded-xl bg-card border border-border hover-lift"
+      className="group relative block overflow-hidden rounded-xl bg-card border border-border md:hover-lift"
     >
+      {/* Fixed aspect-ratio container — prevents CLS */}
       <div className="aspect-[4/3] overflow-hidden relative bg-muted">
         {!imgLoaded && (
-          <div className="absolute inset-0 animate-pulse bg-muted" />
+          <div className="absolute inset-0 bg-muted animate-pulse" />
         )}
         <img
-          src={optimizeImageUrl(photo.thumbnail_url || photo.image_url)}
-          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          src={imgSrc}
+          sizes={sizes}
           alt={photo.title}
-          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          width={400}
+          height={300}
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImgLoaded(true)}
           loading="lazy"
+          decoding="async"
         />
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      {/* Hover overlay — desktop only, no transition on mobile */}
+      <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <h3 className="font-serif text-lg font-bold text-foreground mb-2">
             {photo.title}
           </h3>
-          <Link
-            to={`/user/${photo.user_id}`}
-            className="flex items-center gap-2 mb-3"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="flex items-center gap-2 mb-3">
             <Avatar className="h-6 w-6">
               <AvatarImage src={photo.profiles?.avatar_url || undefined} />
               <AvatarFallback>{photo.profiles?.username?.[0] || 'U'}</AvatarFallback>
             </Avatar>
-            <span className="text-sm text-muted-foreground hover:text-foreground">
+            <span className="text-sm text-muted-foreground">
               {photo.profiles?.display_name || photo.profiles?.username}
             </span>
-          </Link>
+          </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <Heart className="h-4 w-4" /> {photo.like_count || 0}
@@ -116,6 +120,29 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
         )}
       </div>
     </Link>
+  );
+}
+
+function CarouselSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+        <div className="flex gap-4 overflow-hidden">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -156,7 +183,7 @@ function ClassicCarouselRow({
         <CarouselContent className="-ml-4">
           {photos.map((photo) => (
             <CarouselItem key={photo.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
-              <PhotoCard photo={photo} />
+              <PhotoCard photo={photo} sizes={SIZES.carouselCard} />
             </CarouselItem>
           ))}
         </CarouselContent>
@@ -222,7 +249,7 @@ function FreeScrollCarouselRow({
         <CarouselContent className="-ml-6">
           {photos.map((photo) => (
             <CarouselItem key={photo.id} className="pl-6 basis-[85%] md:basis-[45.45%]">
-              <PhotoCard photo={photo} />
+              <PhotoCard photo={photo} sizes={SIZES.carouselLarge} />
             </CarouselItem>
           ))}
         </CarouselContent>
@@ -251,11 +278,12 @@ export function FeaturedCarousel({
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const { get } = useSiteContent();
+  const [row2Ref, row2Visible] = useLazySection('300px 0px');
 
   const row1Label = get('featured_carousel_row1_label', '最新精選');
   const row2Label = get('featured_carousel_row2_label', '高評分精選');
 
-  // 最新精選
+  // 最新精選 — always load (above fold)
   const { data: latestPhotos, isLoading: l1 } = useQuery({
     queryKey: ['featured-photos-latest'],
     queryFn: async () => {
@@ -271,7 +299,7 @@ export function FeaturedCarousel({
     },
   });
 
-  // 高評分精選
+  // 高評分精選 — lazy load when row2 enters viewport
   const { data: topRatedPhotos, isLoading: l2 } = useQuery({
     queryKey: ['featured-photos-top-rated'],
     queryFn: async () => {
@@ -285,6 +313,7 @@ export function FeaturedCarousel({
       if (error) throw error;
       return data;
     },
+    enabled: row2Visible, // Only fetch when user scrolls near
   });
 
   const allPhotos = [...(latestPhotos || []), ...(topRatedPhotos || [])];
@@ -313,49 +342,18 @@ export function FeaturedCarousel({
 
   const latestFeatured = withProfiles(latestPhotos);
   const topRatedFeatured = withProfiles(topRatedPhotos);
-  const isLoading = l1 || l2;
 
-  if (isLoading) {
+  if (l1) {
     return (
-      <section className="py-12 bg-muted/30 min-h-[680px]">
+      <section className="py-12 bg-muted/30">
         <div className="container">
           <div className="flex items-center justify-between mb-8">
             <div>
               <div className="h-10 w-48 bg-muted animate-pulse rounded mb-2" />
               <div className="h-5 w-64 bg-muted animate-pulse rounded" />
             </div>
-            <div className="hidden sm:block h-10 w-24 bg-muted animate-pulse rounded" />
           </div>
-          
-          {/* Row 1 Skeleton - 與 ClassicCarouselRow 一致 */}
-          <div className="mb-8">
-            <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="aspect-[4/3] bg-muted animate-pulse rounded-xl" />
-              ))}
-            </div>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="w-2 h-2 rounded-full bg-muted animate-pulse" />
-              ))}
-            </div>
-          </div>
-          
-          {/* Row 2 Skeleton - 與 FreeScrollCarouselRow 一致 */}
-          <div>
-            <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
-            <div className="flex gap-4 overflow-hidden">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl" />
-              ))}
-            </div>
-            <div className="flex items-center justify-center gap-2 mt-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="w-2 h-2 rounded-full bg-muted animate-pulse" />
-              ))}
-            </div>
-          </div>
+          <CarouselSkeleton />
         </div>
       </section>
     );
@@ -364,7 +362,7 @@ export function FeaturedCarousel({
   if (!latestFeatured.length && !topRatedFeatured.length) return null;
 
   return (
-    <section className="py-12 bg-muted/30 min-h-[600px]">
+    <section className="py-12 bg-muted/30">
       <div className="container">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -384,7 +382,27 @@ export function FeaturedCarousel({
         </div>
 
         <ClassicCarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
-        <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
+        
+        {/* Row 2 — lazy loaded via IntersectionObserver */}
+        <div ref={row2Ref}>
+          {row2Visible ? (
+            l2 ? (
+              <div className="mt-4">
+                <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+                <div className="flex gap-4 overflow-hidden">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
+            )
+          ) : (
+            /* Placeholder to maintain layout height */
+            <div className="mt-4 h-[280px] md:h-[320px]" />
+          )}
+        </div>
 
         <div className="mt-6 text-center sm:hidden">
           <Link to="/gallery">

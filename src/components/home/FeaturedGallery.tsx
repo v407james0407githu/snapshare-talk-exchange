@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Eye, Star, ArrowRight, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Eye, Star, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Skeleton } from "@/components/ui/skeleton";
-import { optimizeImageUrl } from '@/lib/responsiveImage';
+import { pickImageSrc, SIZES } from '@/lib/responsiveImage';
 
 interface FeaturedPhoto {
   id: string;
@@ -20,47 +19,42 @@ interface FeaturedPhoto {
   equipment: string;
 }
 
-interface PhotoCardProps {
-  photo: FeaturedPhoto;
-}
-
-function PhotoCard({ photo }: PhotoCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
+function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const imgSrc = pickImageSrc(photo.imageUrl, photo.thumbnailUrl);
 
   return (
     <Link
       to={`/gallery/${photo.id}`}
-      className="group relative block overflow-hidden rounded-xl bg-card border border-border hover-lift"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="group relative block overflow-hidden rounded-xl bg-card border border-border md:hover-lift"
     >
+      {/* Fixed aspect-ratio — prevents CLS */}
       <div className="aspect-[4/3] overflow-hidden relative bg-muted">
         {!imgLoaded && (
-          <div className="absolute inset-0 animate-pulse bg-muted" />
+          <div className="absolute inset-0 bg-muted animate-pulse" />
         )}
         <img
-          src={optimizeImageUrl(photo.thumbnailUrl || photo.imageUrl)}
-          sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
+          src={imgSrc}
+          sizes={SIZES.card}
           alt={photo.title}
-          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          width={400}
+          height={300}
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading="lazy"
+          decoding="async"
           onLoad={() => setImgLoaded(true)}
         />
       </div>
 
-      <div
-        className={`absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent transition-opacity duration-300 ${
-          isHovered ? "opacity-100" : "opacity-0"
-        }`}
-      >
+      {/* Hover overlay — desktop only */}
+      <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <h3 className="font-serif text-lg font-bold text-cream mb-1">
             {photo.title}
           </h3>
           <div className="flex items-center gap-2 mb-3">
             {photo.avatarUrl ? (
-              <img src={photo.avatarUrl} alt={photo.author} className="w-5 h-5 rounded-full object-cover" />
+              <img src={photo.avatarUrl} alt={photo.author} className="w-5 h-5 rounded-full object-cover" loading="lazy" />
             ) : (
               <span className="w-5 h-5 rounded-full bg-primary/50 flex items-center justify-center text-xs text-cream">
                 {photo.author.charAt(0)}
@@ -113,7 +107,6 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
 
   useEffect(() => {
     async function fetchLatest() {
-      // Fetch more than 13 to account for deduplication by user
       const { data, error } = await supabase
         .from("photos")
         .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, created_at")
@@ -133,7 +126,6 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
         return;
       }
 
-      // Deduplicate: keep only the latest photo per user
       const seenUsers = new Set<string>();
       const unique = data.filter((p) => {
         if (seenUsers.has(p.user_id)) return false;
@@ -141,7 +133,6 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
         return true;
       }).slice(0, 13);
 
-      // Batch fetch author profiles (single query instead of N+1)
       const userIds = [...new Set(unique.map((p) => p.user_id))];
       const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {};
 
@@ -177,10 +168,8 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
     fetchLatest();
   }, []);
 
-  // 不顯示空區塊
   if (!loading && photos.length === 0) return null;
 
-  // 分配到三行: 4-5-4
   const row1 = photos.slice(0, 4);
   const row2 = photos.slice(4, 9);
   const row3 = photos.slice(9, 13);
