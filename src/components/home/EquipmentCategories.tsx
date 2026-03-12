@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Smartphone, Camera, ChevronRight, MessageSquare, Eye, Clock, Loader2, Pin, TrendingUp } from "lucide-react";
+import { Smartphone, Camera, ChevronRight, MessageSquare, Eye, Clock, Pin, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -24,9 +24,52 @@ interface CategoryColumnProps {
   linkPrefix: string;
 }
 
+// Skeleton component for loading state - 固定高度避免 CLS
+function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <div className="bg-card rounded-2xl border border-border p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center text-charcoal">
+          {icon}
+        </div>
+        <div>
+          <h3 className="font-serif text-xl font-bold">{title}</h3>
+          <p className="text-sm text-muted-foreground">最新討論串</p>
+        </div>
+      </div>
+
+      {/* 固定 10 個骨架項目的高度 - 每個約 64px */}
+      <div className="space-y-1 min-h-[640px]">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+            <div className="flex-1 min-w-0 mr-3">
+              <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-2" />
+              <div className="flex items-center gap-3">
+                <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-8 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-8 bg-muted rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="h-3 w-12 bg-muted rounded animate-pulse flex-shrink-0 hidden sm:block" />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-center gap-1 mt-4 text-sm text-primary">
+        查看全部 <ChevronRight className="h-3.5 w-3.5" />
+      </div>
+    </div>
+  );
+}
+
 function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnProps) {
   const [topics, setTopics] = useState<TopicRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     async function fetchTopics() {
@@ -97,6 +140,11 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnP
     fetchTopics();
   }, [parentSlug]);
 
+  // 在 SSR 或水合完成前顯示骨架屏
+  if (!isMounted || loading) {
+    return <CategoryColumnSkeleton icon={icon} title={title} />;
+  }
+
   return (
     <div className="bg-card rounded-2xl border border-border p-6 hover-lift">
       <div className="flex items-center gap-3 mb-6">
@@ -109,12 +157,8 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnP
         </div>
       </div>
 
-      <div className="space-y-1">
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : topics.length === 0 ? (
+      <div className="space-y-1 min-h-[640px]">
+        {topics.length === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
             尚無討論串，
             <Link to={linkPrefix} className="text-primary hover:underline ml-1">前往發起</Link>

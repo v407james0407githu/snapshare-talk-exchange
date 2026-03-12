@@ -38,6 +38,11 @@ const fallbackCategoryColors: Record<string, string> = {
 export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const [topics, setTopics] = useState<TopicRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     async function fetchHotTopics() {
@@ -135,11 +140,34 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
             <div className="col-span-3 text-right">最後活動</div>
           </div>
 
-          {/* Topics */}
-          <div className="divide-y divide-border">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          {/* Topics - 固定高度 552px (5-6 個項目) 避免載入時位移 */}
+          <div className="divide-y divide-border min-h-[552px]">
+            {loading || !isMounted ? (
+              <div className="divide-y divide-border">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="block px-6 py-4">
+                    <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
+                      <div className="col-span-7">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                              <div className="h-5 w-12 bg-muted rounded animate-pulse" />
+                            </div>
+                            <div className="h-5 w-3/4 bg-muted rounded animate-pulse mb-2" />
+                            <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="col-span-2 hidden md:flex items-center justify-center gap-4">
+                        <div className="h-4 w-8 bg-muted rounded animate-pulse" />
+                        <div className="h-4 w-8 bg-muted rounded animate-pulse" />
+                      </div>
+                      <div className="col-span-3 hidden md:flex items-center justify-end">
+                        <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               topics.map((topic) => {
