@@ -102,7 +102,7 @@ function PhotoCard({ photo }: PhotoCardProps) {
 function PhotoCardSkeleton() {
   return (
     <div className="relative overflow-hidden rounded-xl bg-card border border-border">
-      <Skeleton className="aspect-[4/3] w-full" />
+      <div className="aspect-[4/3] w-full bg-muted animate-pulse" />
     </div>
   );
 }
