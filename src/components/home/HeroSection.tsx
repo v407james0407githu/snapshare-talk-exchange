@@ -27,7 +27,7 @@ const fallbackBanners: Banner[] = [
     id: "1",
     title: "用光影說故事，與同好共鳴",
     subtitle: "全台最活躍的攝影創作者社群，分享作品、交流心得。",
-    image_url: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1920&q=80",
+    image_url: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1280&auto=format&q=75",
     link_url: null,
     cta_primary_text: "開始創作之旅",
     cta_primary_link: "/auth?tab=register",
