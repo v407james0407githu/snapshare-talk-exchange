@@ -43,7 +43,7 @@ const sectionFeatureMap: Record<string, string> = {
 /** Loading placeholder matching approximate section heights to prevent CLS */
 function SectionFallback({ sectionKey }: { sectionKey: string }) {
   const heights: Record<string, string> = {
-    featured_carousel: "min-h-[620px]",
+    featured_carousel: "min-h-[820px]",
     equipment_categories: "min-h-[500px]",
     featured_gallery: "min-h-[480px]",
     forum_preview: "min-h-[500px]",
