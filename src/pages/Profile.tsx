@@ -96,7 +96,8 @@ export default function Profile() {
   }
 
   if (!user || !profile) {
-    navigate('/auth');
+    // 重新導向到登入頁，並記錄當前頁面以便登入後返回
+    navigate('/auth', { state: { from: '/profile' } });
     return null;
   }
 
