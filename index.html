@@ -20,11 +20,10 @@
     <!-- Preconnect to Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Load only essential font weight (400) eagerly, defer rest -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400&display=swap" />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&family=Playfair+Display:wght@700&display=swap" onload="this.rel='stylesheet'" />
+    <!-- Fully non-render-blocking font stylesheet -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Playfair+Display:wght@700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@700&family=Playfair+Display:wght@700&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Playfair+Display:wght@700&display=swap" />
     </noscript>
     <!-- Preload LCP hero image — mobile-optimized size -->
     <link rel="preload" as="image" href="https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=640&auto=format&q=75" fetchpriority="high" />
