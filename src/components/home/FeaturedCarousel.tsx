@@ -36,8 +36,10 @@ interface FeaturedPhoto {
 }
 
 export function FeaturedCarousel({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const [api, setApi] = useState<any>(null);
-  const [current, setCurrent] = useState(0);
+  const [apiLatest, setApiLatest] = useState<any>(null);
+  const [currentLatest, setCurrentLatest] = useState(0);
+  const [apiRandom, setApiRandom] = useState<any>(null);
+  const [currentRandom, setCurrentRandom] = useState(0);
 
   // 最新精選照片（按時間排序）
   const { data: latestPhotos, isLoading: isLoadingLatest } = useQuery({
