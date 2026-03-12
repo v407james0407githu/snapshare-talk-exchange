@@ -719,3 +719,9 @@ function formatLang(code: string): string {
   const map: Record<string, string> = { zh: "中文", en: "英文", ja: "日文", ko: "韓文", fr: "法文", de: "德文", es: "西班牙文", pt: "葡萄牙文" };
   return map[code] || code;
 }
+
+function formatSize(mb: number): string {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${(mb * 1024).toFixed(0)} KB`;
+}
