@@ -1227,6 +1227,73 @@ export default function PhotoDetailPage() {
         {/* Recommended Works */}
         <RecommendedWorks photo={photo} />
       </div>
+
+      {/* Edit Photo Dialog */}
+      <Dialog open={isEditingPhoto} onOpenChange={setIsEditingPhoto}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>編輯作品資訊</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editTitle">標題 *</Label>
+              <Input id="editTitle" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} maxLength={100} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDesc">說明</Label>
+              <Textarea id="editDesc" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} />
+            </div>
+            <div className="space-y-2">
+              <Label>拍攝類型 *</Label>
+              <div className="flex gap-4">
+                <Button type="button" variant={editCategory === 'phone' ? 'default' : 'outline'} className="flex-1" onClick={() => { setEditCategory('phone'); setEditBrand(''); }}>
+                  <Smartphone className="mr-2 h-4 w-4" />手機
+                </Button>
+                <Button type="button" variant={editCategory === 'camera' ? 'default' : 'outline'} className="flex-1" onClick={() => { setEditCategory('camera'); setEditBrand(''); }}>
+                  <Camera className="mr-2 h-4 w-4" />相機
+                </Button>
+              </div>
+            </div>
+            {editCategory && (
+              <div className="space-y-2">
+                <Label>品牌</Label>
+                <Select value={editBrand} onValueChange={setEditBrand}>
+                  <SelectTrigger><SelectValue placeholder="選擇品牌" /></SelectTrigger>
+                  <SelectContent>
+                    {(editCategory === 'phone' ? phoneBrands : cameraBrands).map((b) => (
+                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {editCategory === 'phone' && (
+              <div className="space-y-2">
+                <Label>型號</Label>
+                <Input value={editPhoneModel} onChange={(e) => setEditPhoneModel(e.target.value)} placeholder="例如：iPhone 15 Pro Max" />
+              </div>
+            )}
+            {editCategory === 'camera' && (
+              <>
+                <div className="space-y-2">
+                  <Label>機身</Label>
+                  <Input value={editCameraBody} onChange={(e) => setEditCameraBody(e.target.value)} placeholder="例如：Sony A7IV" />
+                </div>
+                <div className="space-y-2">
+                  <Label>鏡頭</Label>
+                  <Input value={editLens} onChange={(e) => setEditLens(e.target.value)} placeholder="例如：FE 24-70mm F2.8 GM II" />
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setIsEditingPhoto(false)}>取消</Button>
+              <Button onClick={handleSavePhotoEdit} disabled={isSavingPhoto || !editTitle.trim() || !editCategory}>
+                {isSavingPhoto ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />儲存中...</> : '儲存變更'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
