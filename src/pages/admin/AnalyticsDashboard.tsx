@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import {
   Users, Image, MessageSquare, Eye, Star, Heart, TrendingUp, ShoppingBag,
-  Loader2, Globe, FileText, Link2, Monitor, MapPin,
+  Loader2, Globe, FileText, Link2, Monitor, MapPin, HardDrive, Download, Activity,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
