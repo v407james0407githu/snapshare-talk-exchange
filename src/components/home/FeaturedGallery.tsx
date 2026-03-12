@@ -81,11 +81,13 @@ function PhotoCard({ photo }: PhotoCardProps) {
         </span>
       </div>
 
-      <div className="absolute top-3 right-3">
-        <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/90 text-xs font-medium text-charcoal">
-          <Star className="h-3 w-3 fill-current" /> {photo.rating.toFixed(1)}
-        </span>
-      </div>
+      {photo.rating > 0 && (
+        <div className="absolute top-3 right-3">
+          <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-primary/90 text-xs font-medium text-charcoal">
+            <Star className="h-3 w-3 fill-current" /> {photo.rating.toFixed(1)}
+          </span>
+        </div>
+      )}
     </Link>
   );
 }
