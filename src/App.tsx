@@ -1,11 +1,8 @@
-import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { DynamicMeta } from "@/components/layout/DynamicMeta";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { Loader2 } from "lucide-react";
