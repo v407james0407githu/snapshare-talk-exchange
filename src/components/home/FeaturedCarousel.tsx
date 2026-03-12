@@ -338,7 +338,7 @@ export function FeaturedCarousel({
   if (!latestFeatured.length && !topRatedFeatured.length) return null;
 
   return (
-    <section className="py-12 bg-muted/30">
+    <section className="py-12 bg-muted/30 min-h-[600px]">
       <div className="container">
         <div className="flex items-center justify-between mb-8">
           <div>

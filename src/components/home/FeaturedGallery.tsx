@@ -33,12 +33,16 @@ function PhotoCard({ photo }: PhotoCardProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="aspect-[4/3] overflow-hidden">
+      <div className="aspect-[4/3] overflow-hidden relative bg-muted">
+        {!imgLoaded && (
+          <div className="absolute inset-0 animate-pulse bg-muted" />
+        )}
         <img
           src={photo.thumbnailUrl || photo.imageUrl}
           alt={photo.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           loading="lazy"
+          onLoad={() => setImgLoaded(true)}
         />
       </div>
 

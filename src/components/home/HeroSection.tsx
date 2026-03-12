@@ -138,10 +138,11 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     <section className="relative min-h-[300px] h-auto md:min-h-[50vh] md:max-h-[60vh] overflow-hidden group">
       <div ref={emblaRef} className="overflow-hidden min-h-[300px] h-auto md:h-[55vh] md:max-h-[60vh]">
         <div className="flex h-full">
-          {slides.map((banner) => {
+          {slides.map((banner, idx) => {
             const align = getAlignClasses(banner.text_align ?? "left");
             const gradientStyle = getGradientStyle(banner.gradient_type ?? "left-to-right", banner.gradient_opacity ?? 0.6);
             const showContent = hasTextContent(banner);
+            const isFirst = idx === 0;
 
             return (
               <div key={banner.id} className="flex-[0_0_100%] min-w-0 relative">
@@ -150,7 +151,8 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
                   src={banner.image_url}
                   alt={banner.title || "Banner"}
                   className="w-full h-auto md:absolute md:inset-0 md:h-full md:object-cover object-center"
-                  loading="lazy"
+                  loading={isFirst ? "eager" : "lazy"}
+                  {...(isFirst ? { fetchPriority: "high" as const } : {})}
                 />
                 {banner.link_url && (
                   <BannerLink url={banner.link_url} className="absolute inset-0 z-[1]" />
