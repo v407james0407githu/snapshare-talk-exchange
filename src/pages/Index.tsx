@@ -1,13 +1,13 @@
 import { lazy, Suspense } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { HeroSection } from "@/components/home/HeroSection";
+import { FeaturedCarousel } from "@/components/home/FeaturedCarousel";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useLazySection } from "@/hooks/useLazySection";
 
 // Lazy load below-fold sections to reduce initial JS bundle
-const FeaturedCarousel = lazy(() => import("@/components/home/FeaturedCarousel").then(m => ({ default: m.FeaturedCarousel })));
 const EquipmentCategories = lazy(() => import("@/components/home/EquipmentCategories").then(m => ({ default: m.EquipmentCategories })));
 const FeaturedGallery = lazy(() => import("@/components/home/FeaturedGallery").then(m => ({ default: m.FeaturedGallery })));
 const ForumPreview = lazy(() => import("@/components/home/ForumPreview").then(m => ({ default: m.ForumPreview })));
