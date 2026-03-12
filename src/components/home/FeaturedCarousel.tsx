@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, Eye, Star, ArrowRight, Loader2, Award } from 'lucide-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { optimizeImageUrl } from '@/lib/responsiveImage';
 
 interface FeaturedPhoto {
   id: string;
