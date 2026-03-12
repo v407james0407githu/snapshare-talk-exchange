@@ -45,16 +45,22 @@ function getEquipmentDisplay(photo: FeaturedPhoto) {
 
 function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
   const equipment = getEquipmentDisplay(photo);
+  const [imgLoaded, setImgLoaded] = useState(false);
   return (
     <Link
       to={`/gallery/${photo.id}`}
       className="group relative block overflow-hidden rounded-xl bg-card border border-border hover-lift"
     >
-      <div className="aspect-[4/3] overflow-hidden">
+      <div className="aspect-[4/3] overflow-hidden relative bg-muted">
+        {!imgLoaded && (
+          <div className="absolute inset-0 animate-pulse bg-muted" />
+        )}
         <img
           src={photo.image_url}
           alt={photo.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setImgLoaded(true)}
+          loading="lazy"
         />
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
