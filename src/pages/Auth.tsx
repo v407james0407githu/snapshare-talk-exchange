@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,10 @@ const registerSchema = z.object({
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const defaultTab = searchParams.get('tab') || 'login';
+  // 獲取跳轉來源頁面（從 Profile 頁面傳來的 state）
+  const from = (location.state as { from?: string })?.from || '/';
   
   const [activeTab, setActiveTab] = useState(defaultTab);
   const [showPassword, setShowPassword] = useState(false);
@@ -59,9 +62,10 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      // 登入成功後，如果有來源頁面則導回該頁，否則導回首頁
+      navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, from]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
