@@ -125,7 +125,11 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
         .eq("is_active", true)
         .order("sort_order");
       if (error || !data || data.length === 0) return fallbackBanners;
-      return data as unknown as Banner[];
+      // Optimize any Unsplash URLs from DB
+      return (data as unknown as Banner[]).map(b => ({
+        ...b,
+        image_url: optimizeUnsplashUrl(b.image_url),
+      }));
     },
   });
 
