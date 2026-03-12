@@ -54,11 +54,12 @@ export async function uploadPendingItems(items: ImageItem[]): Promise<string[]> 
     if (item.uploadedUrl) {
       urls.push(item.uploadedUrl);
     } else if (item.file) {
-      const resized = await resizeImage(item.file, 1920, 1920, 0.85);
-      const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+      const resized = await resizeImage(item.file, 1920, 1920, 0.82);
+      const ext = getOutputMimeType() === 'image/webp' ? 'webp' : 'jpg';
+      const path = `forum/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage
         .from('photos')
-        .upload(path, resized.blob, { contentType: 'image/jpeg' });
+        .upload(path, resized.blob, { contentType: resized.mimeType });
       if (error) throw error;
       const { data } = supabase.storage.from('photos').getPublicUrl(path);
       urls.push(data.publicUrl);

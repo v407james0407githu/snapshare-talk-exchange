@@ -275,7 +275,7 @@ export function FeaturedCarousel({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('photos')
-        .select('*')
+        .select('id, title, image_url, thumbnail_url, user_id, like_count, view_count, average_rating, category, camera_body, phone_model, brand, is_featured')
         .eq('is_hidden', false)
         .eq('is_featured', true)
         .order('average_rating', { ascending: false })

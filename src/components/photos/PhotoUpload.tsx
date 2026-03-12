@@ -199,15 +199,17 @@ export function PhotoUpload() {
         const resizedImage = await resizeImage(uploadedFile.file);
         const thumbnail = await createThumbnail(uploadedFile.file);
         
+        const ext = getOutputExtension();
+        const mime = getOutputMimeType();
         const timestamp = Date.now();
-        const fileName = `${user.id}/${timestamp}_${uploadedFile.id}.jpg`;
-        const thumbFileName = `${user.id}/${timestamp}_${uploadedFile.id}_thumb.jpg`;
+        const fileName = `${user.id}/${timestamp}_${uploadedFile.id}.${ext}`;
+        const thumbFileName = `${user.id}/${timestamp}_${uploadedFile.id}_thumb.${ext}`;
 
         // Upload resized main image
         const { error: uploadError } = await supabase.storage
           .from('photos')
           .upload(fileName, resizedImage.blob, {
-            contentType: 'image/jpeg',
+            contentType: mime,
           });
 
         if (uploadError) throw uploadError;
@@ -216,7 +218,7 @@ export function PhotoUpload() {
         const { error: thumbError } = await supabase.storage
           .from('photos')
           .upload(thumbFileName, thumbnail.blob, {
-            contentType: 'image/jpeg',
+            contentType: mime,
           });
 
         const { data: { publicUrl } } = supabase.storage
