@@ -20,6 +20,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ReportDialog } from "@/components/reports/ReportDialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Star,
   MessageSquare,
@@ -45,6 +54,7 @@ import {
   Heart,
   EyeOff,
   MoreHorizontal,
+  Pencil,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -124,6 +134,17 @@ export default function PhotoDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+
+  // Photo edit state
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState<string>("");
+  const [editBrand, setEditBrand] = useState("");
+  const [editPhoneModel, setEditPhoneModel] = useState("");
+  const [editCameraBody, setEditCameraBody] = useState("");
+  const [editLens, setEditLens] = useState("");
 
   // Dynamic OG meta tags
   useEffect(() => {
@@ -376,6 +397,79 @@ export default function PhotoDetailPage() {
     }
 
     setIsSubmittingComment(false);
+  };
+
+  const phoneBrands = [
+    { value: 'apple', label: 'Apple' },
+    { value: 'samsung', label: 'Samsung' },
+    { value: 'xiaomi', label: '小米' },
+    { value: 'vivo', label: 'Vivo' },
+    { value: 'oppo', label: 'OPPO' },
+    { value: 'google', label: 'Google' },
+    { value: 'huawei', label: 'Huawei' },
+    { value: 'other', label: '其他' },
+  ];
+
+  const cameraBrands = [
+    { value: 'sony', label: 'Sony' },
+    { value: 'canon', label: 'Canon' },
+    { value: 'nikon', label: 'Nikon' },
+    { value: 'fujifilm', label: 'Fujifilm' },
+    { value: 'ricoh', label: 'Ricoh' },
+    { value: 'leica', label: 'Leica' },
+    { value: 'panasonic', label: 'Panasonic' },
+    { value: 'olympus', label: 'Olympus' },
+    { value: 'other', label: '其他' },
+  ];
+
+  const openEditDialog = () => {
+    if (!photo) return;
+    setEditTitle(photo.title);
+    setEditDescription(photo.description || "");
+    setEditCategory(photo.category);
+    setEditBrand(photo.brand || "");
+    setEditPhoneModel(photo.phone_model || "");
+    setEditCameraBody(photo.camera_body || "");
+    setEditLens(photo.lens || "");
+    setIsEditingPhoto(true);
+  };
+
+  const handleSavePhotoEdit = async () => {
+    if (!user || !photo || !editTitle.trim() || !editCategory) return;
+    setIsSavingPhoto(true);
+
+    const { error } = await supabase
+      .from("photos")
+      .update({
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        category: editCategory,
+        brand: editBrand || null,
+        phone_model: editCategory === "phone" ? editPhoneModel || null : null,
+        camera_body: editCategory === "camera" ? editCameraBody || null : null,
+        lens: editCategory === "camera" ? editLens || null : null,
+      })
+      .eq("id", photo.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast({ title: "更新失敗", description: getSafeErrorMessage(error), variant: "destructive" });
+    } else {
+      setPhoto(prev => prev ? {
+        ...prev,
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        category: editCategory,
+        brand: editBrand || null,
+        phone_model: editCategory === "phone" ? editPhoneModel || null : null,
+        camera_body: editCategory === "camera" ? editCameraBody || null : null,
+        lens: editCategory === "camera" ? editLens || null : null,
+      } : prev);
+      setIsEditingPhoto(false);
+      toast({ title: "作品資訊已更新" });
+    }
+
+    setIsSavingPhoto(false);
   };
 
   const handleDeletePhoto = async () => {
@@ -796,9 +890,15 @@ export default function PhotoDetailPage() {
                 </div>
               )}
 
-              {/* Delete Button - Owner or Admin */}
+              {/* Edit & Delete Buttons - Owner or Admin */}
               {user && (user.id === photo.user_id || canModerate) && (
-                <div className="mt-4">
+                <div className="mt-4 flex items-center gap-2">
+                  {user.id === photo.user_id && (
+                    <Button variant="outline" size="sm" className="gap-2" onClick={openEditDialog}>
+                      <Pencil className="h-4 w-4" />
+                      編輯資訊
+                    </Button>
+                  )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" className="gap-2" disabled={isDeleting}>
@@ -1127,6 +1227,73 @@ export default function PhotoDetailPage() {
         {/* Recommended Works */}
         <RecommendedWorks photo={photo} />
       </div>
+
+      {/* Edit Photo Dialog */}
+      <Dialog open={isEditingPhoto} onOpenChange={setIsEditingPhoto}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>編輯作品資訊</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editTitle">標題 *</Label>
+              <Input id="editTitle" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} maxLength={100} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDesc">說明</Label>
+              <Textarea id="editDesc" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} />
+            </div>
+            <div className="space-y-2">
+              <Label>拍攝類型 *</Label>
+              <div className="flex gap-4">
+                <Button type="button" variant={editCategory === 'phone' ? 'default' : 'outline'} className="flex-1" onClick={() => { setEditCategory('phone'); setEditBrand(''); }}>
+                  <Smartphone className="mr-2 h-4 w-4" />手機
+                </Button>
+                <Button type="button" variant={editCategory === 'camera' ? 'default' : 'outline'} className="flex-1" onClick={() => { setEditCategory('camera'); setEditBrand(''); }}>
+                  <Camera className="mr-2 h-4 w-4" />相機
+                </Button>
+              </div>
+            </div>
+            {editCategory && (
+              <div className="space-y-2">
+                <Label>品牌</Label>
+                <Select value={editBrand} onValueChange={setEditBrand}>
+                  <SelectTrigger><SelectValue placeholder="選擇品牌" /></SelectTrigger>
+                  <SelectContent>
+                    {(editCategory === 'phone' ? phoneBrands : cameraBrands).map((b) => (
+                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {editCategory === 'phone' && (
+              <div className="space-y-2">
+                <Label>型號</Label>
+                <Input value={editPhoneModel} onChange={(e) => setEditPhoneModel(e.target.value)} placeholder="例如：iPhone 15 Pro Max" />
+              </div>
+            )}
+            {editCategory === 'camera' && (
+              <>
+                <div className="space-y-2">
+                  <Label>機身</Label>
+                  <Input value={editCameraBody} onChange={(e) => setEditCameraBody(e.target.value)} placeholder="例如：Sony A7IV" />
+                </div>
+                <div className="space-y-2">
+                  <Label>鏡頭</Label>
+                  <Input value={editLens} onChange={(e) => setEditLens(e.target.value)} placeholder="例如：FE 24-70mm F2.8 GM II" />
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setIsEditingPhoto(false)}>取消</Button>
+              <Button onClick={handleSavePhotoEdit} disabled={isSavingPhoto || !editTitle.trim() || !editCategory}>
+                {isSavingPhoto ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />儲存中...</> : '儲存變更'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
