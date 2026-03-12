@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSafeErrorMessage } from "@/lib/errorSanitizer";
 import { LinkifyText } from "@/lib/linkifyText";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -55,6 +55,8 @@ import {
   EyeOff,
   MoreHorizontal,
   Pencil,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -146,6 +148,10 @@ export default function PhotoDetailPage() {
   const [editCameraBody, setEditCameraBody] = useState("");
   const [editLens, setEditLens] = useState("");
 
+  // Adjacent photo navigation
+  const [prevPhotoId, setPrevPhotoId] = useState<string | null>(null);
+  const [nextPhotoId, setNextPhotoId] = useState<string | null>(null);
+
   // Dynamic OG meta tags
   useEffect(() => {
     if (!photo) return;
@@ -173,7 +179,40 @@ export default function PhotoDetailPage() {
     if (photoId) {
       loadPhoto();
       loadComments();
+      loadAdjacentPhotos();
     }
+  }, [photoId]);
+
+  const loadAdjacentPhotos = useCallback(async () => {
+    if (!photoId) return;
+    // Get current photo's created_at
+    const { data: current } = await supabase
+      .from("photos")
+      .select("created_at")
+      .eq("id", photoId)
+      .single();
+    if (!current) return;
+
+    // Previous photo (newer by created_at)
+    const { data: prev } = await supabase
+      .from("photos")
+      .select("id")
+      .eq("is_hidden", false)
+      .gt("created_at", current.created_at)
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    // Next photo (older by created_at)
+    const { data: next } = await supabase
+      .from("photos")
+      .select("id")
+      .eq("is_hidden", false)
+      .lt("created_at", current.created_at)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    setPrevPhotoId(prev?.[0]?.id || null);
+    setNextPhotoId(next?.[0]?.id || null);
   }, [photoId]);
 
   // Realtime subscription for comments
@@ -613,12 +652,34 @@ export default function PhotoDetailPage() {
         <div className="grid lg:grid-cols-[1fr,400px] gap-8">
           {/* Image Section */}
           <div className="space-y-4">
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <img
-                src={photo.image_url}
-                alt={photo.title}
-                className="w-full h-auto max-h-[90vh] object-contain bg-black"
-              />
+            <div className="relative group">
+              {/* Previous Photo Arrow */}
+              {prevPhotoId && (
+                <button
+                  onClick={() => navigate(`/gallery/${prevPhotoId}`)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                  aria-label="上一張照片"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+              )}
+              {/* Next Photo Arrow */}
+              {nextPhotoId && (
+                <button
+                  onClick={() => navigate(`/gallery/${nextPhotoId}`)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                  aria-label="下一張照片"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              )}
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <img
+                  src={photo.image_url}
+                  alt={photo.title}
+                  className="w-full h-auto max-h-[90vh] object-contain bg-black"
+                />
+              </div>
             </div>
 
             {/* Mobile Stats */}
