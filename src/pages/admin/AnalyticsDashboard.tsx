@@ -40,6 +40,19 @@ interface TopPhoto { id: string; title: string; view_count: number; like_count: 
 interface ActiveUser { user_id: string; username: string; display_name: string; photo_count: number; }
 interface TrendPoint { date: string; count: number; }
 interface RankItem { name: string; count: number; }
+interface BandwidthData {
+  totalEstimatedMB: number;
+  photoViewsMB: number;
+  pageViewsMB: number;
+  dailyTrend: { date: string; mb: number }[];
+  totalPhotoViews: number;
+  totalStoragePhotos: number;
+}
+
+// Estimated weights
+const AVG_PAGE_WEIGHT_KB = 350; // average page load ~350KB (HTML+CSS+JS cached)
+const AVG_PHOTO_WEIGHT_KB = 1800; // average photo view ~1.8MB
+const AVG_THUMBNAIL_WEIGHT_KB = 80; // thumbnail in gallery ~80KB
 
 const COLORS = [
   "hsl(var(--primary))", "hsl(var(--accent-foreground))",
