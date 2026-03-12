@@ -215,6 +215,20 @@ export default function PhotoDetailPage() {
     setNextPhotoId(next?.[0]?.id || null);
   }, [photoId]);
 
+  // Keyboard arrow navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "ArrowLeft" && prevPhotoId) {
+        navigate(`/gallery/${prevPhotoId}`);
+      } else if (e.key === "ArrowRight" && nextPhotoId) {
+        navigate(`/gallery/${nextPhotoId}`);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [prevPhotoId, nextPhotoId, navigate]);
+
   // Realtime subscription for comments
   useEffect(() => {
     if (!photoId) return;
