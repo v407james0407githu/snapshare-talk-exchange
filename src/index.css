@@ -144,12 +144,27 @@
     @apply backdrop-blur-xl bg-background/80;
   }
 
+  /* hover-lift: desktop only — no transform/shadow on mobile */
   .hover-lift {
     @apply transition-all duration-300 ease-out;
   }
 
-  .hover-lift:hover {
-    @apply -translate-y-1;
-    box-shadow: var(--shadow-card);
+  @media (min-width: 768px) {
+    .hover-lift:hover {
+      @apply -translate-y-1;
+      box-shadow: var(--shadow-card);
+    }
+  }
+
+  /* animate-float: desktop only — kills mobile GPU thrashing */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @media (min-width: 768px) {
+    .md\:animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
   }
 }

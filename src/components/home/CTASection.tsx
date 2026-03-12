@@ -14,16 +14,15 @@ export function CTASection({ sectionTitle: _sectionTitle, sectionSubtitle: _sect
   const secondaryText = get("cta_secondary_text", "了解更多");
   const secondaryLink = get("cta_secondary_link", "/gallery");
 
-  // Split title at "攝影故事" for gradient styling
   const titleParts = title.split(/(?=攝影)/);
   const hasGradientPart = titleParts.length > 1;
 
   return (
     <section className="py-24 bg-gradient-hero relative overflow-hidden">
-      {/* Background Effects */}
+      {/* Background Effects — static on mobile, animated on desktop */}
       <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-10 right-20 w-64 h-64 bg-primary/40 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-10 left-20 w-80 h-80 bg-primary/30 rounded-full blur-3xl animate-float" style={{ animationDelay: "-3s" }} />
+        <div className="absolute top-10 right-20 w-64 h-64 bg-primary/40 rounded-full blur-3xl md:animate-float" />
+        <div className="absolute bottom-10 left-20 w-80 h-80 bg-primary/30 rounded-full blur-3xl md:animate-float" style={{ animationDelay: "-3s" }} />
       </div>
 
       <div className="container relative z-10">
@@ -52,7 +51,7 @@ export function CTASection({ sectionTitle: _sectionTitle, sectionSubtitle: _sect
             {primaryText && primaryLink && (
               <Link to={primaryLink}>
                 <Button variant="hero" size="xl" className="group">
-                  <Camera className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
+                  <Camera className="h-5 w-5 mr-2" />
                   {primaryText}
                 </Button>
               </Link>
