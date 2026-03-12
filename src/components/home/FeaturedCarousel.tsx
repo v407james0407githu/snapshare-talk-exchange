@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Heart, Eye, Star, ArrowRight, Loader2, Award } from 'lucide-react';
 import Autoplay from 'embla-carousel-autoplay';
+import { useSiteContent } from '@/hooks/useSiteContent';
 
 interface FeaturedPhoto {
   id: string;
@@ -133,16 +134,24 @@ function CarouselRow({
   if (!photos.length) return null;
 
   return (
-    <div className="mb-3 last:mb-0">
+    <div className="mb-4 last:mb-0">
+      {label && (
+        <h3 className="text-lg font-semibold text-foreground mb-3">{label}</h3>
+      )}
       <Carousel
         setApi={setApi}
-        opts={{ align: 'start', loop: true }}
+        opts={{
+          align: 'start',
+          loop: true,
+          dragFree: true,
+          containScroll: false,
+        }}
         plugins={[autoplayRef.current]}
         className="w-full"
       >
-        <CarouselContent className="-ml-4">
+        <CarouselContent className="-ml-5">
           {photos.map((photo) => (
-            <CarouselItem key={photo.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+            <CarouselItem key={photo.id} className="pl-5 basis-[85%] md:basis-[48%]">
               <PhotoCard photo={photo} />
             </CarouselItem>
           ))}
@@ -171,6 +180,11 @@ export function FeaturedCarousel({
   sectionTitle,
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
+  const { get } = useSiteContent();
+
+  const row1Label = get('featured_carousel_row1_label', '最新精選');
+  const row2Label = get('featured_carousel_row2_label', '高評分精選');
+
   // 最新精選
   const { data: latestPhotos, isLoading: l1 } = useQuery({
     queryKey: ['featured-photos-latest'],
@@ -187,22 +201,23 @@ export function FeaturedCarousel({
     },
   });
 
-  // 隨機精選
-  const { data: randomPhotos, isLoading: l2 } = useQuery({
-    queryKey: ['featured-photos-random'],
+  // 高評分精選
+  const { data: topRatedPhotos, isLoading: l2 } = useQuery({
+    queryKey: ['featured-photos-top-rated'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('photos')
         .select('*')
         .eq('is_hidden', false)
         .eq('is_featured', true)
-        .limit(20);
+        .order('average_rating', { ascending: false })
+        .limit(8);
       if (error) throw error;
-      return (data || []).sort(() => Math.random() - 0.5).slice(0, 8);
+      return data;
     },
   });
 
-  const allPhotos = [...(latestPhotos || []), ...(randomPhotos || [])];
+  const allPhotos = [...(latestPhotos || []), ...(topRatedPhotos || [])];
   const userIds = [...new Set(allPhotos.map((p) => p.user_id))];
 
   const { data: profilesData } = useQuery({
@@ -227,7 +242,7 @@ export function FeaturedCarousel({
     })) as FeaturedPhoto[];
 
   const latestFeatured = withProfiles(latestPhotos);
-  const randomFeatured = withProfiles(randomPhotos);
+  const topRatedFeatured = withProfiles(topRatedPhotos);
   const isLoading = l1 || l2;
 
   if (isLoading) {
@@ -242,7 +257,7 @@ export function FeaturedCarousel({
     );
   }
 
-  if (!latestFeatured.length && !randomFeatured.length) return null;
+  if (!latestFeatured.length && !topRatedFeatured.length) return null;
 
   return (
     <section className="py-12 bg-muted/30">
@@ -264,8 +279,8 @@ export function FeaturedCarousel({
           </Link>
         </div>
 
-        <CarouselRow photos={latestFeatured} label="🕐 最新精選" autoplayDelay={5000} />
-        <CarouselRow photos={randomFeatured} label="🎲 隨機精選" autoplayDelay={6000} />
+        <CarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
+        <CarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
 
         <div className="mt-6 text-center sm:hidden">
           <Link to="/gallery">
