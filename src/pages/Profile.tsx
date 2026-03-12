@@ -347,17 +347,7 @@ export default function Profile() {
             </TabsContent>
 
             <TabsContent value="photos">
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">尚無作品</h3>
-                  <p className="text-muted-foreground mb-4">開始上傳您的第一張作品吧！</p>
-                  <Button variant="gold" onClick={() => navigate('/upload')}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    上傳作品
-                  </Button>
-                </CardContent>
-              </Card>
+              <MyPhotosTab userId={user.id} />
             </TabsContent>
 
             <TabsContent value="listings">
