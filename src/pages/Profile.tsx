@@ -24,7 +24,9 @@ import {
   Loader2,
   CheckCircle,
   ShoppingBag,
-  Plus
+  Plus,
+  Eye,
+  Smartphone
 } from 'lucide-react';
 import { AvatarCropDialog } from '@/components/profile/AvatarCropDialog';
 import { useRef } from 'react';
