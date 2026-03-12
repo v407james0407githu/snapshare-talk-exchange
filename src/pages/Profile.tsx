@@ -26,8 +26,38 @@ import {
   ShoppingBag,
   Plus,
   Eye,
-  Smartphone
+  Smartphone,
+  Trash2,
+  Pencil,
+  CheckSquare,
+  Square,
+  X
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { AvatarCropDialog } from '@/components/profile/AvatarCropDialog';
 import { useRef } from 'react';
 
