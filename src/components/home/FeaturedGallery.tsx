@@ -112,7 +112,7 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
         .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, created_at")
         .eq("is_hidden", false)
         .order("created_at", { ascending: false })
-        .limit(60);
+        .limit(20);
 
       if (error) {
         console.error("載入最新作品失敗:", error);

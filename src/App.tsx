@@ -12,7 +12,9 @@ import { Loader2 } from "lucide-react";
 
 // Eagerly loaded (critical path)
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
+
+// Auth is not needed on initial homepage load
+const Auth = lazy(() => import("./pages/Auth"));
 
 // Lazy loaded pages
 const Gallery = lazy(() => import("./pages/Gallery"));

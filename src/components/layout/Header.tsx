@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useAdmin } from "@/hooks/useAdmin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,30 +9,18 @@ import {
   Camera, 
   Menu, 
   X, 
-  Search, 
-  User, 
-  Settings,
-  LogOut,
-  ImagePlus,
-  Shield,
-  Heart,
-  MessageSquare,
+  Search,
   Bell
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
+// Lazy-load the user dropdown (includes admin check, heavy icons, radix dropdown)
+const UserDropdown = lazy(() => import("./UserDropdown"));
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, signOut } = useAuth();
-  const { isAdmin, isModerator } = useAdmin();
+  const { user, profile } = useAuth();
   const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo, siteName } = useSystemSettings();
 
   const navItems = [
@@ -42,11 +29,6 @@ export function Header() {
     ...(forumEnabled ? [{ label: "討論區", href: "/forums" }] : []),
     ...(marketplaceEnabled ? [{ label: "二手交易", href: "/marketplace" }] : []),
   ];
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full h-16 glass border-b border-border/50">
@@ -103,77 +85,28 @@ export function Header() {
           {user ? (
             <>
               {galleryEnabled && (
-                <Link to="/upload">
-                  <Button variant="gold" size="sm" className="hidden sm:flex gap-2">
-                    <ImagePlus className="h-4 w-4" />
+                <Link to="/upload" className="hidden sm:block">
+                  <Button variant="gold" size="sm" className="gap-2">
                     上傳作品
                   </Button>
                 </Link>
               )}
 
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="relative" asChild>
+                <Link to="/notifications">
+                  <Bell className="h-5 w-5" />
+                </Link>
               </Button>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={profile?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-gradient-gold text-charcoal">
-                        {profile?.display_name?.[0] || profile?.username?.[0] || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{profile?.display_name || profile?.username}</p>
-                    <p className="text-xs text-muted-foreground">@{profile?.username}</p>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      我的檔案
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/favorites" className="cursor-pointer">
-                      <Heart className="mr-2 h-4 w-4" />
-                      我的收藏
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/messages" className="cursor-pointer">
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      私訊
-                    </Link>
-                  </DropdownMenuItem>
-                  {(isAdmin || isModerator) && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer">
-                        <Shield className="mr-2 h-4 w-4" />
-                        管理後台
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
-                      <Settings className="mr-2 h-4 w-4" />
-                      設定
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    className="text-destructive cursor-pointer"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    登出
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Suspense fallback={
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-gradient-gold text-charcoal">
+                    {profile?.display_name?.[0] || profile?.username?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              }>
+                <UserDropdown />
+              </Suspense>
             </>
           ) : (
             <>
