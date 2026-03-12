@@ -505,8 +505,17 @@ function MyListingsTab({ userId }: { userId: string }) {
 
 function MyPhotosTab({ userId }: { userId: string }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [photos, setPhotos] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showBatchEditDialog, setShowBatchEditDialog] = useState(false);
+  const [isBatchSaving, setIsBatchSaving] = useState(false);
+  const [batchCategory, setBatchCategory] = useState<string>('');
+  const [batchBrand, setBatchBrand] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -521,6 +530,79 @@ function MyPhotosTab({ userId }: { userId: string }) {
     };
     load();
   }, [userId]);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === photos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(photos.map(p => p.id)));
+    }
+  };
+
+  const exitSelecting = () => {
+    setIsSelecting(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleBatchDelete = async () => {
+    setIsDeleting(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase
+      .from('photos')
+      .delete()
+      .in('id', ids)
+      .eq('user_id', userId);
+
+    if (error) {
+      toast({ title: '刪除失敗', description: error.message, variant: 'destructive' });
+    } else {
+      setPhotos(prev => prev.filter(p => !selectedIds.has(p.id)));
+      toast({ title: '刪除成功', description: `已刪除 ${ids.length} 件作品` });
+      exitSelecting();
+    }
+    setIsDeleting(false);
+    setShowDeleteDialog(false);
+  };
+
+  const handleBatchEdit = async () => {
+    setIsBatchSaving(true);
+    const ids = Array.from(selectedIds);
+    const updates: Record<string, any> = {};
+    if (batchCategory) updates.category = batchCategory;
+    if (batchBrand.trim()) updates.brand = batchBrand.trim();
+
+    if (Object.keys(updates).length === 0) {
+      toast({ title: '未修改', description: '請至少選擇一項要修改的欄位', variant: 'destructive' });
+      setIsBatchSaving(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('photos')
+      .update(updates)
+      .in('id', ids)
+      .eq('user_id', userId);
+
+    if (error) {
+      toast({ title: '修改失敗', description: error.message, variant: 'destructive' });
+    } else {
+      setPhotos(prev => prev.map(p => selectedIds.has(p.id) ? { ...p, ...updates } : p));
+      toast({ title: '修改成功', description: `已更新 ${ids.length} 件作品` });
+      exitSelecting();
+    }
+    setIsBatchSaving(false);
+    setShowBatchEditDialog(false);
+    setBatchCategory('');
+    setBatchBrand('');
+  };
 
   if (isLoading) {
     return (
@@ -550,17 +632,79 @@ function MyPhotosTab({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">共 {photos.length} 件作品</p>
-        <Button variant="gold" size="sm" onClick={() => navigate('/upload')}>
-          <Upload className="mr-2 h-4 w-4" />
-          上傳作品
-        </Button>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          {isSelecting ? (
+            <>
+              <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+                {selectedIds.size === photos.length ? <CheckSquare className="mr-1 h-4 w-4" /> : <Square className="mr-1 h-4 w-4" />}
+                {selectedIds.size === photos.length ? '取消全選' : '全選'}
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                已選 {selectedIds.size} / {photos.length}
+              </span>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">共 {photos.length} 件作品</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {isSelecting ? (
+            <>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={selectedIds.size === 0}
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                刪除 ({selectedIds.size})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedIds.size === 0}
+                onClick={() => {
+                  setBatchCategory('');
+                  setBatchBrand('');
+                  setShowBatchEditDialog(true);
+                }}
+              >
+                <Pencil className="mr-1 h-4 w-4" />
+                批次編輯 ({selectedIds.size})
+              </Button>
+              <Button variant="ghost" size="sm" onClick={exitSelecting}>
+                <X className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setIsSelecting(true)}>
+                <CheckSquare className="mr-1 h-4 w-4" />
+                批次管理
+              </Button>
+              <Button variant="gold" size="sm" onClick={() => navigate('/upload')}>
+                <Upload className="mr-1 h-4 w-4" />
+                上傳作品
+              </Button>
+            </>
+          )}
+        </div>
       </div>
-      {photos.map((photo) => (
-        <Link key={photo.id} to={`/gallery/${photo.id}`}>
-          <Card className="hover-lift mb-2">
+
+      {/* Photo list */}
+      {photos.map((photo) => {
+        const inner = (
+          <Card className={`hover-lift mb-2 ${isSelecting && selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''}`}>
             <CardContent className="flex items-center gap-4 p-4">
+              {isSelecting && (
+                <Checkbox
+                  checked={selectedIds.has(photo.id)}
+                  onCheckedChange={() => toggleSelect(photo.id)}
+                  className="shrink-0"
+                />
+              )}
               <img
                 src={photo.thumbnail_url || photo.image_url}
                 alt={photo.title}
@@ -595,8 +739,75 @@ function MyPhotosTab({ userId }: { userId: string }) {
               </div>
             </CardContent>
           </Card>
-        </Link>
-      ))}
+        );
+
+        if (isSelecting) {
+          return (
+            <div key={photo.id} className="cursor-pointer" onClick={() => toggleSelect(photo.id)}>
+              {inner}
+            </div>
+          );
+        }
+        return <Link key={photo.id} to={`/gallery/${photo.id}`}>{inner}</Link>;
+      })}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認刪除</AlertDialogTitle>
+            <AlertDialogDescription>
+              確定要刪除所選的 {selectedIds.size} 件作品嗎？此操作無法復原。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBatchDelete} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              確認刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Batch edit dialog */}
+      <Dialog open={showBatchEditDialog} onOpenChange={setShowBatchEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>批次編輯 ({selectedIds.size} 件作品)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">僅會更新有填寫的欄位，留空則不變更。</p>
+            <div className="space-y-2">
+              <Label>拍攝類型</Label>
+              <Select value={batchCategory} onValueChange={setBatchCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="不變更" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="phone">手機攝影</SelectItem>
+                  <SelectItem value="camera">相機攝影</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>品牌</Label>
+              <Input
+                value={batchBrand}
+                onChange={(e) => setBatchBrand(e.target.value)}
+                placeholder="不變更"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBatchEditDialog(false)} disabled={isBatchSaving}>取消</Button>
+            <Button onClick={handleBatchEdit} disabled={isBatchSaving}>
+              {isBatchSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              確認修改
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
