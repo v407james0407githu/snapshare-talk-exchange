@@ -148,6 +148,10 @@ export default function PhotoDetailPage() {
   const [editCameraBody, setEditCameraBody] = useState("");
   const [editLens, setEditLens] = useState("");
 
+  // Adjacent photo navigation
+  const [prevPhotoId, setPrevPhotoId] = useState<string | null>(null);
+  const [nextPhotoId, setNextPhotoId] = useState<string | null>(null);
+
   // Dynamic OG meta tags
   useEffect(() => {
     if (!photo) return;
