@@ -24,7 +24,9 @@ import {
   Loader2,
   CheckCircle,
   ShoppingBag,
-  Plus
+  Plus,
+  Eye,
+  Smartphone
 } from 'lucide-react';
 import { AvatarCropDialog } from '@/components/profile/AvatarCropDialog';
 import { useRef } from 'react';
@@ -345,17 +347,7 @@ export default function Profile() {
             </TabsContent>
 
             <TabsContent value="photos">
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">尚無作品</h3>
-                  <p className="text-muted-foreground mb-4">開始上傳您的第一張作品吧！</p>
-                  <Button variant="gold" onClick={() => navigate('/upload')}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    上傳作品
-                  </Button>
-                </CardContent>
-              </Card>
+              <MyPhotosTab userId={user.id} />
             </TabsContent>
 
             <TabsContent value="listings">
@@ -472,6 +464,104 @@ function MyListingsTab({ userId }: { userId: string }) {
                     <Badge variant="secondary" className="text-xs">已驗證</Badge>
                   )}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function MyPhotosTab({ userId }: { userId: string }) {
+  const navigate = useNavigate();
+  const [photos, setPhotos] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('photos')
+        .select('id, title, description, thumbnail_url, image_url, category, brand, phone_model, camera_body, lens, view_count, comment_count, average_rating, rating_count, created_at')
+        .eq('user_id', userId)
+        .eq('is_hidden', false)
+        .order('created_at', { ascending: false });
+      setPhotos(data || []);
+      setIsLoading(false);
+    };
+    load();
+  }, [userId]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (photos.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">尚無作品</h3>
+          <p className="text-muted-foreground mb-4">開始上傳您的第一張作品吧！</p>
+          <Button variant="gold" onClick={() => navigate('/upload')}>
+            <Upload className="mr-2 h-4 w-4" />
+            上傳作品
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">共 {photos.length} 件作品</p>
+        <Button variant="gold" size="sm" onClick={() => navigate('/upload')}>
+          <Upload className="mr-2 h-4 w-4" />
+          上傳作品
+        </Button>
+      </div>
+      {photos.map((photo) => (
+        <Link key={photo.id} to={`/gallery/${photo.id}`}>
+          <Card className="hover-lift mb-2">
+            <CardContent className="flex items-center gap-4 p-4">
+              <img
+                src={photo.thumbnail_url || photo.image_url}
+                alt={photo.title}
+                className="h-20 w-20 rounded-lg object-cover shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium truncate">{photo.title}</h3>
+                {photo.description && (
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">{photo.description}</p>
+                )}
+                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    {photo.category === 'phone' ? <Smartphone className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
+                    {photo.brand}{photo.phone_model ? ` ${photo.phone_model}` : ''}{photo.camera_body ? ` ${photo.camera_body}` : ''}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    {photo.view_count}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Star className="h-3 w-3" />
+                    {Number(photo.average_rating || 0).toFixed(1)} ({photo.rating_count || 0})
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    {photo.comment_count || 0}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {new Date(photo.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
+                </p>
               </div>
             </CardContent>
           </Card>
