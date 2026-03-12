@@ -340,8 +340,8 @@ export function FeaturedCarousel({
           </Link>
         </div>
 
-        <CarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
-        <CarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
+        <ClassicCarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
+        <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
 
         <div className="mt-6 text-center sm:hidden">
           <Link to="/gallery">
