@@ -55,6 +55,8 @@ import {
   EyeOff,
   MoreHorizontal,
   Pencil,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   AlertDialog,
