@@ -17,14 +17,7 @@
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
-    <!-- Preconnect to Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Fully non-render-blocking font stylesheet -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Playfair+Display:wght@700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Playfair+Display:wght@700&display=swap" />
-    </noscript>
+    <!-- Performance-first: use local/system font stack to avoid render-blocking font requests on mobile -->
     <!-- Preload LCP hero image — mobile-optimized size -->
     <link rel="preload" as="image" href="https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=640&auto=format&q=75" fetchpriority="high" />
 
