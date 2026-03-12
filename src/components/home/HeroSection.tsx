@@ -154,8 +154,8 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
 
   return (
     <>
-    <section className="relative min-h-[300px] h-auto md:min-h-[50vh] md:max-h-[60vh] overflow-hidden group">
-      <div ref={emblaRef} className="overflow-hidden min-h-[300px] h-auto md:h-[55vh] md:max-h-[60vh]">
+    <section className="relative h-[300px] md:h-[50vh] md:max-h-[60vh] overflow-hidden group mt-16">
+      <div ref={emblaRef} className="overflow-hidden h-[300px] md:h-[50vh] md:max-h-[60vh]">
         <div className="flex h-full">
           {slides.map((banner, idx) => {
             const align = getAlignClasses(banner.text_align ?? "left");
