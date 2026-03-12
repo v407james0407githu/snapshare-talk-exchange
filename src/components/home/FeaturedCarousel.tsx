@@ -314,10 +314,21 @@ export function FeaturedCarousel({
 
   if (isLoading) {
     return (
-      <section className="py-12 bg-muted/30">
+      <section className="py-12 bg-muted/30 min-h-[600px]">
         <div className="container">
-          <div className="flex items-center justify-center h-[400px]">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="mb-8">
+            <div className="h-10 w-40 bg-muted animate-pulse rounded" />
+            <div className="h-5 w-60 bg-muted animate-pulse rounded mt-2" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+            ))}
           </div>
         </div>
       </section>
