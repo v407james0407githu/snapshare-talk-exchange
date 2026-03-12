@@ -20,6 +20,7 @@ interface FeaturedPhoto {
   id: string;
   title: string;
   image_url: string;
+  thumbnail_url: string | null;
   user_id: string;
   like_count: number;
   view_count: number;
@@ -56,7 +57,7 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
           <div className="absolute inset-0 animate-pulse bg-muted" />
         )}
         <img
-          src={photo.image_url}
+          src={photo.thumbnail_url || photo.image_url}
           alt={photo.title}
           className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImgLoaded(true)}
@@ -258,7 +259,7 @@ export function FeaturedCarousel({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('photos')
-        .select('*')
+        .select('id, title, image_url, thumbnail_url, user_id, like_count, view_count, average_rating, category, camera_body, phone_model, brand, is_featured')
         .eq('is_hidden', false)
         .eq('is_featured', true)
         .order('created_at', { ascending: false })
@@ -274,7 +275,7 @@ export function FeaturedCarousel({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('photos')
-        .select('*')
+        .select('id, title, image_url, thumbnail_url, user_id, like_count, view_count, average_rating, category, camera_body, phone_model, brand, is_featured')
         .eq('is_hidden', false)
         .eq('is_featured', true)
         .order('average_rating', { ascending: false })
