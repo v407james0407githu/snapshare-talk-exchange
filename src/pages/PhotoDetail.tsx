@@ -890,9 +890,15 @@ export default function PhotoDetailPage() {
                 </div>
               )}
 
-              {/* Delete Button - Owner or Admin */}
+              {/* Edit & Delete Buttons - Owner or Admin */}
               {user && (user.id === photo.user_id || canModerate) && (
-                <div className="mt-4">
+                <div className="mt-4 flex items-center gap-2">
+                  {user.id === photo.user_id && (
+                    <Button variant="outline" size="sm" className="gap-2" onClick={openEditDialog}>
+                      <Pencil className="h-4 w-4" />
+                      編輯資訊
+                    </Button>
+                  )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" className="gap-2" disabled={isDeleting}>
