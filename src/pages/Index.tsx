@@ -66,7 +66,7 @@ function LazyWrapper({
   }
   
   return (
-    <Suspense fallback={<SectionFallback />}>
+    <Suspense fallback={<SectionFallback sectionKey={sectionKey} />}>
       {children}
     </Suspense>
   );
