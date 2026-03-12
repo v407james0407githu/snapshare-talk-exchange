@@ -133,8 +133,7 @@ function CarouselRow({
   if (!photos.length) return null;
 
   return (
-    <div className="mb-6 last:mb-0">
-      <p className="text-sm font-medium text-muted-foreground mb-3">{label}</p>
+    <div className="mb-3 last:mb-0">
       <Carousel
         setApi={setApi}
         opts={{ align: 'start', loop: true }}
