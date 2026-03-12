@@ -720,11 +720,12 @@ function MyPhotosTab({ userId }: { userId: string }) {
             <div className="cursor-pointer" onClick={() => toggleSelect(photo.id)}>
               <Card className={`hover-lift mb-2 ${selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''}`}>
                 <CardContent className="flex items-center gap-4 p-4">
-                  <Checkbox
-                    checked={selectedIds.has(photo.id)}
-                    onCheckedChange={() => toggleSelect(photo.id)}
-                    className="shrink-0"
-                  />
+                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.has(photo.id)}
+                      onCheckedChange={() => toggleSelect(photo.id)}
+                    />
+                  </div>
                   <PhotoCardContent photo={photo} />
                 </CardContent>
               </Card>
