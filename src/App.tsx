@@ -76,36 +76,38 @@ const App = () => (
           <ScrollToTop />
           <PageTracker />
           <DynamicMeta />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/gallery" element={<Gallery />} />
-            <Route path="/gallery/:photoId" element={<PhotoDetail />} />
-            <Route path="/forums" element={<Forums />} />
-            <Route path="/forums/topic/:topicId" element={<ForumTopic />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/user/:userId" element={<UserProfile />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/marketplace" element={<Marketplace />} />
-            <Route path="/marketplace/create" element={<CreateListing />} />
-            <Route path="/marketplace/:listingId" element={<ListingDetail />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/favorites" element={<Favorites />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/messages/:conversationId" element={<Messages />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<UserManagement />} />
-            <Route path="/admin/reports" element={<ReportManagement />} />
-            <Route path="/admin/banners" element={<BannerManagement />} />
-            <Route path="/admin/categories" element={<CategoryManagement />} />
-            <Route path="/admin/content" element={<ContentManagement />} />
-            <Route path="/admin/photos" element={<PhotoManagement />} />
-            <Route path="/admin/sections" element={<ContentManagement />} />
-            <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
-            <Route path="/admin/settings" element={<SystemSettings />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<PageFallback />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/gallery" element={<Gallery />} />
+              <Route path="/gallery/:photoId" element={<PhotoDetail />} />
+              <Route path="/forums" element={<Forums />} />
+              <Route path="/forums/topic/:topicId" element={<ForumTopic />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/user/:userId" element={<UserProfile />} />
+              <Route path="/upload" element={<Upload />} />
+              <Route path="/marketplace" element={<Marketplace />} />
+              <Route path="/marketplace/create" element={<CreateListing />} />
+              <Route path="/marketplace/:listingId" element={<ListingDetail />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/favorites" element={<Favorites />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/messages/:conversationId" element={<Messages />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<UserManagement />} />
+              <Route path="/admin/reports" element={<ReportManagement />} />
+              <Route path="/admin/banners" element={<BannerManagement />} />
+              <Route path="/admin/categories" element={<CategoryManagement />} />
+              <Route path="/admin/content" element={<ContentManagement />} />
+              <Route path="/admin/photos" element={<PhotoManagement />} />
+              <Route path="/admin/sections" element={<ContentManagement />} />
+              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
+              <Route path="/admin/settings" element={<SystemSettings />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
