@@ -223,6 +223,74 @@ export default function AnalyticsDashboard() {
     setDeviceBreakdown([{ name: "手機", count: mobile }, { name: "平板", count: tablet }, { name: "桌面", count: desktop }].filter(d => d.count > 0));
   }
 
+  async function fetchBandwidth() {
+    const { startDate, days } = getDateRange();
+
+    // Get page views with page_path to distinguish photo detail pages
+    const { data: views } = await (supabase.from("page_views") as any)
+      .select("page_path, created_at")
+      .gte("created_at", startDate)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (!views || views.length === 0) {
+      setBandwidth(null);
+      return;
+    }
+
+    // Count photo detail views vs regular page views
+    let photoDetailViews = 0;
+    let regularViews = 0;
+    views.forEach((v: any) => {
+      if (v.page_path?.startsWith("/gallery/") && v.page_path !== "/gallery") {
+        photoDetailViews++;
+      } else {
+        regularViews++;
+      }
+    });
+
+    // Get total photos count for storage estimation
+    const { count: totalPhotos } = await supabase
+      .from("photos")
+      .select("id", { count: "exact", head: true });
+
+    // Estimate bandwidth
+    const photoViewsMB = (photoDetailViews * AVG_PHOTO_WEIGHT_KB) / 1024;
+    const pageViewsMB = (regularViews * AVG_PAGE_WEIGHT_KB) / 1024;
+    const totalEstimatedMB = photoViewsMB + pageViewsMB;
+
+    // Daily bandwidth trend
+    const dailyMap = new Map<string, { photoViews: number; pageViews: number }>();
+    for (let i = 0; i < days; i++) {
+      const d = format(subDays(new Date(), days - 1 - i), "MM/dd");
+      dailyMap.set(d, { photoViews: 0, pageViews: 0 });
+    }
+    views.forEach((v: any) => {
+      const d = format(new Date(v.created_at), "MM/dd");
+      const entry = dailyMap.get(d);
+      if (entry) {
+        if (v.page_path?.startsWith("/gallery/") && v.page_path !== "/gallery") {
+          entry.photoViews++;
+        } else {
+          entry.pageViews++;
+        }
+      }
+    });
+    const dailyTrend = [...dailyMap.entries()].map(([date, data]) => ({
+      date,
+      mb: Number(((data.photoViews * AVG_PHOTO_WEIGHT_KB + data.pageViews * AVG_PAGE_WEIGHT_KB) / 1024).toFixed(1)),
+    }));
+
+    setBandwidth({
+      totalEstimatedMB,
+      photoViewsMB,
+      pageViewsMB,
+      dailyTrend,
+      totalPhotoViews: photoDetailViews,
+      totalStoragePhotos: totalPhotos || 0,
+    });
+  }
+
   if (loading) {
     return (
       <AdminLayout title="數據分析" subtitle="全站數據統計與趨勢分析">
