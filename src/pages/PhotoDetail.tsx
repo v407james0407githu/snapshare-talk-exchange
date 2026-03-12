@@ -399,6 +399,79 @@ export default function PhotoDetailPage() {
     setIsSubmittingComment(false);
   };
 
+  const phoneBrands = [
+    { value: 'apple', label: 'Apple' },
+    { value: 'samsung', label: 'Samsung' },
+    { value: 'xiaomi', label: '小米' },
+    { value: 'vivo', label: 'Vivo' },
+    { value: 'oppo', label: 'OPPO' },
+    { value: 'google', label: 'Google' },
+    { value: 'huawei', label: 'Huawei' },
+    { value: 'other', label: '其他' },
+  ];
+
+  const cameraBrands = [
+    { value: 'sony', label: 'Sony' },
+    { value: 'canon', label: 'Canon' },
+    { value: 'nikon', label: 'Nikon' },
+    { value: 'fujifilm', label: 'Fujifilm' },
+    { value: 'ricoh', label: 'Ricoh' },
+    { value: 'leica', label: 'Leica' },
+    { value: 'panasonic', label: 'Panasonic' },
+    { value: 'olympus', label: 'Olympus' },
+    { value: 'other', label: '其他' },
+  ];
+
+  const openEditDialog = () => {
+    if (!photo) return;
+    setEditTitle(photo.title);
+    setEditDescription(photo.description || "");
+    setEditCategory(photo.category);
+    setEditBrand(photo.brand || "");
+    setEditPhoneModel(photo.phone_model || "");
+    setEditCameraBody(photo.camera_body || "");
+    setEditLens(photo.lens || "");
+    setIsEditingPhoto(true);
+  };
+
+  const handleSavePhotoEdit = async () => {
+    if (!user || !photo || !editTitle.trim() || !editCategory) return;
+    setIsSavingPhoto(true);
+
+    const { error } = await supabase
+      .from("photos")
+      .update({
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        category: editCategory,
+        brand: editBrand || null,
+        phone_model: editCategory === "phone" ? editPhoneModel || null : null,
+        camera_body: editCategory === "camera" ? editCameraBody || null : null,
+        lens: editCategory === "camera" ? editLens || null : null,
+      })
+      .eq("id", photo.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      toast({ title: "更新失敗", description: getSafeErrorMessage(error), variant: "destructive" });
+    } else {
+      setPhoto(prev => prev ? {
+        ...prev,
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        category: editCategory,
+        brand: editBrand || null,
+        phone_model: editCategory === "phone" ? editPhoneModel || null : null,
+        camera_body: editCategory === "camera" ? editCameraBody || null : null,
+        lens: editCategory === "camera" ? editLens || null : null,
+      } : prev);
+      setIsEditingPhoto(false);
+      toast({ title: "作品資訊已更新" });
+    }
+
+    setIsSavingPhoto(false);
+  };
+
   const handleDeletePhoto = async () => {
     if (!user || !photo) return;
     setIsDeleting(true);
