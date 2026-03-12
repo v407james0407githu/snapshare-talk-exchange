@@ -516,6 +516,7 @@ function MyPhotosTab({ userId }: { userId: string }) {
   const [isBatchSaving, setIsBatchSaving] = useState(false);
   const [batchCategory, setBatchCategory] = useState<string>('');
   const [batchBrand, setBatchBrand] = useState('');
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -570,6 +571,25 @@ function MyPhotosTab({ userId }: { userId: string }) {
     }
     setIsDeleting(false);
     setShowDeleteDialog(false);
+  };
+
+  const handleSingleDelete = async () => {
+    if (!singleDeleteId) return;
+    setIsDeleting(true);
+    const { error } = await supabase
+      .from('photos')
+      .delete()
+      .eq('id', singleDeleteId)
+      .eq('user_id', userId);
+
+    if (error) {
+      toast({ title: '刪除失敗', description: error.message, variant: 'destructive' });
+    } else {
+      setPhotos(prev => prev.filter(p => p.id !== singleDeleteId));
+      toast({ title: '刪除成功', description: '作品已刪除' });
+    }
+    setIsDeleting(false);
+    setSingleDeleteId(null);
   };
 
   const handleBatchEdit = async () => {
@@ -694,64 +714,60 @@ function MyPhotosTab({ userId }: { userId: string }) {
       </div>
 
       {/* Photo list */}
-      {photos.map((photo) => {
-        const inner = (
-          <Card className={`hover-lift mb-2 ${isSelecting && selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''}`}>
-            <CardContent className="flex items-center gap-4 p-4">
-              {isSelecting && (
-                <Checkbox
-                  checked={selectedIds.has(photo.id)}
-                  onCheckedChange={() => toggleSelect(photo.id)}
-                  className="shrink-0"
-                />
-              )}
-              <img
-                src={photo.thumbnail_url || photo.image_url}
-                alt={photo.title}
-                className="h-20 w-20 rounded-lg object-cover shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium truncate">{photo.title}</h3>
-                {photo.description && (
-                  <p className="text-sm text-muted-foreground truncate mt-0.5">{photo.description}</p>
-                )}
-                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    {photo.category === 'phone' ? <Smartphone className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
-                    {photo.brand}{photo.phone_model ? ` ${photo.phone_model}` : ''}{photo.camera_body ? ` ${photo.camera_body}` : ''}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    {photo.view_count}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Star className="h-3 w-3" />
-                    {Number(photo.average_rating || 0).toFixed(1)} ({photo.rating_count || 0})
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="h-3 w-3" />
-                    {photo.comment_count || 0}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(photo.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        );
-
-        if (isSelecting) {
-          return (
-            <div key={photo.id} className="cursor-pointer" onClick={() => toggleSelect(photo.id)}>
-              {inner}
+      {photos.map((photo) => (
+        <div key={photo.id} className="relative">
+          {isSelecting ? (
+            <div className="cursor-pointer" onClick={() => toggleSelect(photo.id)}>
+              <Card className={`hover-lift mb-2 ${selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''}`}>
+                <CardContent className="flex items-center gap-4 p-4">
+                  <Checkbox
+                    checked={selectedIds.has(photo.id)}
+                    onCheckedChange={() => toggleSelect(photo.id)}
+                    className="shrink-0"
+                  />
+                  <PhotoCardContent photo={photo} />
+                </CardContent>
+              </Card>
             </div>
-          );
-        }
-        return <Link key={photo.id} to={`/gallery/${photo.id}`}>{inner}</Link>;
-      })}
+          ) : (
+            <Card className="hover-lift mb-2 group">
+              <CardContent className="flex items-center gap-4 p-4">
+                <Link to={`/gallery/${photo.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                  <PhotoCardContent photo={photo} />
+                </Link>
+                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate(`/gallery/${photo.id}`);
+                    }}
+                    title="編輯"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setSingleDeleteId(photo.id);
+                    }}
+                    title="刪除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ))}
 
-      {/* Delete confirmation */}
+      {/* Batch delete confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -763,6 +779,25 @@ function MyPhotosTab({ userId }: { userId: string }) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
             <AlertDialogAction onClick={handleBatchDelete} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              確認刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Single delete confirmation */}
+      <AlertDialog open={!!singleDeleteId} onOpenChange={(open) => { if (!open) setSingleDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認刪除</AlertDialogTitle>
+            <AlertDialogDescription>
+              確定要刪除這件作品嗎？此操作無法復原。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSingleDelete} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               確認刪除
             </AlertDialogAction>
@@ -809,5 +844,45 @@ function MyPhotosTab({ userId }: { userId: string }) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** Shared photo card content for reuse in both selecting and normal mode */
+function PhotoCardContent({ photo }: { photo: any }) {
+  return (
+    <>
+      <img
+        src={photo.thumbnail_url || photo.image_url}
+        alt={photo.title}
+        className="h-20 w-20 rounded-lg object-cover shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <h3 className="font-medium truncate">{photo.title}</h3>
+        {photo.description && (
+          <p className="text-sm text-muted-foreground truncate mt-0.5">{photo.description}</p>
+        )}
+        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            {photo.category === 'phone' ? <Smartphone className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
+            {photo.brand}{photo.phone_model ? ` ${photo.phone_model}` : ''}{photo.camera_body ? ` ${photo.camera_body}` : ''}
+          </span>
+          <span className="flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            {photo.view_count}
+          </span>
+          <span className="flex items-center gap-1">
+            <Star className="h-3 w-3" />
+            {Number(photo.average_rating || 0).toFixed(1)} ({photo.rating_count || 0})
+          </span>
+          <span className="flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" />
+            {photo.comment_count || 0}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {new Date(photo.created_at).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+      </div>
+    </>
   );
 }
