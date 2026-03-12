@@ -83,6 +83,7 @@ export default function AnalyticsDashboard() {
   const [totalUV, setTotalUV] = useState(0);
   const [todayPV, setTodayPV] = useState(0);
   const [todayUV, setTodayUV] = useState(0);
+  const [bandwidth, setBandwidth] = useState<BandwidthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(14);
   const [rangeMode, setRangeMode] = useState<string>("14");
