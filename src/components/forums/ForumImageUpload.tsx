@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { resizeImage } from '@/lib/imageResize';
+import { resizeImage, getOutputMimeType } from '@/lib/imageResize';
 
 // Each image can be either a pending local file or an already-uploaded URL
 export interface ImageItem {
