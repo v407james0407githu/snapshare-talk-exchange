@@ -343,79 +343,76 @@ export function FeaturedCarousel({
   const latestFeatured = withProfiles(latestPhotos);
   const topRatedFeatured = withProfiles(topRatedPhotos);
 
-  if (l1) {
-    return (
-      <section className="py-12 bg-muted/30 min-h-[420px] md:min-h-[520px]">
-        <div className="container">
-          <div className="flex items-center justify-between mb-8">
+  const isEmpty = !l1 && !latestFeatured.length && !topRatedFeatured.length;
+
+  // Don't render anything if truly empty (no skeleton shown yet)
+  if (isEmpty) return null;
+
+  return (
+    <section className="py-12 bg-muted/30">
+      <div className="container">
+        <div className="flex items-center justify-between mb-8">
+          {l1 ? (
             <div>
               <div className="h-10 w-48 bg-muted animate-pulse rounded mb-2" />
               <div className="h-5 w-64 bg-muted animate-pulse rounded" />
             </div>
-          </div>
-          <CarouselSkeleton />
-        </div>
-      </section>
-    );
-  }
-
-  if (!latestFeatured.length && !topRatedFeatured.length) {
-    // Return empty container instead of null to avoid CLS from skeleton→null transition
-    return <div className="min-h-0" />;
-  }
-
-  return (
-    <section className="py-12 bg-muted/30 min-h-[420px] md:min-h-[520px]">
-      <div className="container">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              {sectionTitle || '精選作品'}
-            </h2>
-            <p className="text-muted-foreground">
-              {sectionSubtitle || '社群精選的優質攝影作品'}
-            </p>
-          </div>
-          <Link to="/gallery">
-            <Button variant="outline" className="hidden sm:flex gap-2">
-              查看全部
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
-
-        <ClassicCarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
-        
-        {/* Row 2 — lazy loaded via IntersectionObserver */}
-        <div ref={row2Ref}>
-          {row2Visible ? (
-            l2 ? (
-              <div className="mt-4">
-                <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
-                <div className="flex gap-4 overflow-hidden">
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <div key={i} className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl" />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
-            )
           ) : (
-            /* Placeholder to maintain layout height */
-            <div className="mt-4 h-[280px] md:h-[320px]" />
+            <div>
+              <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
+                {sectionTitle || '精選作品'}
+              </h2>
+              <p className="text-muted-foreground">
+                {sectionSubtitle || '社群精選的優質攝影作品'}
+              </p>
+            </div>
+          )}
+          {!l1 && (
+            <Link to="/gallery">
+              <Button variant="outline" className="hidden sm:flex gap-2">
+                查看全部
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           )}
         </div>
 
-        <div className="mt-6 text-center sm:hidden">
-          <Link to="/gallery">
-            <Button variant="outline" className="gap-2">
-              查看全部作品
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
+        {l1 ? (
+          <CarouselSkeleton />
+        ) : (
+          <>
+            <ClassicCarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
+            
+            {/* Row 2 — lazy loaded via IntersectionObserver */}
+            <div ref={row2Ref}>
+              {row2Visible ? (
+                l2 ? (
+                  <div className="mt-4">
+                    <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+                    <div className="flex gap-4 overflow-hidden">
+                      {Array.from({ length: 2 }).map((_, i) => (
+                        <div key={i} className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
+                )
+              ) : (
+                <div className="mt-4 h-[280px] md:h-[320px]" />
+              )}
+            </div>
+
+            <div className="mt-6 text-center sm:hidden">
+              <Link to="/gallery">
+                <Button variant="outline" className="gap-2">
+                  查看全部作品
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
-}
