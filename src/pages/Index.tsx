@@ -40,9 +40,16 @@ const sectionFeatureMap: Record<string, string> = {
   marketplace_preview: "marketplace_enabled",
 };
 
-/** Minimal loading placeholder for lazy sections */
-function SectionFallback() {
-  return <div className="py-12 min-h-[200px]" />;
+/** Loading placeholder matching approximate section heights to prevent CLS */
+function SectionFallback({ sectionKey }: { sectionKey: string }) {
+  const heights: Record<string, string> = {
+    equipment_categories: "min-h-[500px]",
+    featured_gallery: "min-h-[480px]",
+    forum_preview: "min-h-[500px]",
+    marketplace_preview: "min-h-[480px]",
+    cta: "min-h-[320px]",
+  };
+  return <div className={`${heights[sectionKey] || "min-h-[400px]"}`} />;
 }
 
 /** Wrapper that renders a lazy section only when it's near the viewport */
@@ -59,7 +66,7 @@ function LazyWrapper({
   }
   
   return (
-    <Suspense fallback={<SectionFallback />}>
+    <Suspense fallback={<SectionFallback sectionKey={sectionKey} />}>
       {children}
     </Suspense>
   );

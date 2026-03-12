@@ -52,9 +52,9 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full h-16 glass border-b border-border/50">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
+        <Link to="/" className="flex items-center gap-2 group h-8 min-w-[120px]">
           {siteLogo ? (
-            <img src={siteLogo} alt={siteName} className="h-8 max-w-[160px] object-contain" />
+            <img src={siteLogo} alt={siteName} className="h-8 max-w-[160px] object-contain" width={160} height={32} />
           ) : (
             <>
               <div className="relative">
