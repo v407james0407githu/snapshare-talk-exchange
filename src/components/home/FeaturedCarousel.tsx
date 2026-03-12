@@ -39,43 +39,70 @@ export function FeaturedCarousel({ sectionTitle, sectionSubtitle }: { sectionTit
   const [api, setApi] = useState<any>(null);
   const [current, setCurrent] = useState(0);
 
-  const { data: featuredPhotos, isLoading } = useQuery({
-    queryKey: ['featured-photos'],
+  // 最新精選照片（按時間排序）
+  const { data: latestPhotos, isLoading: isLoadingLatest } = useQuery({
+    queryKey: ['featured-photos-latest'],
     queryFn: async () => {
-      // Fetch featured photos (is_featured = true) or top rated photos
-      const { data: photosData, error: photosError } = await supabase
+      const { data, error } = await supabase
         .from('photos')
         .select('*')
         .eq('is_hidden', false)
-        .order('is_featured', { ascending: false })
-        .order('average_rating', { ascending: false })
-        .order('like_count', { ascending: false })
+        .eq('is_featured', true)
+        .order('created_at', { ascending: false })
         .limit(8);
+      if (error) throw error;
+      return data;
+    },
+  });
 
-      if (photosError) throw photosError;
+  // 隨機精選照片（不分時間）
+  const { data: randomPhotos, isLoading: isLoadingRandom } = useQuery({
+    queryKey: ['featured-photos-random'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('photos')
+        .select('*')
+        .eq('is_hidden', false)
+        .eq('is_featured', true)
+        .limit(20);
+      if (error) throw error;
+      // 隨機排序
+      return (data || []).sort(() => Math.random() - 0.5).slice(0, 8);
+    },
+  });
 
-      // Fetch profiles for all photos
-      const userIds = [...new Set(photosData.map((p) => p.user_id))];
-      const { data: profilesData } = await supabase
+  // 合併 user_ids 一次查詢 profiles
+  const allPhotos = [...(latestPhotos || []), ...(randomPhotos || [])];
+  const userIds = [...new Set(allPhotos.map((p) => p.user_id))];
+
+  const { data: profilesData } = useQuery({
+    queryKey: ['featured-photos-profiles', userIds.join(',')],
+    queryFn: async () => {
+      if (!userIds.length) return [];
+      const { data } = await supabase
         .from('profiles')
         .select('user_id, username, display_name, avatar_url')
         .in('user_id', userIds);
-
-      const profilesMap = new Map(
-        profilesData?.map((p) => [p.user_id, p]) || []
-      );
-
-      // 隨機排序，每次顯示不同順序
-      const shuffled = photosData
-        .map((photo) => ({
-          ...photo,
-          profiles: profilesMap.get(photo.user_id),
-        }))
-        .sort(() => Math.random() - 0.5);
-
-      return shuffled as FeaturedPhoto[];
+      return data || [];
     },
+    enabled: userIds.length > 0,
   });
+
+  const profilesMap = new Map(
+    profilesData?.map((p) => [p.user_id, p]) || []
+  );
+
+  const latestFeatured = (latestPhotos || []).map((photo) => ({
+    ...photo,
+    profiles: profilesMap.get(photo.user_id),
+  })) as FeaturedPhoto[];
+
+  const randomFeatured = (randomPhotos || []).map((photo) => ({
+    ...photo,
+    profiles: profilesMap.get(photo.user_id),
+  })) as FeaturedPhoto[];
+
+  const isLoading = isLoadingLatest || isLoadingRandom;
 
   useEffect(() => {
     if (!api) return;
