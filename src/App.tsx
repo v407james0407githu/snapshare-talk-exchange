@@ -13,7 +13,10 @@ import Index from "./pages/Index";
 // Auth is not needed on initial homepage load
 const Auth = lazy(() => import("./pages/Auth"));
 
-// Lazy loaded pages
+// Defer non-critical overlays/effects
+const Toaster = lazy(() => import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })));
+const Sonner = lazy(() => import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })));
+const DynamicMeta = lazy(() => import("@/components/layout/DynamicMeta").then((m) => ({ default: m.DynamicMeta })));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const PhotoDetail = lazy(() => import("./pages/PhotoDetail"));
 const Forums = lazy(() => import("./pages/Forums"));
