@@ -98,16 +98,16 @@ export default function Marketplace() {
 
     const items = (data || []) as Listing[];
 
-    // Two-stage query: fetch seller profiles
+    // Fetch only needed seller profiles (not ALL profiles)
     const userIds = [...new Set(items.map(l => l.user_id))];
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
-        .rpc('get_public_profiles');
+        .from('profiles')
+        .select('user_id, username, display_name, avatar_url, is_verified')
+        .in('user_id', userIds);
 
       if (profiles) {
-        const profileMap = new Map(
-          (profiles as any[]).map((p: any) => [p.user_id, p])
-        );
+        const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
         items.forEach(item => {
           const p = profileMap.get(item.user_id);
           if (p) {
@@ -115,7 +115,7 @@ export default function Marketplace() {
               username: p.username,
               display_name: p.display_name,
               avatar_url: p.avatar_url,
-              is_verified: p.is_verified,
+              is_verified: p.is_verified ?? false,
             };
           }
         });

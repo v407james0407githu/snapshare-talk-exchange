@@ -58,11 +58,15 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
 
       const items = (data || []) as ListingItem[];
 
-      // Fetch seller profiles
+      // Fetch only needed seller profiles (not ALL profiles)
       if (items.length > 0) {
-        const { data: profiles } = await supabase.rpc("get_public_profiles");
+        const userIds = [...new Set(items.map((i) => i.user_id))];
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, username, display_name, avatar_url, is_verified")
+          .in("user_id", userIds);
         if (profiles) {
-          const map = new Map((profiles as any[]).map((p: any) => [p.user_id, p]));
+          const map = new Map(profiles.map((p) => [p.user_id, p]));
           items.forEach((item) => {
             const p = map.get(item.user_id);
             if (p) {
@@ -70,7 +74,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
                 username: p.username,
                 display_name: p.display_name,
                 avatar_url: p.avatar_url,
-                is_verified: p.is_verified,
+                is_verified: p.is_verified ?? false,
               };
             }
           });

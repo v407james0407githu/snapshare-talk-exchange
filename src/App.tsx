@@ -35,7 +35,16 @@ import SystemSettings from "./pages/admin/SystemSettings";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 minutes - avoid refetching on every mount
+      gcTime: 10 * 60 * 1000,   // 10 minutes garbage collection
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function PageTracker() {
   usePageTracking();

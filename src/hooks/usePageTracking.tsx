@@ -34,8 +34,9 @@ export function usePageTracking() {
       const referrer = document.referrer || "";
       const referrerDomain = extractDomain(referrer);
 
-      // Get user if logged in
-      const { data: { user } } = await supabase.auth.getUser();
+      // Get user from local session (no network call)
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
 
       const { data: inserted } = await (supabase.from("page_views") as any).insert({
         session_id: sessionId,
