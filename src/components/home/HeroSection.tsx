@@ -168,6 +168,8 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
                 {/* Mobile: aspect-ratio based, Desktop: absolute fill */}
                 <img
                   src={banner.image_url}
+                  srcSet={unsplashSrcSet(banner.image_url, [640, 960, 1280, 1920]) || undefined}
+                  sizes={SIZES.hero}
                   alt={banner.title || "Banner"}
                   className="w-full h-auto md:absolute md:inset-0 md:h-full md:object-cover object-center"
                   loading={isFirst ? "eager" : "lazy"}

@@ -58,6 +58,7 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
         )}
         <img
           src={photo.thumbnail_url || photo.image_url}
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
           alt={photo.title}
           className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImgLoaded(true)}
