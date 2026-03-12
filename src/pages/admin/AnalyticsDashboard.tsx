@@ -95,7 +95,7 @@ export default function AnalyticsDashboard() {
   async function fetchAll() {
     setLoading(true);
     try {
-      await Promise.all([fetchStats(), fetchTopPhotos(), fetchActiveUsers(), fetchTrends(), fetchTrafficData()]);
+      await Promise.all([fetchStats(), fetchTopPhotos(), fetchActiveUsers(), fetchTrends(), fetchTrafficData(), fetchBandwidth()]);
     } catch (err) {
       console.error(err);
     } finally {
