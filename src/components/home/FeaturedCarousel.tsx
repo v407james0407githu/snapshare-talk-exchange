@@ -204,15 +204,14 @@ function FreeScrollCarouselRow({
         opts={{
           align: 'start',
           loop: true,
-          dragFree: true,
-          containScroll: false,
+          slidesToScroll: 1,
         }}
         plugins={[autoplayRef.current]}
         className="w-full"
       >
         <CarouselContent className="-ml-5">
           {photos.map((photo) => (
-            <CarouselItem key={photo.id} className="pl-5 basis-[85%] md:basis-[48%]">
+            <CarouselItem key={photo.id} className="pl-5 basis-[85%] md:basis-[46%]">
               <PhotoCard photo={photo} />
             </CarouselItem>
           ))}
