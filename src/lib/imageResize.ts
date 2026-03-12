@@ -107,7 +107,7 @@ export async function createThumbnail(
   file: File,
   size: number = 400
 ): Promise<ResizedImage> {
-  return resizeImage(file, size, size, 0.8);
+  return resizeImage(file, size, size, 0.75);
 }
 
 /**
