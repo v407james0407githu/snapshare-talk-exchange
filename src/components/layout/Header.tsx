@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Camera, 
   Menu, 
@@ -31,11 +32,17 @@ import {
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { isAdmin, isModerator } = useAdmin();
-  const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo, siteName } = useSystemSettings();
+  const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo, siteName, settings } = useSystemSettings();
+
+  // 確保 SSR 水合完成後再顯示內容
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const navItems = [
     { label: "首頁", href: "/" },
@@ -49,8 +56,35 @@ export function Header() {
     navigate('/');
   };
 
+  // 在 SSR 或水合完成前，顯示骨架屏
+  if (!isMounted || settings.length === 0) {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-50 w-full h-16 glass border-b border-border/50">
+        <div className="container flex h-16 items-center justify-between">
+          {/* Logo skeleton */}
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-6 w-24 hidden sm:block" />
+          </div>
+          {/* Nav skeleton */}
+          <div className="hidden md:flex items-center gap-1">
+            <Skeleton className="h-9 w-16" />
+            <Skeleton className="h-9 w-16" />
+            <Skeleton className="h-9 w-16" />
+          </div>
+          {/* Actions skeleton */}
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-32 hidden sm:block" />
+            <Skeleton className="h-9 w-9 rounded-full" />
+            <Skeleton className="h-9 w-9 rounded-full" />
+          </div>
+        </div>
+      </header>
+    );
+  }
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full glass border-b border-border/50 h-16">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full h-16 glass border-b border-border/50">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
