@@ -20,6 +20,7 @@ interface FeaturedPhoto {
   id: string;
   title: string;
   image_url: string;
+  thumbnail_url: string | null;
   user_id: string;
   like_count: number;
   view_count: number;
