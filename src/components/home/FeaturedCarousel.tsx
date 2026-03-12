@@ -205,6 +205,7 @@ function FreeScrollCarouselRow({
           align: 'start',
           loop: true,
           slidesToScroll: 1,
+          dragFree: true,
         }}
         plugins={[autoplayRef.current]}
         className="w-full"
