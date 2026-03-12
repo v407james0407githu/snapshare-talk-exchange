@@ -221,8 +221,10 @@ export default function PhotoDetailPage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "ArrowLeft" && prevPhotoId) {
+        setSlideDirection("right");
         navigate(`/gallery/${prevPhotoId}`);
       } else if (e.key === "ArrowRight" && nextPhotoId) {
+        setSlideDirection("left");
         navigate(`/gallery/${nextPhotoId}`);
       }
     };
