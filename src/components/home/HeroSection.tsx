@@ -67,6 +67,8 @@ const fallbackBanners: Banner[] = [
   },
 ];
 
+import { unsplashSrcSet, SIZES } from '@/lib/responsiveImage';
+
 /** Optimize Unsplash URLs: ensure auto=format and reasonable width */
 function optimizeUnsplashUrl(url: string): string {
   if (!url.includes('unsplash.com')) return url;
