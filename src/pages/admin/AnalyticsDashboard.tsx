@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import {
   Users, Image, MessageSquare, Eye, Star, Heart, TrendingUp, ShoppingBag,
-  Loader2, Globe, FileText, Link2, Monitor, MapPin,
+  Loader2, Globe, FileText, Link2, Monitor, MapPin, HardDrive, Download, Activity,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -40,6 +40,19 @@ interface TopPhoto { id: string; title: string; view_count: number; like_count: 
 interface ActiveUser { user_id: string; username: string; display_name: string; photo_count: number; }
 interface TrendPoint { date: string; count: number; }
 interface RankItem { name: string; count: number; }
+interface BandwidthData {
+  totalEstimatedMB: number;
+  photoViewsMB: number;
+  pageViewsMB: number;
+  dailyTrend: { date: string; mb: number }[];
+  totalPhotoViews: number;
+  totalStoragePhotos: number;
+}
+
+// Estimated weights
+const AVG_PAGE_WEIGHT_KB = 350; // average page load ~350KB (HTML+CSS+JS cached)
+const AVG_PHOTO_WEIGHT_KB = 1800; // average photo view ~1.8MB
+const AVG_THUMBNAIL_WEIGHT_KB = 80; // thumbnail in gallery ~80KB
 
 const COLORS = [
   "hsl(var(--primary))", "hsl(var(--accent-foreground))",
@@ -70,6 +83,7 @@ export default function AnalyticsDashboard() {
   const [totalUV, setTotalUV] = useState(0);
   const [todayPV, setTodayPV] = useState(0);
   const [todayUV, setTodayUV] = useState(0);
+  const [bandwidth, setBandwidth] = useState<BandwidthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [rangeDays, setRangeDays] = useState(14);
   const [rangeMode, setRangeMode] = useState<string>("14");
@@ -81,7 +95,7 @@ export default function AnalyticsDashboard() {
   async function fetchAll() {
     setLoading(true);
     try {
-      await Promise.all([fetchStats(), fetchTopPhotos(), fetchActiveUsers(), fetchTrends(), fetchTrafficData()]);
+      await Promise.all([fetchStats(), fetchTopPhotos(), fetchActiveUsers(), fetchTrends(), fetchTrafficData(), fetchBandwidth()]);
     } catch (err) {
       console.error(err);
     } finally {
@@ -207,6 +221,74 @@ export default function AnalyticsDashboard() {
     let mobile = 0, tablet = 0, desktop = 0;
     views.forEach((v: any) => { const w = v.screen_width || 0; if (w < 768) mobile++; else if (w < 1024) tablet++; else desktop++; });
     setDeviceBreakdown([{ name: "手機", count: mobile }, { name: "平板", count: tablet }, { name: "桌面", count: desktop }].filter(d => d.count > 0));
+  }
+
+  async function fetchBandwidth() {
+    const { startDate, days } = getDateRange();
+
+    // Get page views with page_path to distinguish photo detail pages
+    const { data: views } = await (supabase.from("page_views") as any)
+      .select("page_path, created_at")
+      .gte("created_at", startDate)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
+    if (!views || views.length === 0) {
+      setBandwidth(null);
+      return;
+    }
+
+    // Count photo detail views vs regular page views
+    let photoDetailViews = 0;
+    let regularViews = 0;
+    views.forEach((v: any) => {
+      if (v.page_path?.startsWith("/gallery/") && v.page_path !== "/gallery") {
+        photoDetailViews++;
+      } else {
+        regularViews++;
+      }
+    });
+
+    // Get total photos count for storage estimation
+    const { count: totalPhotos } = await supabase
+      .from("photos")
+      .select("id", { count: "exact", head: true });
+
+    // Estimate bandwidth
+    const photoViewsMB = (photoDetailViews * AVG_PHOTO_WEIGHT_KB) / 1024;
+    const pageViewsMB = (regularViews * AVG_PAGE_WEIGHT_KB) / 1024;
+    const totalEstimatedMB = photoViewsMB + pageViewsMB;
+
+    // Daily bandwidth trend
+    const dailyMap = new Map<string, { photoViews: number; pageViews: number }>();
+    for (let i = 0; i < days; i++) {
+      const d = format(subDays(new Date(), days - 1 - i), "MM/dd");
+      dailyMap.set(d, { photoViews: 0, pageViews: 0 });
+    }
+    views.forEach((v: any) => {
+      const d = format(new Date(v.created_at), "MM/dd");
+      const entry = dailyMap.get(d);
+      if (entry) {
+        if (v.page_path?.startsWith("/gallery/") && v.page_path !== "/gallery") {
+          entry.photoViews++;
+        } else {
+          entry.pageViews++;
+        }
+      }
+    });
+    const dailyTrend = [...dailyMap.entries()].map(([date, data]) => ({
+      date,
+      mb: Number(((data.photoViews * AVG_PHOTO_WEIGHT_KB + data.pageViews * AVG_PAGE_WEIGHT_KB) / 1024).toFixed(1)),
+    }));
+
+    setBandwidth({
+      totalEstimatedMB,
+      photoViewsMB,
+      pageViewsMB,
+      dailyTrend,
+      totalPhotoViews: photoDetailViews,
+      totalStoragePhotos: totalPhotos || 0,
+    });
   }
 
   if (loading) {
@@ -341,6 +423,96 @@ export default function AnalyticsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bandwidth Estimation */}
+      {bandwidth && (
+        <>
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Activity className="h-5 w-5" /> 頻寬流量估算</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-2"><Download className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize(bandwidth.totalEstimatedMB)}</div>
+                <div className="text-xs text-muted-foreground">{rangeLabel}估算總流量</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center mb-2"><Image className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize(bandwidth.photoViewsMB)}</div>
+                <div className="text-xs text-muted-foreground">圖片瀏覽流量</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center mb-2"><FileText className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize(bandwidth.pageViewsMB)}</div>
+                <div className="text-xs text-muted-foreground">頁面瀏覽流量</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4 text-center">
+                <div className="mx-auto w-10 h-10 rounded-lg bg-accent text-accent-foreground flex items-center justify-center mb-2"><HardDrive className="h-5 w-5" /></div>
+                <div className="text-2xl font-bold">{formatSize((bandwidth.totalStoragePhotos * AVG_PHOTO_WEIGHT_KB) / 1024)}</div>
+                <div className="text-xs text-muted-foreground">估算儲存空間（{bandwidth.totalStoragePhotos} 張）</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 mb-8">
+            <Card>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Activity className="h-4 w-4" /> 每日頻寬估算（{rangeLabel}）</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={bandwidth.dailyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} unit=" MB" />
+                    <Tooltip formatter={(value: number) => [`${value} MB`, "頻寬"]} />
+                    <Bar dataKey="mb" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="MB" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Download className="h-4 w-4" /> 流量組成分析</CardTitle></CardHeader>
+              <CardContent>
+                {(() => {
+                  const bwBreakdown = [
+                    { name: "圖片瀏覽", count: Math.round(bandwidth.photoViewsMB) },
+                    { name: "頁面載入", count: Math.round(bandwidth.pageViewsMB) },
+                  ].filter(d => d.count > 0);
+                  return bwBreakdown.length > 0 ? (
+                    <>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <PieChart>
+                          <Pie data={bwBreakdown} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                            {bwBreakdown.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => [`${value} MB`, "流量"]} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex justify-center gap-4 mt-2">
+                        {bwBreakdown.map((d, i) => (
+                          <div key={d.name} className="flex items-center gap-1.5 text-xs">
+                            <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                            {d.name}: {formatSize(d.count)}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-10 text-center text-sm text-muted-foreground">尚無資料</div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
+          <p className="text-xs text-muted-foreground mb-8">
+            * 頻寬為估算值，基於平均頁面大小 {AVG_PAGE_WEIGHT_KB}KB 和平均圖片大小 {(AVG_PHOTO_WEIGHT_KB / 1024).toFixed(1)}MB 計算。實際流量可能因快取、CDN 和壓縮而有所不同。
+          </p>
+        </>
+      )}
 
       {/* Pages, Referrers, Countries, Devices */}
       <div className="grid lg:grid-cols-2 xl:grid-cols-4 gap-8 mb-8">
@@ -546,4 +718,10 @@ function formatPageName(path: string): string {
 function formatLang(code: string): string {
   const map: Record<string, string> = { zh: "中文", en: "英文", ja: "日文", ko: "韓文", fr: "法文", de: "德文", es: "西班牙文", pt: "葡萄牙文" };
   return map[code] || code;
+}
+
+function formatSize(mb: number): string {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  if (mb >= 1) return `${mb.toFixed(1)} MB`;
+  return `${(mb * 1024).toFixed(0)} KB`;
 }
