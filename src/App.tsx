@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,33 +8,47 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { DynamicMeta } from "@/components/layout/DynamicMeta";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
-import Index from "./pages/Index";
-import Gallery from "./pages/Gallery";
-import PhotoDetail from "./pages/PhotoDetail";
-import Forums from "./pages/Forums";
-import ForumTopic from "./pages/ForumTopic";
-import Auth from "./pages/Auth";
-import Profile from "./pages/Profile";
-import UserProfile from "./pages/UserProfile";
-import Upload from "./pages/Upload";
-import Marketplace from "./pages/Marketplace";
-import CreateListing from "./pages/CreateListing";
-import ListingDetail from "./pages/ListingDetail";
-import Notifications from "./pages/Notifications";
-import Favorites from "./pages/Favorites";
-import Messages from "./pages/Messages";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import UserManagement from "./pages/admin/UserManagement";
-import ReportManagement from "./pages/admin/ReportManagement";
-import BannerManagement from "./pages/admin/BannerManagement";
-import CategoryManagement from "./pages/admin/CategoryManagement";
-import ContentManagement from "./pages/admin/ContentManagement";
-import PhotoManagement from "./pages/admin/PhotoManagement";
+import { Loader2 } from "lucide-react";
 
-import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
-import SystemSettings from "./pages/admin/SystemSettings";
-import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
+// Eagerly loaded (critical path)
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+
+// Lazy loaded pages
+const Gallery = lazy(() => import("./pages/Gallery"));
+const PhotoDetail = lazy(() => import("./pages/PhotoDetail"));
+const Forums = lazy(() => import("./pages/Forums"));
+const ForumTopic = lazy(() => import("./pages/ForumTopic"));
+const Profile = lazy(() => import("./pages/Profile"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Upload = lazy(() => import("./pages/Upload"));
+const Marketplace = lazy(() => import("./pages/Marketplace"));
+const CreateListing = lazy(() => import("./pages/CreateListing"));
+const ListingDetail = lazy(() => import("./pages/ListingDetail"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Favorites = lazy(() => import("./pages/Favorites"));
+const Messages = lazy(() => import("./pages/Messages"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Admin pages (heavy, rarely accessed)
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
+const ReportManagement = lazy(() => import("./pages/admin/ReportManagement"));
+const BannerManagement = lazy(() => import("./pages/admin/BannerManagement"));
+const CategoryManagement = lazy(() => import("./pages/admin/CategoryManagement"));
+const ContentManagement = lazy(() => import("./pages/admin/ContentManagement"));
+const PhotoManagement = lazy(() => import("./pages/admin/PhotoManagement"));
+const AnalyticsDashboard = lazy(() => import("./pages/admin/AnalyticsDashboard"));
+const SystemSettings = lazy(() => import("./pages/admin/SystemSettings"));
+
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
