@@ -179,7 +179,40 @@ export default function PhotoDetailPage() {
     if (photoId) {
       loadPhoto();
       loadComments();
+      loadAdjacentPhotos();
     }
+  }, [photoId]);
+
+  const loadAdjacentPhotos = useCallback(async () => {
+    if (!photoId) return;
+    // Get current photo's created_at
+    const { data: current } = await supabase
+      .from("photos")
+      .select("created_at")
+      .eq("id", photoId)
+      .single();
+    if (!current) return;
+
+    // Previous photo (newer by created_at)
+    const { data: prev } = await supabase
+      .from("photos")
+      .select("id")
+      .eq("is_hidden", false)
+      .gt("created_at", current.created_at)
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    // Next photo (older by created_at)
+    const { data: next } = await supabase
+      .from("photos")
+      .select("id")
+      .eq("is_hidden", false)
+      .lt("created_at", current.created_at)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    setPrevPhotoId(prev?.[0]?.id || null);
+    setNextPhotoId(next?.[0]?.id || null);
   }, [photoId]);
 
   // Realtime subscription for comments
