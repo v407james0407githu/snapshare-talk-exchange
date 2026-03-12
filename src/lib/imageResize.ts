@@ -1,21 +1,49 @@
 const MAX_WIDTH = 1920;
 const MAX_HEIGHT = 1920;
-const JPEG_QUALITY = 0.85;
+const WEBP_QUALITY = 0.82;
 
 export interface ResizedImage {
   blob: Blob;
   width: number;
   height: number;
+  mimeType: string;
+}
+
+/** Check if browser supports WebP encoding */
+function supportsWebP(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    return canvas.toDataURL("image/webp").startsWith("data:image/webp");
+  } catch {
+    return false;
+  }
+}
+
+const USE_WEBP = supportsWebP();
+const OUTPUT_MIME = USE_WEBP ? "image/webp" : "image/jpeg";
+const OUTPUT_EXT = USE_WEBP ? "webp" : "jpg";
+
+/** Get the preferred output file extension */
+export function getOutputExtension(): string {
+  return OUTPUT_EXT;
+}
+
+/** Get the preferred output MIME type */
+export function getOutputMimeType(): string {
+  return OUTPUT_MIME;
 }
 
 /**
- * Resize an image file to fit within max dimensions while maintaining aspect ratio
+ * Resize an image file to fit within max dimensions while maintaining aspect ratio.
+ * Outputs WebP when supported, JPEG as fallback.
  */
 export async function resizeImage(
   file: File,
   maxWidth: number = MAX_WIDTH,
   maxHeight: number = MAX_HEIGHT,
-  quality: number = JPEG_QUALITY
+  quality: number = WEBP_QUALITY
 ): Promise<ResizedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -29,6 +57,7 @@ export async function resizeImage(
 
     img.onload = () => {
       let { width, height } = img;
+      URL.revokeObjectURL(img.src);
 
       // Calculate new dimensions maintaining aspect ratio
       if (width > maxWidth || height > maxHeight) {
@@ -47,21 +76,22 @@ export async function resizeImage(
       // Draw the resized image
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Convert to blob
+      // Convert to blob — prefer WebP for smaller file size
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            resolve({ blob, width, height });
+            resolve({ blob, width, height, mimeType: OUTPUT_MIME });
           } else {
             reject(new Error("Could not create blob from canvas"));
           }
         },
-        "image/jpeg",
+        OUTPUT_MIME,
         quality
       );
     };
 
     img.onerror = () => {
+      URL.revokeObjectURL(img.src);
       reject(new Error("Failed to load image"));
     };
 
