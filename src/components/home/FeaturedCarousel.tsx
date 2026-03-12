@@ -359,7 +359,10 @@ export function FeaturedCarousel({
     );
   }
 
-  if (!latestFeatured.length && !topRatedFeatured.length) return null;
+  if (!latestFeatured.length && !topRatedFeatured.length) {
+    // Return empty container instead of null to avoid CLS from skeleton→null transition
+    return <div className="min-h-0" />;
+  }
 
   return (
     <section className="py-12 bg-muted/30 min-h-[420px] md:min-h-[520px]">
