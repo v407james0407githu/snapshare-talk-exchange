@@ -67,6 +67,19 @@ const fallbackBanners: Banner[] = [
   },
 ];
 
+/** Optimize Unsplash URLs: ensure auto=format and reasonable width */
+function optimizeUnsplashUrl(url: string): string {
+  if (!url.includes('unsplash.com')) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set('auto', 'format');
+    if (!u.searchParams.has('q')) u.searchParams.set('q', '75');
+    const w = parseInt(u.searchParams.get('w') || '0');
+    if (w > 1280 || w === 0) u.searchParams.set('w', '1280');
+    return u.toString();
+  } catch { return url; }
+}
+
 function getGradientStyle(type: string, opacity: number): React.CSSProperties | undefined {
   if (type === "none") return undefined;
   const dirMap: Record<string, string> = {
