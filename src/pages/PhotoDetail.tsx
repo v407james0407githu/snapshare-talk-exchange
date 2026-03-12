@@ -652,12 +652,34 @@ export default function PhotoDetailPage() {
         <div className="grid lg:grid-cols-[1fr,400px] gap-8">
           {/* Image Section */}
           <div className="space-y-4">
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <img
-                src={photo.image_url}
-                alt={photo.title}
-                className="w-full h-auto max-h-[90vh] object-contain bg-black"
-              />
+            <div className="relative group">
+              {/* Previous Photo Arrow */}
+              {prevPhotoId && (
+                <button
+                  onClick={() => navigate(`/gallery/${prevPhotoId}`)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                  aria-label="上一張照片"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+              )}
+              {/* Next Photo Arrow */}
+              {nextPhotoId && (
+                <button
+                  onClick={() => navigate(`/gallery/${nextPhotoId}`)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                  aria-label="下一張照片"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+              )}
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                <img
+                  src={photo.image_url}
+                  alt={photo.title}
+                  className="w-full h-auto max-h-[90vh] object-contain bg-black"
+                />
+              </div>
             </div>
 
             {/* Mobile Stats */}
