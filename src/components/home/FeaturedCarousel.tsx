@@ -110,7 +110,68 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
   );
 }
 
-function CarouselRow({
+function ClassicCarouselRow({
+  photos,
+  label,
+  autoplayDelay,
+}: {
+  photos: FeaturedPhoto[];
+  label: string;
+  autoplayDelay: number;
+}) {
+  const [api, setApi] = useState<any>(null);
+  const [current, setCurrent] = useState(0);
+  const autoplayRef = useRef(
+    Autoplay({ delay: autoplayDelay, stopOnInteraction: true })
+  );
+
+  useEffect(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+    api.on('select', () => setCurrent(api.selectedScrollSnap()));
+  }, [api]);
+
+  if (!photos.length) return null;
+
+  return (
+    <div className="mb-4 last:mb-0">
+      {label && (
+        <h3 className="text-lg font-semibold text-foreground mb-3">{label}</h3>
+      )}
+      <Carousel
+        setApi={setApi}
+        opts={{ align: 'start', loop: true }}
+        plugins={[autoplayRef.current]}
+        className="w-full"
+      >
+        <CarouselContent className="-ml-4">
+          {photos.map((photo) => (
+            <CarouselItem key={photo.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
+              <PhotoCard photo={photo} />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="hidden md:flex -left-4" />
+        <CarouselNext className="hidden md:flex -right-4" />
+      </Carousel>
+      <div className="flex items-center justify-center gap-2 mt-4">
+        {photos.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => api?.scrollTo(index)}
+            className={`w-2 h-2 rounded-full transition-all ${
+              current === index
+                ? 'bg-primary w-6'
+                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FreeScrollCarouselRow({
   photos,
   label,
   autoplayDelay,
