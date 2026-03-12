@@ -20,7 +20,7 @@ import {
   Plus,
   CheckCircle
 } from 'lucide-react';
-import { resizeImage, createThumbnail } from '@/lib/imageResize';
+import { resizeImage, createThumbnail, getOutputExtension, getOutputMimeType } from '@/lib/imageResize';
 import { TagInput } from '@/components/forums/TagInput';
 
 const phoneBrands = [
