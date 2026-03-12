@@ -135,6 +135,17 @@ export default function PhotoDetailPage() {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
 
+  // Photo edit state
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState<string>("");
+  const [editBrand, setEditBrand] = useState("");
+  const [editPhoneModel, setEditPhoneModel] = useState("");
+  const [editCameraBody, setEditCameraBody] = useState("");
+  const [editLens, setEditLens] = useState("");
+
   // Dynamic OG meta tags
   useEffect(() => {
     if (!photo) return;
