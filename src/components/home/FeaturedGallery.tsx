@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Eye, Star, ArrowRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { optimizeImageUrl } from '@/lib/responsiveImage';
 
 interface FeaturedPhoto {
   id: string;
