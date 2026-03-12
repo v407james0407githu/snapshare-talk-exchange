@@ -41,7 +41,7 @@ const fallbackBanners: Banner[] = [
     id: "2",
     title: "捕捉每一刻的美好",
     subtitle: "用鏡頭記錄生活中的感動瞬間，與攝影愛好者一起成長。",
-    image_url: "https://images.unsplash.com/photo-1493863641943-9b68992a8d07?w=1920&q=80",
+    image_url: "https://images.unsplash.com/photo-1493863641943-9b68992a8d07?w=1280&auto=format&q=75",
     link_url: null,
     cta_primary_text: "上傳作品",
     cta_primary_link: "/upload",
