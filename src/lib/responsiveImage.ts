@@ -42,3 +42,16 @@ export function responsiveUnsplashProps(
   if (!srcSet) return {};
   return { srcSet, sizes: SIZES[sizesPreset] };
 }
+
+/** Ensure Unsplash URLs have auto=format and q=75 for optimal delivery */
+export function optimizeImageUrl(url: string): string {
+  if (!url.includes('unsplash.com')) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.set('auto', 'format');
+    if (!u.searchParams.has('q')) u.searchParams.set('q', '75');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
