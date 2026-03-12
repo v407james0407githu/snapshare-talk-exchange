@@ -61,7 +61,7 @@ function LazyWrapper({
   children: React.ReactNode;
   sectionKey: string;
 }) {
-  const isCritical = sectionKey === "hero";
+  const isCritical = sectionKey === "hero" || sectionKey === "featured_carousel";
   const [sectionRef, isVisible] = useLazySection(
     sectionKey === "featured_carousel" ? "180px 0px" : "420px 0px"
   );
