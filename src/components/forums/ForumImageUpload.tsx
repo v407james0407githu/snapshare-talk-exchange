@@ -28,7 +28,7 @@ export function filesToItems(files: File[]): ImageItem[] {
   return files
     .filter(f => {
       if (!f.type.startsWith('image/')) { toast.error(`${f.name} 不是圖片檔案，已跳過`); return false; }
-      if (f.size > 10 * 1024 * 1024) { toast.error(`${f.name} 超過 10MB，已跳過`); return false; }
+      if (f.size > 5 * 1024 * 1024) { toast.error(`${f.name} 超過 5MB，已跳過`); return false; }
       return true;
     })
     .map(file => ({
