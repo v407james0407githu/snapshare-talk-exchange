@@ -32,6 +32,10 @@ const Favorites = lazy(() => import("./pages/Favorites"));
 const Messages = lazy(() => import("./pages/Messages"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 
 // Admin pages (heavy, rarely accessed)
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -124,6 +128,10 @@ const App = () => (
               <Route path="/admin/sections" element={<ContentManagement />} />
               <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
               <Route path="/admin/settings" element={<SystemSettings />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
