@@ -15,8 +15,13 @@ import {
 import {
   Users, Image, MessageSquare, Eye, Star, Heart, TrendingUp, ShoppingBag,
   Loader2, Globe, FileText, Link2, Monitor, MapPin, HardDrive, Download, Activity,
+  Pencil, Check, X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell,
@@ -74,8 +79,35 @@ const RANGE_OPTIONS = [
 
 export default function AnalyticsDashboard() {
   const { getNum } = useSystemSettings();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const PLAN_BANDWIDTH_GB = getNum("plan_bandwidth_gb", DEFAULT_BANDWIDTH_GB);
   const PLAN_STORAGE_GB = getNum("plan_storage_gb", DEFAULT_STORAGE_GB);
+
+  // Inline editing state for quota limits
+  const [editingBw, setEditingBw] = useState(false);
+  const [editingStorage, setEditingStorage] = useState(false);
+  const [editBwValue, setEditBwValue] = useState("");
+  const [editStorageValue, setEditStorageValue] = useState("");
+  const [savingQuota, setSavingQuota] = useState(false);
+
+  const saveQuotaSetting = async (key: string, value: string) => {
+    setSavingQuota(true);
+    try {
+      const { error } = await supabase
+        .from("system_settings")
+        .update({ setting_value: value, updated_at: new Date().toISOString(), updated_by: user?.id })
+        .eq("setting_key", key);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["system-settings-public"] });
+      toast.success("已更新");
+    } catch {
+      toast.error("更新失敗");
+    } finally {
+      setSavingQuota(false);
+    }
+  };
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [topPhotos, setTopPhotos] = useState<TopPhoto[]>([]);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
@@ -466,7 +498,7 @@ export default function AnalyticsDashboard() {
                 <div className="text-xs text-muted-foreground">估算儲存空間（{bandwidth.totalStoragePhotos} 張）</div>
               </CardContent>
             </Card>
-            {/* Remaining Bandwidth */}
+            {/* Remaining Bandwidth — editable */}
             {(() => {
               const usedBwMB = bandwidth.totalEstimatedMB;
               const limitBwMB = PLAN_BANDWIDTH_GB * 1024;
@@ -480,14 +512,43 @@ export default function AnalyticsDashboard() {
                       <Activity className="h-5 w-5" />
                     </div>
                     <div className={`text-2xl font-bold ${isWarning ? 'text-destructive' : ''}`}>{formatSize(remainBwMB)}</div>
-                    <div className="text-xs text-muted-foreground mb-2">剩餘流量（{PLAN_BANDWIDTH_GB}GB）</div>
+                    {editingBw ? (
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <Input
+                          type="number"
+                          value={editBwValue}
+                          onChange={(e) => setEditBwValue(e.target.value)}
+                          className="h-6 w-16 text-xs text-center px-1"
+                          min={1}
+                          autoFocus
+                        />
+                        <span className="text-[10px] text-muted-foreground">GB</span>
+                        <button
+                          className="p-0.5 rounded hover:bg-primary/10 text-primary disabled:opacity-50"
+                          disabled={savingQuota}
+                          onClick={async () => {
+                            const v = Number(editBwValue);
+                            if (v > 0) {
+                              await saveQuotaSetting("plan_bandwidth_gb", String(v));
+                              setEditingBw(false);
+                            }
+                          }}
+                        ><Check className="h-3.5 w-3.5" /></button>
+                        <button className="p-0.5 rounded hover:bg-muted" onClick={() => setEditingBw(false)}><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground mb-2 flex items-center justify-center gap-1 cursor-pointer group" onClick={() => { setEditBwValue(String(PLAN_BANDWIDTH_GB)); setEditingBw(true); }}>
+                        剩餘流量（{PLAN_BANDWIDTH_GB}GB）
+                        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    )}
                     <Progress value={usedPct} className="h-2" />
                     <div className="text-[10px] text-muted-foreground mt-1">已用 {usedPct.toFixed(1)}%</div>
                   </CardContent>
                 </Card>
               );
             })()}
-            {/* Remaining Storage */}
+            {/* Remaining Storage — editable */}
             {(() => {
               const usedStorageMB = (bandwidth.totalStoragePhotos * AVG_PHOTO_WEIGHT_KB) / 1024;
               const limitStorageMB = PLAN_STORAGE_GB * 1024;
@@ -501,7 +562,36 @@ export default function AnalyticsDashboard() {
                       <HardDrive className="h-5 w-5" />
                     </div>
                     <div className={`text-2xl font-bold ${isWarning ? 'text-destructive' : ''}`}>{formatSize(remainStorageMB)}</div>
-                    <div className="text-xs text-muted-foreground mb-2">剩餘儲存（{PLAN_STORAGE_GB}GB）</div>
+                    {editingStorage ? (
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <Input
+                          type="number"
+                          value={editStorageValue}
+                          onChange={(e) => setEditStorageValue(e.target.value)}
+                          className="h-6 w-16 text-xs text-center px-1"
+                          min={1}
+                          autoFocus
+                        />
+                        <span className="text-[10px] text-muted-foreground">GB</span>
+                        <button
+                          className="p-0.5 rounded hover:bg-primary/10 text-primary disabled:opacity-50"
+                          disabled={savingQuota}
+                          onClick={async () => {
+                            const v = Number(editStorageValue);
+                            if (v > 0) {
+                              await saveQuotaSetting("plan_storage_gb", String(v));
+                              setEditingStorage(false);
+                            }
+                          }}
+                        ><Check className="h-3.5 w-3.5" /></button>
+                        <button className="p-0.5 rounded hover:bg-muted" onClick={() => setEditingStorage(false)}><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground mb-2 flex items-center justify-center gap-1 cursor-pointer group" onClick={() => { setEditStorageValue(String(PLAN_STORAGE_GB)); setEditingStorage(true); }}>
+                        剩餘儲存（{PLAN_STORAGE_GB}GB）
+                        <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    )}
                     <Progress value={usedPct} className="h-2" />
                     <div className="text-[10px] text-muted-foreground mt-1">已用 {usedPct.toFixed(1)}%</div>
                   </CardContent>
