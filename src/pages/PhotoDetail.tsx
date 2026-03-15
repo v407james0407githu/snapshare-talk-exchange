@@ -793,15 +793,39 @@ export default function PhotoDetailPage() {
                       try {
                         const response = await fetch(photo.image_url);
                         const blob = await response.blob();
-                        const url = URL.createObjectURL(blob);
+                        // Convert to WebP for download
+                        const img = new Image();
+                        const loadPromise = new Promise<Blob>((resolve, reject) => {
+                          img.onload = () => {
+                            const canvas = document.createElement("canvas");
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            const ctx = canvas.getContext("2d");
+                            if (!ctx) { reject(new Error("No canvas context")); return; }
+                            ctx.drawImage(img, 0, 0);
+                            canvas.toBlob(
+                              (webpBlob) => {
+                                if (webpBlob) resolve(webpBlob);
+                                else reject(new Error("WebP conversion failed"));
+                              },
+                              "image/webp",
+                              0.82
+                            );
+                          };
+                          img.onerror = () => reject(new Error("Image load failed"));
+                        });
+                        img.src = URL.createObjectURL(blob);
+                        const webpBlob = await loadPromise;
+                        URL.revokeObjectURL(img.src);
+                        const url = URL.createObjectURL(webpBlob);
                         const a = document.createElement("a");
                         a.href = url;
-                        a.download = `${photo.title}.jpg`;
+                        a.download = `${photo.title}.webp`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
                         URL.revokeObjectURL(url);
-                        toast({ title: "下載開始", description: "圖片即將下載" });
+                        toast({ title: "下載開始", description: "圖片已壓縮為 WebP 格式下載" });
                       } catch {
                         toast({ title: "下載失敗", variant: "destructive" });
                       }
