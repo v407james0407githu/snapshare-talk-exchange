@@ -15,7 +15,9 @@ import {
 import {
   Users, Image, MessageSquare, Eye, Star, Heart, TrendingUp, ShoppingBag,
   Loader2, Globe, FileText, Link2, Monitor, MapPin, HardDrive, Download, Activity,
+  Pencil, Check, X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
