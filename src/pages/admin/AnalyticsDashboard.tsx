@@ -73,6 +73,9 @@ const RANGE_OPTIONS = [
 ];
 
 export default function AnalyticsDashboard() {
+  const { getNum } = useSystemSettings();
+  const PLAN_BANDWIDTH_GB = getNum("plan_bandwidth_gb", DEFAULT_BANDWIDTH_GB);
+  const PLAN_STORAGE_GB = getNum("plan_storage_gb", DEFAULT_STORAGE_GB);
   const [stats, setStats] = useState<Stats | null>(null);
   const [topPhotos, setTopPhotos] = useState<TopPhoto[]>([]);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
