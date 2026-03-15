@@ -315,7 +315,7 @@ export function PhotoUpload() {
             </div>
             <h3 className="text-lg font-semibold mb-2">拖放照片至此上傳</h3>
             <p className="text-muted-foreground mb-4">
-              支援 JPG、PNG、WebP 格式，單檔最大 5MB
+              支援 JPG、PNG、WebP 格式，單檔最大 5MB（上傳時自動壓縮為 WebP）
             </p>
             <Button
               variant="gold"
