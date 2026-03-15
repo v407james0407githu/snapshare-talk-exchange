@@ -57,7 +57,7 @@ const AVG_THUMBNAIL_WEIGHT_KB = 80; // thumbnail in gallery ~80KB
 
 // Plan limits (configurable)
 const PLAN_BANDWIDTH_GB = 2; // monthly bandwidth limit
-const PLAN_STORAGE_GB = 1;   // storage limit
+const PLAN_STORAGE_GB = 8;   // storage limit
 
 const COLORS = [
   "hsl(var(--primary))", "hsl(var(--accent-foreground))",
