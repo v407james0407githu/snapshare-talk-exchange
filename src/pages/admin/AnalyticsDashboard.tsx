@@ -55,9 +55,9 @@ const AVG_PAGE_WEIGHT_KB = 350; // average page load ~350KB (HTML+CSS+JS cached)
 const AVG_PHOTO_WEIGHT_KB = 1800; // average photo view ~1.8MB
 const AVG_THUMBNAIL_WEIGHT_KB = 80; // thumbnail in gallery ~80KB
 
-// Plan limits (configurable)
-const PLAN_BANDWIDTH_GB = 2; // monthly bandwidth limit
-const PLAN_STORAGE_GB = 8;   // storage limit
+// Plan limits — read from system settings (fallbacks below)
+const DEFAULT_BANDWIDTH_GB = 2;
+const DEFAULT_STORAGE_GB = 8;
 
 const COLORS = [
   "hsl(var(--primary))", "hsl(var(--accent-foreground))",
