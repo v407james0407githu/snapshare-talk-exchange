@@ -79,8 +79,35 @@ const RANGE_OPTIONS = [
 
 export default function AnalyticsDashboard() {
   const { getNum } = useSystemSettings();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const PLAN_BANDWIDTH_GB = getNum("plan_bandwidth_gb", DEFAULT_BANDWIDTH_GB);
   const PLAN_STORAGE_GB = getNum("plan_storage_gb", DEFAULT_STORAGE_GB);
+
+  // Inline editing state for quota limits
+  const [editingBw, setEditingBw] = useState(false);
+  const [editingStorage, setEditingStorage] = useState(false);
+  const [editBwValue, setEditBwValue] = useState("");
+  const [editStorageValue, setEditStorageValue] = useState("");
+  const [savingQuota, setSavingQuota] = useState(false);
+
+  const saveQuotaSetting = async (key: string, value: string) => {
+    setSavingQuota(true);
+    try {
+      const { error } = await supabase
+        .from("system_settings")
+        .update({ setting_value: value, updated_at: new Date().toISOString(), updated_by: user?.id })
+        .eq("setting_key", key);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["system-settings-public"] });
+      toast.success("已更新");
+    } catch {
+      toast.error("更新失敗");
+    } finally {
+      setSavingQuota(false);
+    }
+  };
+
   const [stats, setStats] = useState<Stats | null>(null);
   const [topPhotos, setTopPhotos] = useState<TopPhoto[]>([]);
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
