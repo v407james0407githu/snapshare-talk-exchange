@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -53,6 +54,10 @@ interface BandwidthData {
 const AVG_PAGE_WEIGHT_KB = 350; // average page load ~350KB (HTML+CSS+JS cached)
 const AVG_PHOTO_WEIGHT_KB = 1800; // average photo view ~1.8MB
 const AVG_THUMBNAIL_WEIGHT_KB = 80; // thumbnail in gallery ~80KB
+
+// Plan limits (configurable)
+const PLAN_BANDWIDTH_GB = 2; // monthly bandwidth limit
+const PLAN_STORAGE_GB = 1;   // storage limit
 
 const COLORS = [
   "hsl(var(--primary))", "hsl(var(--accent-foreground))",
@@ -428,7 +433,7 @@ export default function AnalyticsDashboard() {
       {bandwidth && (
         <>
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><Activity className="h-5 w-5" /> 頻寬流量估算</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="mx-auto w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-2"><Download className="h-5 w-5" /></div>
@@ -457,6 +462,48 @@ export default function AnalyticsDashboard() {
                 <div className="text-xs text-muted-foreground">估算儲存空間（{bandwidth.totalStoragePhotos} 張）</div>
               </CardContent>
             </Card>
+            {/* Remaining Bandwidth */}
+            {(() => {
+              const usedBwMB = bandwidth.totalEstimatedMB;
+              const limitBwMB = PLAN_BANDWIDTH_GB * 1024;
+              const remainBwMB = Math.max(0, limitBwMB - usedBwMB);
+              const usedPct = Math.min(100, (usedBwMB / limitBwMB) * 100);
+              const isWarning = usedPct > 80;
+              return (
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className={`mx-auto w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${isWarning ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                      <Activity className="h-5 w-5" />
+                    </div>
+                    <div className={`text-2xl font-bold ${isWarning ? 'text-destructive' : ''}`}>{formatSize(remainBwMB)}</div>
+                    <div className="text-xs text-muted-foreground mb-2">剩餘流量（{PLAN_BANDWIDTH_GB}GB）</div>
+                    <Progress value={usedPct} className="h-2" />
+                    <div className="text-[10px] text-muted-foreground mt-1">已用 {usedPct.toFixed(1)}%</div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+            {/* Remaining Storage */}
+            {(() => {
+              const usedStorageMB = (bandwidth.totalStoragePhotos * AVG_PHOTO_WEIGHT_KB) / 1024;
+              const limitStorageMB = PLAN_STORAGE_GB * 1024;
+              const remainStorageMB = Math.max(0, limitStorageMB - usedStorageMB);
+              const usedPct = Math.min(100, (usedStorageMB / limitStorageMB) * 100);
+              const isWarning = usedPct > 80;
+              return (
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className={`mx-auto w-10 h-10 rounded-lg flex items-center justify-center mb-2 ${isWarning ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                      <HardDrive className="h-5 w-5" />
+                    </div>
+                    <div className={`text-2xl font-bold ${isWarning ? 'text-destructive' : ''}`}>{formatSize(remainStorageMB)}</div>
+                    <div className="text-xs text-muted-foreground mb-2">剩餘儲存（{PLAN_STORAGE_GB}GB）</div>
+                    <Progress value={usedPct} className="h-2" />
+                    <div className="text-[10px] text-muted-foreground mt-1">已用 {usedPct.toFixed(1)}%</div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
