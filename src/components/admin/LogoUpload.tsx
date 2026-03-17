@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, X, Loader2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { resizeImage, getOutputExtension, getOutputMimeType } from "@/lib/imageResize";
 
 interface LogoUploadProps {
   value: string;
