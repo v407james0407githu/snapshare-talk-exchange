@@ -13,6 +13,19 @@ interface AvatarCropDialogProps {
   isUploading?: boolean;
 }
 
+const AVATAR_MAX_SIZE = 1200;
+const AVATAR_QUALITY = 0.80;
+
+function supportsWebP(): boolean {
+  try {
+    const c = document.createElement("canvas");
+    c.width = 1; c.height = 1;
+    return c.toDataURL("image/webp").startsWith("data:image/webp");
+  } catch { return false; }
+}
+
+const AVATAR_MIME = supportsWebP() ? "image/webp" : "image/jpeg";
+
 async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
   const image = new Image();
   image.src = imageSrc;
@@ -21,10 +34,21 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
     image.onerror = reject;
   });
 
+  // Clamp to max size
+  let outW = pixelCrop.width;
+  let outH = pixelCrop.height;
+  if (outW > AVATAR_MAX_SIZE || outH > AVATAR_MAX_SIZE) {
+    const ratio = Math.min(AVATAR_MAX_SIZE / outW, AVATAR_MAX_SIZE / outH);
+    outW = Math.round(outW * ratio);
+    outH = Math.round(outH * ratio);
+  }
+
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  canvas.width = outW;
+  canvas.height = outH;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   ctx.drawImage(
     image,
@@ -34,8 +58,8 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    outW,
+    outH
   );
 
   return new Promise((resolve, reject) => {
@@ -44,8 +68,8 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<Blob> {
         if (blob) resolve(blob);
         else reject(new Error('Failed to create blob'));
       },
-      'image/jpeg',
-      0.9
+      AVATAR_MIME,
+      AVATAR_QUALITY
     );
   });
 }
