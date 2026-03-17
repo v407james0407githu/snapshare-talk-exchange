@@ -1,6 +1,6 @@
-const MAX_WIDTH = 1920;
-const MAX_HEIGHT = 1920;
-const WEBP_QUALITY = 0.82;
+const MAX_WIDTH = 1200;
+const MAX_HEIGHT = 1200;
+const WEBP_QUALITY = 0.80;
 
 export interface ResizedImage {
   blob: Blob;

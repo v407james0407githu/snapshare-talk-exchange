@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, X, Loader2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { resizeImage, getOutputExtension, getOutputMimeType } from "@/lib/imageResize";
 
 interface LogoUploadProps {
   value: string;
@@ -33,13 +34,16 @@ export function LogoUpload({ value, onChange, placeholder = "尚未設定 Logo�
 
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
+      // Compress & convert to WebP before uploading
+      const resized = await resizeImage(file, 1200, 1200, 0.80);
+      const ext = getOutputExtension();
+      const mime = getOutputMimeType();
       const fileName = `site-logo-${Date.now()}.${ext}`;
       const filePath = `logos/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("photos")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, resized.blob, { contentType: mime, upsert: true });
 
       if (uploadError) throw uploadError;
 
