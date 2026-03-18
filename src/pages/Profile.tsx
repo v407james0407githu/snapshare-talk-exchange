@@ -109,8 +109,8 @@ export default function Profile() {
       toast({ title: "格式錯誤", description: "請上傳圖片檔案", variant: "destructive" });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "檔案過大", description: "頭像大小不能超過 5MB", variant: "destructive" });
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "檔案過大", description: "頭像大小不能超過 1MB", variant: "destructive" });
       return;
     }
 
