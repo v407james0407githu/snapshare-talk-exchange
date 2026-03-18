@@ -127,10 +127,11 @@ export default function Profile() {
   const handleCroppedUpload = async (croppedBlob: Blob) => {
     setIsUploadingAvatar(true);
     try {
-      const fileName = `${user.id}/avatar.jpg`;
+      const ext = croppedBlob.type === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `${user.id}/avatar.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, croppedBlob, { upsert: true, contentType: 'image/jpeg' });
+        .upload(fileName, croppedBlob, { upsert: true, contentType: croppedBlob.type });
 
       if (uploadError) throw uploadError;
 
