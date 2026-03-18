@@ -14,7 +14,7 @@ interface LogoUploadProps {
   hint?: string;
 }
 
-export function LogoUpload({ value, onChange, placeholder = "尚未設定 Logo，將顯示預設文字 Logo", uploadLabel = "上傳新 Logo", hint = "建議尺寸：200×50px，PNG 或 SVG 格式，最大 2MB" }: LogoUploadProps) {
+export function LogoUpload({ value, onChange, placeholder = "尚未設定 Logo，將顯示預設文字 Logo", uploadLabel = "上傳新 Logo", hint = "最大 1MB，上傳後自動壓縮" }: LogoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
