@@ -109,8 +109,8 @@ export default function Profile() {
       toast({ title: "格式錯誤", description: "請上傳圖片檔案", variant: "destructive" });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: "檔案過大", description: "頭像大小不能超過 5MB", variant: "destructive" });
+    if (file.size > 1 * 1024 * 1024) {
+      toast({ title: "檔案過大", description: "頭像大小不能超過 1MB", variant: "destructive" });
       return;
     }
 
@@ -127,10 +127,11 @@ export default function Profile() {
   const handleCroppedUpload = async (croppedBlob: Blob) => {
     setIsUploadingAvatar(true);
     try {
-      const fileName = `${user.id}/avatar.jpg`;
+      const ext = croppedBlob.type === 'image/webp' ? 'webp' : 'jpg';
+      const fileName = `${user.id}/avatar.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, croppedBlob, { upsert: true, contentType: 'image/jpeg' });
+        .upload(fileName, croppedBlob, { upsert: true, contentType: croppedBlob.type });
 
       if (uploadError) throw uploadError;
 
@@ -212,6 +213,7 @@ export default function Profile() {
                     className="hidden"
                     onChange={handleAvatarSelect}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">最大 1MB，上傳後自動壓縮</p>
                 </div>
 
                 <div className="flex-1 text-center sm:text-left pb-4">

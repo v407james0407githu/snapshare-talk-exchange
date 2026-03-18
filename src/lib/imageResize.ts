@@ -101,6 +101,72 @@ export async function resizeImage(
 }
 
 /**
+ * Compress a blob (image) down to a target max file size by iteratively reducing quality.
+ * Returns the compressed blob.
+ */
+export async function compressToMaxSize(
+  blob: Blob,
+  maxBytes: number = 50 * 1024,
+  minQuality: number = 0.1
+): Promise<Blob> {
+  if (blob.size <= maxBytes) return blob;
+
+  // Load the blob into an image
+  const img = new Image();
+  const url = URL.createObjectURL(blob);
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("Failed to load image for compression"));
+    img.src = url;
+  });
+  URL.revokeObjectURL(url);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0);
+
+  let quality = 0.7;
+  let result = blob;
+
+  while (quality >= minQuality) {
+    const compressed = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), OUTPUT_MIME, quality)
+    );
+    if (compressed && compressed.size <= maxBytes) {
+      return compressed;
+    }
+    if (compressed) result = compressed;
+    quality -= 0.05;
+  }
+
+  // If still too large, scale down dimensions
+  let scale = 0.8;
+  while (scale >= 0.3 && result.size > maxBytes) {
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    canvas.width = w;
+    canvas.height = h;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, w, h);
+    const compressed = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), OUTPUT_MIME, minQuality)
+    );
+    if (compressed) {
+      result = compressed;
+      if (compressed.size <= maxBytes) return compressed;
+    }
+    scale -= 0.1;
+  }
+
+  return result;
+}
+
+/**
  * Create a thumbnail from an image file
  */
 export async function createThumbnail(

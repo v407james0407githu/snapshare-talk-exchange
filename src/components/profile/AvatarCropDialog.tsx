@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
+import { compressToMaxSize, getOutputMimeType } from '@/lib/imageResize';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -92,7 +93,9 @@ export function AvatarCropDialog({
   const handleConfirm = async () => {
     if (!croppedAreaPixels) return;
     const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-    onCropComplete(croppedBlob);
+    // Compress to ≤50KB
+    const compressed = await compressToMaxSize(croppedBlob, 50 * 1024);
+    onCropComplete(compressed);
   };
 
   return (
