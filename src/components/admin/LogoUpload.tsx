@@ -34,8 +34,9 @@ export function LogoUpload({ value, onChange, placeholder = "尚未設定 Logo�
 
     setUploading(true);
     try {
-      // Compress & convert to WebP before uploading
+      // Compress & convert to WebP before uploading, then compress to ≤50KB
       const resized = await resizeImage(file, 1200, 1200, 0.80);
+      const compressed = await compressToMaxSize(resized.blob, 50 * 1024);
       const ext = getOutputExtension();
       const mime = getOutputMimeType();
       const fileName = `site-logo-${Date.now()}.${ext}`;
