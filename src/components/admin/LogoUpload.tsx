@@ -44,7 +44,7 @@ export function LogoUpload({ value, onChange, placeholder = "尚未設定 Logo�
 
       const { error: uploadError } = await supabase.storage
         .from("photos")
-        .upload(filePath, resized.blob, { contentType: mime, upsert: true });
+        .upload(filePath, compressed, { contentType: mime, upsert: true });
 
       if (uploadError) throw uploadError;
 

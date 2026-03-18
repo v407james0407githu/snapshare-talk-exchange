@@ -212,6 +212,7 @@ export default function Profile() {
                     className="hidden"
                     onChange={handleAvatarSelect}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">最大 1MB，上傳後自動壓縮</p>
                 </div>
 
                 <div className="flex-1 text-center sm:text-left pb-4">
