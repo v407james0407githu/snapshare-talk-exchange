@@ -93,7 +93,9 @@ export function AvatarCropDialog({
   const handleConfirm = async () => {
     if (!croppedAreaPixels) return;
     const croppedBlob = await getCroppedImg(imageSrc, croppedAreaPixels);
-    onCropComplete(croppedBlob);
+    // Compress to ≤50KB
+    const compressed = await compressToMaxSize(croppedBlob, 50 * 1024);
+    onCropComplete(compressed);
   };
 
   return (
