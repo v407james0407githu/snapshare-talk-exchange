@@ -118,24 +118,26 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
   ]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const { data: banners } = useQuery({
+  const { data: banners, isLoading } = useQuery({
     queryKey: ["hero-banners"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("hero_banners" as any)
+        .from("hero_banners")
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
-      if (error || !data || data.length === 0) return fallbackBanners;
-      return (data as unknown as Banner[]).map(b => ({
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
+      return data.map(b => ({
         ...b,
         image_url: optimizeUnsplashUrl(b.image_url),
-      }));
+      })) as Banner[];
     },
     staleTime: 5 * 60 * 1000,
   });
 
-  const slides = banners ?? fallbackBanners;
+  // Only use fallback while loading (no DB data yet); once loaded, respect DB state
+  const slides = isLoading ? fallbackBanners : (banners && banners.length > 0 ? banners : fallbackBanners);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
