@@ -155,10 +155,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('Not authenticated') };
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('user_id', user.id);
+    const { error } = await supabase.rpc('update_own_profile', {
+      _display_name: updates.display_name ?? null,
+      _bio: updates.bio ?? null,
+      _phone: updates.phone ?? null,
+      _avatar_url: updates.avatar_url ?? null,
+      _username: updates.username ?? null,
+    });
 
     if (error) {
       return { error };
