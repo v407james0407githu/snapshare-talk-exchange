@@ -213,12 +213,27 @@ export default function UserProfile() {
               {profile.bio && (
                 <p className="text-cream/80 max-w-xl mb-4">{profile.bio}</p>
               )}
-              <div className="flex items-center justify-center md:justify-start gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center md:justify-start gap-2 text-sm text-muted-foreground mb-4">
                 <Calendar className="h-4 w-4" />
                 <span>
                   加入於 {format(new Date(profile.created_at), 'yyyy年M月', { locale: zhTW })}
                 </span>
               </div>
+              {user && user.id !== userId && (
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={sendingMessage}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  {sendingMessage ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4" />
+                  )}
+                  傳送私訊
+                </Button>
+              )}
             </div>
           </div>
         </div>
