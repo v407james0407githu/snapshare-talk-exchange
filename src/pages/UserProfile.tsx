@@ -61,7 +61,54 @@ interface UserStats {
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('photos');
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+  const handleSendMessage = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (userId === user.id) return;
+
+    setSendingMessage(true);
+    try {
+      // Check if conversation already exists
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(
+          `and(participant1_id.eq.${user.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${user.id})`
+        )
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        navigate(`/messages/${existing.id}`);
+        return;
+      }
+
+      // Create new conversation
+      const { data: newConv, error } = await supabase
+        .from('conversations')
+        .insert({
+          participant1_id: user.id,
+          participant2_id: userId!,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      navigate(`/messages/${newConv.id}`);
+    } catch (err) {
+      toast({ title: '無法建立對話', description: '請稍後再試', variant: 'destructive' });
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
   // Fetch user profile using RPC to get only public fields
   const { data: profile, isLoading: profileLoading } = useQuery({
