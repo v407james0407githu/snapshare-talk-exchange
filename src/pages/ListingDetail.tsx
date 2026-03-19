@@ -642,6 +642,7 @@ export default function ListingDetail() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      </div>
                     )}
 
                     {isOwner && !listing.is_sold && (
