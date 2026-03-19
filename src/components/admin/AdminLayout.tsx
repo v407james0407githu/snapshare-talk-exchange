@@ -105,16 +105,11 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
                   <img src={siteLogo} alt="Logo" className="h-7 max-w-[120px] object-contain" />
                 ) : (
                   <span className="font-serif text-xl font-bold">
-                    光影<span className="text-gradient">管理</span>
+                    攝影論壇後台<span className="text-gradient">管理</span>
                   </span>
                 )}
               </Link>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={() => setIsSidebarOpen(false)}
-              >
+              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsSidebarOpen(false)}>
                 <X className="h-5 w-5" />
               </Button>
             </div>
@@ -184,8 +179,14 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
           <div className="p-6 lg:p-8">
             <div className="mb-8">
               <h1 className="font-serif text-2xl lg:text-3xl font-bold mb-2">
-                {title.split("").map((char, i) => 
-                  i === 0 ? char : <span key={i} className={i === 1 ? "text-gradient" : ""}>{char}</span>
+                {title.split("").map((char, i) =>
+                  i === 0 ? (
+                    char
+                  ) : (
+                    <span key={i} className={i === 1 ? "text-gradient" : ""}>
+                      {char}
+                    </span>
+                  ),
                 )}
               </h1>
               {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
