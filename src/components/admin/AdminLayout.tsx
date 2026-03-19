@@ -105,7 +105,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
                   <img src={siteLogo} alt="Logo" className="h-7 max-w-[120px] object-contain" />
                 ) : (
                   <span className="font-serif text-xl font-bold">
-                    攝影論壇後台<span className="text-gradient">管理</span>
+                    後台<span className="text-gradient">管理</span>
                   </span>
                 )}
               </Link>
