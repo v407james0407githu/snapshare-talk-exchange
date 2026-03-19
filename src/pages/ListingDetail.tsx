@@ -570,15 +570,46 @@ export default function ListingDetail() {
                     </div>
 
                     {!isOwner && !listing.is_sold && (
+                      <div className="space-y-2">
+                        <Button
+                          variant="gold"
+                          className="w-full gap-2"
+                          onClick={async () => {
+                            if (!user) { navigate('/auth'); return; }
+                            try {
+                              const { data: existing } = await supabase
+                                .from('conversations')
+                                .select('id')
+                                .or(`and(participant1_id.eq.${user.id},participant2_id.eq.${listing.user_id}),and(participant1_id.eq.${listing.user_id},participant2_id.eq.${user.id})`)
+                                .maybeSingle();
+                              if (existing?.id) {
+                                navigate(`/messages/${existing.id}`);
+                              } else {
+                                const { data: newConv, error } = await supabase
+                                  .from('conversations')
+                                  .insert({ participant1_id: user.id, participant2_id: listing.user_id, listing_id: listing.id })
+                                  .select('id')
+                                  .single();
+                                if (error) throw error;
+                                navigate(`/messages/${newConv.id}`);
+                              }
+                            } catch {
+                              toast({ title: '無法開啟對話', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          私訊賣家
+                        </Button>
                       <Dialog open={contactDialogOpen} onOpenChange={setContactDialogOpen}>
                         <DialogTrigger asChild>
                           <Button
-                            variant="gold"
+                            variant="outline"
                             className="w-full gap-2"
                             onClick={handleContactSeller}
                           >
                             <MessageSquare className="h-4 w-4" />
-                            聯繫賣家
+                            快速留言
                           </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -611,6 +642,7 @@ export default function ListingDetail() {
                           </div>
                         </DialogContent>
                       </Dialog>
+                      </div>
                     )}
 
                     {isOwner && !listing.is_sold && (
