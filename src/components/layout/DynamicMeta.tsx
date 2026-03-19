@@ -4,7 +4,7 @@ import { useSystemSettings } from "@/hooks/useSystemSettings";
 export function DynamicMeta() {
   const { get } = useSystemSettings();
 
-  const title = get("seo_title", "光影社群 - 攝影愛好者的交流平台");
+  const title = get("seo_title", "IP543攝影論壇 - 攝影愛好者的交流平台");
   const description = get("seo_description", "分享攝影作品、交流攝影技巧、買賣二手器材");
   const favicon = get("site_favicon_url", "");
 
