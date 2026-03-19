@@ -23,12 +23,7 @@ import { ReportDialog } from "@/components/reports/ReportDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Star,
   MessageSquare,
@@ -117,7 +112,7 @@ export default function PhotoDetailPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { canModerate, checkAdminStatus, togglePhotoFeatured, loading: adminLoading } = useAdminActions();
-  const { isFavorited, toggleFavorite, isToggling } = useFavorites('photo', photoId);
+  const { isFavorited, toggleFavorite, isToggling } = useFavorites("photo", photoId);
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [photographer, setPhotographer] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -156,7 +151,7 @@ export default function PhotoDetailPage() {
   useEffect(() => {
     if (!photo) return;
     const originalTitle = document.title;
-    document.title = `${photo.title} - 光影社群`;
+    document.title = `${photo.title} - IP543攝影論壇`;
 
     const setMeta = (selector: string, attr: string, value: string) => {
       const el = document.querySelector(selector);
@@ -164,7 +159,11 @@ export default function PhotoDetailPage() {
     };
 
     setMeta('meta[property="og:title"]', "content", photo.title);
-    setMeta('meta[property="og:description"]', "content", photo.description || `由 ${photographer?.display_name || photographer?.username || "攝影師"} 拍攝的作品`);
+    setMeta(
+      'meta[property="og:description"]',
+      "content",
+      photo.description || `由 ${photographer?.display_name || photographer?.username || "攝影師"} 拍攝的作品`,
+    );
     setMeta('meta[property="og:image"]', "content", photo.image_url);
     setMeta('meta[property="og:type"]', "content", "article");
     setMeta('meta[name="description"]', "content", photo.description || photo.title);
@@ -186,11 +185,7 @@ export default function PhotoDetailPage() {
   const loadAdjacentPhotos = useCallback(async () => {
     if (!photoId) return;
     // Get current photo's created_at
-    const { data: current } = await supabase
-      .from("photos")
-      .select("created_at")
-      .eq("id", photoId)
-      .single();
+    const { data: current } = await supabase.from("photos").select("created_at").eq("id", photoId).single();
     if (!current) return;
 
     // Previous photo (newer by created_at)
@@ -236,16 +231,16 @@ export default function PhotoDetailPage() {
     const channel = supabase
       .channel(`comments-${photoId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'comments',
+          event: "*",
+          schema: "public",
+          table: "comments",
           filter: `photo_id=eq.${photoId}`,
         },
         () => {
           loadComments();
-        }
+        },
       )
       .subscribe();
 
@@ -285,8 +280,7 @@ export default function PhotoDetailPage() {
         .eq("id", photoId);
 
       // Fetch photographer profile using security definer function
-      const { data: profileData } = await supabase
-        .rpc("get_public_profile", { target_user_id: data.user_id });
+      const { data: profileData } = await supabase.rpc("get_public_profile", { target_user_id: data.user_id });
 
       if (profileData && profileData.length > 0) {
         setPhotographer(profileData[0] as unknown as Profile);
@@ -377,7 +371,7 @@ export default function PhotoDetailPage() {
         user_id: user.id,
         rating,
       },
-      { onConflict: "photo_id,user_id" }
+      { onConflict: "photo_id,user_id" },
     );
 
     if (error) {
@@ -404,7 +398,7 @@ export default function PhotoDetailPage() {
                 average_rating: Number(newStats.average_rating),
                 rating_count: newStats.rating_count,
               }
-            : prev
+            : prev,
         );
       }
 
@@ -453,26 +447,26 @@ export default function PhotoDetailPage() {
   };
 
   const phoneBrands = [
-    { value: 'apple', label: 'Apple' },
-    { value: 'samsung', label: 'Samsung' },
-    { value: 'xiaomi', label: '小米' },
-    { value: 'vivo', label: 'Vivo' },
-    { value: 'oppo', label: 'OPPO' },
-    { value: 'google', label: 'Google' },
-    { value: 'huawei', label: 'Huawei' },
-    { value: 'other', label: '其他' },
+    { value: "apple", label: "Apple" },
+    { value: "samsung", label: "Samsung" },
+    { value: "xiaomi", label: "小米" },
+    { value: "vivo", label: "Vivo" },
+    { value: "oppo", label: "OPPO" },
+    { value: "google", label: "Google" },
+    { value: "huawei", label: "Huawei" },
+    { value: "other", label: "其他" },
   ];
 
   const cameraBrands = [
-    { value: 'sony', label: 'Sony' },
-    { value: 'canon', label: 'Canon' },
-    { value: 'nikon', label: 'Nikon' },
-    { value: 'fujifilm', label: 'Fujifilm' },
-    { value: 'ricoh', label: 'Ricoh' },
-    { value: 'leica', label: 'Leica' },
-    { value: 'panasonic', label: 'Panasonic' },
-    { value: 'olympus', label: 'Olympus' },
-    { value: 'other', label: '其他' },
+    { value: "sony", label: "Sony" },
+    { value: "canon", label: "Canon" },
+    { value: "nikon", label: "Nikon" },
+    { value: "fujifilm", label: "Fujifilm" },
+    { value: "ricoh", label: "Ricoh" },
+    { value: "leica", label: "Leica" },
+    { value: "panasonic", label: "Panasonic" },
+    { value: "olympus", label: "Olympus" },
+    { value: "other", label: "其他" },
   ];
 
   const openEditDialog = () => {
@@ -508,16 +502,20 @@ export default function PhotoDetailPage() {
     if (error) {
       toast({ title: "更新失敗", description: getSafeErrorMessage(error), variant: "destructive" });
     } else {
-      setPhoto(prev => prev ? {
-        ...prev,
-        title: editTitle.trim(),
-        description: editDescription.trim() || null,
-        category: editCategory,
-        brand: editBrand || null,
-        phone_model: editCategory === "phone" ? editPhoneModel || null : null,
-        camera_body: editCategory === "camera" ? editCameraBody || null : null,
-        lens: editCategory === "camera" ? editLens || null : null,
-      } : prev);
+      setPhoto((prev) =>
+        prev
+          ? {
+              ...prev,
+              title: editTitle.trim(),
+              description: editDescription.trim() || null,
+              category: editCategory,
+              brand: editBrand || null,
+              phone_model: editCategory === "phone" ? editPhoneModel || null : null,
+              camera_body: editCategory === "camera" ? editCameraBody || null : null,
+              lens: editCategory === "camera" ? editLens || null : null,
+            }
+          : prev,
+      );
       setIsEditingPhoto(false);
       toast({ title: "作品資訊已更新" });
     }
@@ -579,10 +577,7 @@ export default function PhotoDetailPage() {
   };
 
   const handleHideComment = async (commentId: string) => {
-    const { error } = await supabase
-      .from("comments")
-      .update({ is_hidden: true })
-      .eq("id", commentId);
+    const { error } = await supabase.from("comments").update({ is_hidden: true }).eq("id", commentId);
 
     if (error) {
       toast({ title: "隱藏失敗", description: getSafeErrorMessage(error), variant: "destructive" });
@@ -593,10 +588,7 @@ export default function PhotoDetailPage() {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    const { error } = await supabase
-      .from("comments")
-      .delete()
-      .eq("id", commentId);
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
 
     if (error) {
       toast({ title: "刪除失敗", description: getSafeErrorMessage(error), variant: "destructive" });
@@ -608,10 +600,7 @@ export default function PhotoDetailPage() {
 
   const handleEditComment = async (commentId: string) => {
     if (!editContent.trim()) return;
-    const { error } = await supabase
-      .from("comments")
-      .update({ content: editContent.trim() })
-      .eq("id", commentId);
+    const { error } = await supabase.from("comments").update({ content: editContent.trim() }).eq("id", commentId);
 
     if (error) {
       toast({ title: "編輯失敗", description: getSafeErrorMessage(error), variant: "destructive" });
@@ -699,7 +688,10 @@ export default function PhotoDetailPage() {
             {/* Mobile Stats */}
             <div className="lg:hidden bg-card rounded-xl border border-border p-4 space-y-4">
               {/* Photographer */}
-              <Link to={`/user/${photographer?.user_id}`} className="flex items-center gap-3 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors">
+              <Link
+                to={`/user/${photographer?.user_id}`}
+                className="flex items-center gap-3 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors"
+              >
                 <Avatar>
                   <AvatarImage src={photographer?.avatar_url || undefined} />
                   <AvatarFallback>
@@ -721,7 +713,10 @@ export default function PhotoDetailPage() {
               <h1 className="font-serif text-2xl font-bold mb-4">{photo.title}</h1>
 
               {/* Photographer - Desktop */}
-              <Link to={`/user/${photographer?.user_id}`} className="hidden lg:flex items-center gap-3 mb-4 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors">
+              <Link
+                to={`/user/${photographer?.user_id}`}
+                className="hidden lg:flex items-center gap-3 mb-4 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors"
+              >
                 <Avatar>
                   <AvatarImage src={photographer?.avatar_url || undefined} />
                   <AvatarFallback>
@@ -735,17 +730,15 @@ export default function PhotoDetailPage() {
               </Link>
 
               {photo.description && (
-                <p className="text-muted-foreground mb-4 whitespace-pre-wrap"><LinkifyText text={photo.description} /></p>
+                <p className="text-muted-foreground mb-4 whitespace-pre-wrap">
+                  <LinkifyText text={photo.description} />
+                </p>
               )}
 
               {/* Equipment Tags */}
               <div className="flex flex-wrap gap-2 mb-4">
                 <Badge variant="outline" className="gap-1">
-                  {photo.category === "phone" ? (
-                    <Smartphone className="h-3 w-3" />
-                  ) : (
-                    <Camera className="h-3 w-3" />
-                  )}
+                  {photo.category === "phone" ? <Smartphone className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
                   {photo.brand}
                 </Badge>
                 {photo.phone_model && <Badge variant="secondary">{photo.phone_model}</Badge>}
@@ -778,12 +771,12 @@ export default function PhotoDetailPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`gap-1.5 ${isFavorited ? 'text-red-500 hover:text-red-600' : ''}`}
-                    onClick={() => toggleFavorite('photo', photo.id)}
+                    className={`gap-1.5 ${isFavorited ? "text-red-500 hover:text-red-600" : ""}`}
+                    onClick={() => toggleFavorite("photo", photo.id)}
                     disabled={isToggling}
                   >
-                    <Heart className={`h-4 w-4 ${isFavorited ? 'fill-current' : ''}`} />
-                    {isFavorited ? '已收藏' : '收藏'}
+                    <Heart className={`h-4 w-4 ${isFavorited ? "fill-current" : ""}`} />
+                    {isFavorited ? "已收藏" : "收藏"}
                   </Button>
                   <Button
                     variant="ghost"
@@ -801,7 +794,10 @@ export default function PhotoDetailPage() {
                             canvas.width = img.naturalWidth;
                             canvas.height = img.naturalHeight;
                             const ctx = canvas.getContext("2d");
-                            if (!ctx) { reject(new Error("No canvas context")); return; }
+                            if (!ctx) {
+                              reject(new Error("No canvas context"));
+                              return;
+                            }
                             ctx.drawImage(img, 0, 0);
                             canvas.toBlob(
                               (webpBlob) => {
@@ -809,7 +805,7 @@ export default function PhotoDetailPage() {
                                 else reject(new Error("WebP conversion failed"));
                               },
                               "image/webp",
-                              0.82
+                              0.82,
                             );
                           };
                           img.onerror = () => reject(new Error("Image load failed"));
@@ -842,42 +838,67 @@ export default function PhotoDetailPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => {
-                        navigator.clipboard.writeText(window.location.href).then(() => {
-                          toast({ title: "已複製連結", description: "作品連結已複製到剪貼簿" });
-                        });
-                      }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.href).then(() => {
+                            toast({ title: "已複製連結", description: "作品連結已複製到剪貼簿" });
+                          });
+                        }}
+                      >
                         <Copy className="h-4 w-4 mr-2" />
                         複製連結
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        const u = encodeURIComponent(window.location.href);
-                        window.open(`https://www.facebook.com/sharer/sharer.php?u=${u}`, "_blank", "width=600,height=400");
-                      }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const u = encodeURIComponent(window.location.href);
+                          window.open(
+                            `https://www.facebook.com/sharer/sharer.php?u=${u}`,
+                            "_blank",
+                            "width=600,height=400",
+                          );
+                        }}
+                      >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Facebook
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        const u = encodeURIComponent(window.location.href);
-                        const t = encodeURIComponent(photo.title);
-                        window.open(`https://twitter.com/intent/tweet?url=${u}&text=${t}`, "_blank", "width=600,height=400");
-                      }}>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        X (Twitter)
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const u = encodeURIComponent(window.location.href);
+                          const t = encodeURIComponent(photo.title);
+                          window.open(
+                            `https://twitter.com/intent/tweet?url=${u}&text=${t}`,
+                            "_blank",
+                            "width=600,height=400",
+                          );
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />X (Twitter)
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        const u = encodeURIComponent(window.location.href);
-                        const t = encodeURIComponent(photo.title);
-                        window.open(`https://social-plugins.line.me/lineit/share?url=${u}&text=${t}`, "_blank", "width=600,height=400");
-                      }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const u = encodeURIComponent(window.location.href);
+                          const t = encodeURIComponent(photo.title);
+                          window.open(
+                            `https://social-plugins.line.me/lineit/share?url=${u}&text=${t}`,
+                            "_blank",
+                            "width=600,height=400",
+                          );
+                        }}
+                      >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         LINE
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        const u = encodeURIComponent(window.location.href);
-                        const t = encodeURIComponent(photo.title);
-                        window.open(`https://api.whatsapp.com/send?text=${t}%20${u}`, "_blank", "width=600,height=400");
-                      }}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const u = encodeURIComponent(window.location.href);
+                          const t = encodeURIComponent(photo.title);
+                          window.open(
+                            `https://api.whatsapp.com/send?text=${t}%20${u}`,
+                            "_blank",
+                            "width=600,height=400",
+                          );
+                        }}
+                      >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         WhatsApp
                       </DropdownMenuItem>
@@ -937,7 +958,7 @@ export default function PhotoDetailPage() {
                       onClick={async () => {
                         const success = await togglePhotoFeatured(photo.id, photo.is_featured);
                         if (success) {
-                          setPhoto(prev => prev ? { ...prev, is_featured: !prev.is_featured } : prev);
+                          setPhoto((prev) => (prev ? { ...prev, is_featured: !prev.is_featured } : prev));
                         }
                       }}
                       disabled={adminLoading}
@@ -968,7 +989,7 @@ export default function PhotoDetailPage() {
                         if (error) {
                           toast({ title: "操作失敗", description: getSafeErrorMessage(error), variant: "destructive" });
                         } else {
-                          setPhoto(prev => prev ? { ...prev, is_hidden: newVal } : prev);
+                          setPhoto((prev) => (prev ? { ...prev, is_hidden: newVal } : prev));
                           toast({ title: newVal ? "作品已隱藏" : "作品已恢復顯示" });
                         }
                       }}
@@ -1014,7 +1035,10 @@ export default function PhotoDetailPage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeletePhoto} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction
+                          onClick={handleDeletePhoto}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                           確定刪除
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -1026,11 +1050,7 @@ export default function PhotoDetailPage() {
               {/* Report Button */}
               {user && user.id !== photo.user_id && (
                 <div className="mt-4">
-                  <ReportDialog
-                    contentType="photo"
-                    contentId={photo.id}
-                    reportedUserId={photo.user_id}
-                  />
+                  <ReportDialog contentType="photo" contentId={photo.id} reportedUserId={photo.user_id} />
                 </div>
               )}
             </div>
@@ -1050,17 +1070,13 @@ export default function PhotoDetailPage() {
                   >
                     <Star
                       className={`h-7 w-7 ${
-                        star <= (hoverRating || userRating)
-                          ? "fill-primary text-primary"
-                          : "text-muted-foreground"
+                        star <= (hoverRating || userRating) ? "fill-primary text-primary" : "text-muted-foreground"
                       }`}
                     />
                   </button>
                 ))}
               </div>
-              {userRating > 0 && (
-                <p className="text-sm text-muted-foreground mt-2">您的評分: {userRating} 星</p>
-              )}
+              {userRating > 0 && <p className="text-sm text-muted-foreground mt-2">您的評分: {userRating} 星</p>}
             </div>
 
             {/* Comments */}
@@ -1087,11 +1103,7 @@ export default function PhotoDetailPage() {
                   size="icon"
                   className="shrink-0"
                 >
-                  {isSubmittingComment ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  {isSubmittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
 
@@ -1103,9 +1115,7 @@ export default function PhotoDetailPage() {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : comments.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">
-                  還沒有留言，成為第一個留言的人吧！
-                </p>
+                <p className="text-center text-muted-foreground py-4">還沒有留言，成為第一個留言的人吧！</p>
               ) : (
                 <div className="space-y-4 max-h-[400px] overflow-y-auto">
                   {comments.map((comment) => (
@@ -1113,9 +1123,7 @@ export default function PhotoDetailPage() {
                       <div className="flex gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={comment.profile?.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {comment.profile?.username?.[0] || "U"}
-                          </AvatarFallback>
+                          <AvatarFallback>{comment.profile?.username?.[0] || "U"}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -1139,10 +1147,21 @@ export default function PhotoDetailPage() {
                                   className="flex-1"
                                 />
                                 <div className="flex flex-col gap-1">
-                                  <Button size="sm" onClick={() => handleEditComment(comment.id)} disabled={!editContent.trim()}>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleEditComment(comment.id)}
+                                    disabled={!editContent.trim()}
+                                  >
                                     儲存
                                   </Button>
-                                  <Button size="sm" variant="ghost" onClick={() => { setEditingCommentId(null); setEditContent(""); }}>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingCommentId(null);
+                                      setEditContent("");
+                                    }}
+                                  >
                                     取消
                                   </Button>
                                 </div>
@@ -1162,7 +1181,10 @@ export default function PhotoDetailPage() {
                             )}
                             {user && user.id === comment.user_id && editingCommentId !== comment.id && (
                               <button
-                                onClick={() => { setEditingCommentId(comment.id); setEditContent(comment.content); }}
+                                onClick={() => {
+                                  setEditingCommentId(comment.id);
+                                  setEditContent(comment.content);
+                                }}
                                 className="text-xs text-muted-foreground hover:text-foreground"
                               >
                                 編輯
@@ -1183,7 +1205,10 @@ export default function PhotoDetailPage() {
                                     </DropdownMenuItem>
                                   )}
                                   {(canModerate || (user && user.id === comment.user_id)) && (
-                                    <DropdownMenuItem onClick={() => handleDeleteComment(comment.id)} className="text-destructive">
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteComment(comment.id)}
+                                      className="text-destructive"
+                                    >
                                       <Trash2 className="h-3.5 w-3.5 mr-2" />
                                       刪除留言
                                     </DropdownMenuItem>
@@ -1203,9 +1228,7 @@ export default function PhotoDetailPage() {
                               <CornerDownRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
                               <Avatar className="h-6 w-6">
                                 <AvatarImage src={reply.profile?.avatar_url || undefined} />
-                                <AvatarFallback>
-                                  {reply.profile?.username?.[0] || "U"}
-                                </AvatarFallback>
+                                <AvatarFallback>{reply.profile?.username?.[0] || "U"}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
@@ -1229,10 +1252,21 @@ export default function PhotoDetailPage() {
                                         className="flex-1"
                                       />
                                       <div className="flex flex-col gap-1">
-                                        <Button size="sm" onClick={() => handleEditComment(reply.id)} disabled={!editContent.trim()}>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleEditComment(reply.id)}
+                                          disabled={!editContent.trim()}
+                                        >
                                           儲存
                                         </Button>
-                                        <Button size="sm" variant="ghost" onClick={() => { setEditingCommentId(null); setEditContent(""); }}>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setEditingCommentId(null);
+                                            setEditContent("");
+                                          }}
+                                        >
                                           取消
                                         </Button>
                                       </div>
@@ -1244,7 +1278,10 @@ export default function PhotoDetailPage() {
                                 <div className="flex items-center gap-2 mt-1">
                                   {user && user.id === reply.user_id && editingCommentId !== reply.id && (
                                     <button
-                                      onClick={() => { setEditingCommentId(reply.id); setEditContent(reply.content); }}
+                                      onClick={() => {
+                                        setEditingCommentId(reply.id);
+                                        setEditContent(reply.content);
+                                      }}
                                       className="text-xs text-muted-foreground hover:text-foreground"
                                     >
                                       編輯
@@ -1265,7 +1302,10 @@ export default function PhotoDetailPage() {
                                           </DropdownMenuItem>
                                         )}
                                         {(canModerate || (user && user.id === reply.user_id)) && (
-                                          <DropdownMenuItem onClick={() => handleDeleteComment(reply.id)} className="text-destructive">
+                                          <DropdownMenuItem
+                                            onClick={() => handleDeleteComment(reply.id)}
+                                            className="text-destructive"
+                                          >
                                             <Trash2 className="h-3.5 w-3.5 mr-2" />
                                             刪除留言
                                           </DropdownMenuItem>
@@ -1340,16 +1380,39 @@ export default function PhotoDetailPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="editDesc">說明</Label>
-              <Textarea id="editDesc" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={3} />
+              <Textarea
+                id="editDesc"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={3}
+              />
             </div>
             <div className="space-y-2">
               <Label>拍攝類型 *</Label>
               <div className="flex gap-4">
-                <Button type="button" variant={editCategory === 'phone' ? 'default' : 'outline'} className="flex-1" onClick={() => { setEditCategory('phone'); setEditBrand(''); }}>
-                  <Smartphone className="mr-2 h-4 w-4" />手機
+                <Button
+                  type="button"
+                  variant={editCategory === "phone" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    setEditCategory("phone");
+                    setEditBrand("");
+                  }}
+                >
+                  <Smartphone className="mr-2 h-4 w-4" />
+                  手機
                 </Button>
-                <Button type="button" variant={editCategory === 'camera' ? 'default' : 'outline'} className="flex-1" onClick={() => { setEditCategory('camera'); setEditBrand(''); }}>
-                  <Camera className="mr-2 h-4 w-4" />相機
+                <Button
+                  type="button"
+                  variant={editCategory === "camera" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => {
+                    setEditCategory("camera");
+                    setEditBrand("");
+                  }}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  相機
                 </Button>
               </div>
             </div>
@@ -1357,37 +1420,62 @@ export default function PhotoDetailPage() {
               <div className="space-y-2">
                 <Label>品牌</Label>
                 <Select value={editBrand} onValueChange={setEditBrand}>
-                  <SelectTrigger><SelectValue placeholder="選擇品牌" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="選擇品牌" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {(editCategory === 'phone' ? phoneBrands : cameraBrands).map((b) => (
-                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                    {(editCategory === "phone" ? phoneBrands : cameraBrands).map((b) => (
+                      <SelectItem key={b.value} value={b.value}>
+                        {b.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
-            {editCategory === 'phone' && (
+            {editCategory === "phone" && (
               <div className="space-y-2">
                 <Label>型號</Label>
-                <Input value={editPhoneModel} onChange={(e) => setEditPhoneModel(e.target.value)} placeholder="例如：iPhone 15 Pro Max" />
+                <Input
+                  value={editPhoneModel}
+                  onChange={(e) => setEditPhoneModel(e.target.value)}
+                  placeholder="例如：iPhone 15 Pro Max"
+                />
               </div>
             )}
-            {editCategory === 'camera' && (
+            {editCategory === "camera" && (
               <>
                 <div className="space-y-2">
                   <Label>機身</Label>
-                  <Input value={editCameraBody} onChange={(e) => setEditCameraBody(e.target.value)} placeholder="例如：Sony A7IV" />
+                  <Input
+                    value={editCameraBody}
+                    onChange={(e) => setEditCameraBody(e.target.value)}
+                    placeholder="例如：Sony A7IV"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>鏡頭</Label>
-                  <Input value={editLens} onChange={(e) => setEditLens(e.target.value)} placeholder="例如：FE 24-70mm F2.8 GM II" />
+                  <Input
+                    value={editLens}
+                    onChange={(e) => setEditLens(e.target.value)}
+                    placeholder="例如：FE 24-70mm F2.8 GM II"
+                  />
                 </div>
               </>
             )}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={() => setIsEditingPhoto(false)}>取消</Button>
+              <Button variant="outline" onClick={() => setIsEditingPhoto(false)}>
+                取消
+              </Button>
               <Button onClick={handleSavePhotoEdit} disabled={isSavingPhoto || !editTitle.trim() || !editCategory}>
-                {isSavingPhoto ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />儲存中...</> : '儲存變更'}
+                {isSavingPhoto ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    儲存中...
+                  </>
+                ) : (
+                  "儲存變更"
+                )}
               </Button>
             </div>
           </div>
@@ -1397,7 +1485,11 @@ export default function PhotoDetailPage() {
   );
 }
 
-function PhotoCard({ p }: { p: { id: string; title: string; image_url: string; average_rating: number; view_count: number } }) {
+function PhotoCard({
+  p,
+}: {
+  p: { id: string; title: string; image_url: string; average_rating: number; view_count: number };
+}) {
   return (
     <Link to={`/gallery/${p.id}`} className="group block">
       <div className="relative rounded-lg overflow-hidden border border-border bg-card">
@@ -1411,8 +1503,14 @@ function PhotoCard({ p }: { p: { id: string; title: string; image_url: string; a
         <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform">
           <p className="text-white text-sm font-medium truncate">{p.title}</p>
           <div className="flex items-center gap-3 text-white/80 text-xs mt-1">
-            <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-current" />{Number(p.average_rating).toFixed(1)}</span>
-            <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{p.view_count}</span>
+            <span className="flex items-center gap-1">
+              <Star className="h-3 w-3 fill-current" />
+              {Number(p.average_rating).toFixed(1)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              {p.view_count}
+            </span>
           </div>
         </div>
       </div>
@@ -1482,7 +1580,7 @@ function RecommendedWorks({ photo }: { photo: Photo }) {
           return scoreB - scoreA;
         });
         // Filter out current author's photos that are already in AuthorWorks
-        const filtered = sorted.filter(p => p.id !== photo.id);
+        const filtered = sorted.filter((p) => p.id !== photo.id);
         setWorks(filtered.slice(0, 12));
         return;
       }
