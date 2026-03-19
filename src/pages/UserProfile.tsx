@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import {
   Image,
   Heart,
   MessageCircle,
+  MessageSquare,
   Eye,
   Star,
   Calendar,
@@ -23,6 +25,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
   id: string;
@@ -58,7 +61,54 @@ interface UserStats {
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('photos');
+  const [sendingMessage, setSendingMessage] = useState(false);
+
+  const handleSendMessage = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (userId === user.id) return;
+
+    setSendingMessage(true);
+    try {
+      // Check if conversation already exists
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(
+          `and(participant1_id.eq.${user.id},participant2_id.eq.${userId}),and(participant1_id.eq.${userId},participant2_id.eq.${user.id})`
+        )
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        navigate(`/messages/${existing.id}`);
+        return;
+      }
+
+      // Create new conversation
+      const { data: newConv, error } = await supabase
+        .from('conversations')
+        .insert({
+          participant1_id: user.id,
+          participant2_id: userId!,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      navigate(`/messages/${newConv.id}`);
+    } catch (err) {
+      toast({ title: '無法建立對話', description: '請稍後再試', variant: 'destructive' });
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
   // Fetch user profile using RPC to get only public fields
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -163,12 +213,27 @@ export default function UserProfile() {
               {profile.bio && (
                 <p className="text-cream/80 max-w-xl mb-4">{profile.bio}</p>
               )}
-              <div className="flex items-center justify-center md:justify-start gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center md:justify-start gap-2 text-sm text-muted-foreground mb-4">
                 <Calendar className="h-4 w-4" />
                 <span>
                   加入於 {format(new Date(profile.created_at), 'yyyy年M月', { locale: zhTW })}
                 </span>
               </div>
+              {user && user.id !== userId && (
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={sendingMessage}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  {sendingMessage ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MessageSquare className="h-4 w-4" />
+                  )}
+                  傳送私訊
+                </Button>
+              )}
             </div>
           </div>
         </div>
