@@ -1,22 +1,16 @@
-import { useEffect, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, Eye, Star, ArrowRight, Award } from 'lucide-react';
-import Autoplay from 'embla-carousel-autoplay';
-import { useSiteContent } from '@/hooks/useSiteContent';
-import { pickImageSrc, SIZES } from '@/lib/responsiveImage';
-import { useLazySection } from '@/hooks/useLazySection';
+import { useEffect, useState, useRef } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Heart, Eye, Star, ArrowRight, Award } from "lucide-react";
+import Autoplay from "embla-carousel-autoplay";
+import { useSiteContent } from "@/hooks/useSiteContent";
+import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
+import { useLazySection } from "@/hooks/useLazySection";
 
 interface FeaturedPhoto {
   id: string;
@@ -58,16 +52,14 @@ function PhotoCard({ photo, sizes }: { photo: FeaturedPhoto; sizes: string }) {
     >
       {/* Fixed aspect-ratio container — prevents CLS */}
       <div className="aspect-[4/3] overflow-hidden relative bg-muted">
-        {!imgLoaded && (
-          <div className="absolute inset-0 bg-muted animate-pulse" />
-        )}
+        {!imgLoaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
         <img
           src={imgSrc}
           sizes={sizes}
           alt={photo.title}
           width={400}
           height={300}
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setImgLoaded(true)}
           loading="lazy"
           decoding="async"
@@ -76,13 +68,11 @@ function PhotoCard({ photo, sizes }: { photo: FeaturedPhoto; sizes: string }) {
       {/* Hover overlay — desktop only, no transition on mobile */}
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h3 className="font-serif text-lg font-bold text-foreground mb-2">
-            {photo.title}
-          </h3>
+          <h3 className="font-serif text-lg font-bold text-foreground mb-2">{photo.title}</h3>
           <div className="flex items-center gap-2 mb-3">
             <Avatar className="h-6 w-6">
               <AvatarImage src={photo.profiles?.avatar_url || undefined} />
-              <AvatarFallback>{photo.profiles?.username?.[0] || 'U'}</AvatarFallback>
+              <AvatarFallback>{photo.profiles?.username?.[0] || "U"}</AvatarFallback>
             </Avatar>
             <span className="text-sm text-muted-foreground">
               {photo.profiles?.display_name || photo.profiles?.username}
@@ -157,26 +147,22 @@ function ClassicCarouselRow({
 }) {
   const [api, setApi] = useState<any>(null);
   const [current, setCurrent] = useState(0);
-  const autoplayRef = useRef(
-    Autoplay({ delay: autoplayDelay, stopOnInteraction: true })
-  );
+  const autoplayRef = useRef(Autoplay({ delay: autoplayDelay, stopOnInteraction: true }));
 
   useEffect(() => {
     if (!api) return;
     setCurrent(api.selectedScrollSnap());
-    api.on('select', () => setCurrent(api.selectedScrollSnap()));
+    api.on("select", () => setCurrent(api.selectedScrollSnap()));
   }, [api]);
 
   if (!photos.length) return null;
 
   return (
     <div className="mb-4 last:mb-0">
-      {label && (
-        <h3 className="text-lg font-semibold text-foreground mb-3">{label}</h3>
-      )}
+      {label && <h3 className="text-lg font-semibold text-foreground mb-3">{label}</h3>}
       <Carousel
         setApi={setApi}
-        opts={{ align: 'start', loop: true }}
+        opts={{ align: "start", loop: true }}
         plugins={[autoplayRef.current]}
         className="w-full"
       >
@@ -196,9 +182,7 @@ function ClassicCarouselRow({
             key={index}
             onClick={() => api?.scrollTo(index)}
             className={`w-2 h-2 rounded-full transition-all ${
-              current === index
-                ? 'bg-primary w-6'
-                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+              current === index ? "bg-primary w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
             }`}
           />
         ))}
@@ -218,27 +202,23 @@ function FreeScrollCarouselRow({
 }) {
   const [api, setApi] = useState<any>(null);
   const [current, setCurrent] = useState(0);
-  const autoplayRef = useRef(
-    Autoplay({ delay: autoplayDelay, stopOnInteraction: true })
-  );
+  const autoplayRef = useRef(Autoplay({ delay: autoplayDelay, stopOnInteraction: true }));
 
   useEffect(() => {
     if (!api) return;
     setCurrent(api.selectedScrollSnap());
-    api.on('select', () => setCurrent(api.selectedScrollSnap()));
+    api.on("select", () => setCurrent(api.selectedScrollSnap()));
   }, [api]);
 
   if (!photos.length) return null;
 
   return (
     <div className="mb-4 last:mb-0">
-      {label && (
-        <h3 className="text-lg font-semibold text-foreground mb-3">{label}</h3>
-      )}
+      {label && <h3 className="text-lg font-semibold text-foreground mb-3">{label}</h3>}
       <Carousel
         setApi={setApi}
         opts={{
-          align: 'start',
+          align: "start",
           loop: true,
           slidesToScroll: 1,
           dragFree: true,
@@ -262,9 +242,7 @@ function FreeScrollCarouselRow({
             key={index}
             onClick={() => api?.scrollTo(index)}
             className={`w-2 h-2 rounded-full transition-all ${
-              current === index
-                ? 'bg-primary w-6'
-                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+              current === index ? "bg-primary w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
             }`}
           />
         ))}
@@ -278,21 +256,23 @@ export function FeaturedCarousel({
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const { get } = useSiteContent();
-  const [row2Ref, row2Visible] = useLazySection('300px 0px');
+  const [row2Ref, row2Visible] = useLazySection("300px 0px");
 
-  const row1Label = get('featured_carousel_row1_label', '最新精選');
-  const row2Label = get('featured_carousel_row2_label', '高評分精選');
+  const row1Label = get("featured_carousel_row1_label", "最新精選");
+  const row2Label = get("featured_carousel_row2_label", "高評分精選");
 
   // 最新精選 — always load (above fold)
   const { data: latestPhotos, isLoading: l1 } = useQuery({
-    queryKey: ['featured-photos-latest'],
+    queryKey: ["featured-photos-latest"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('photos')
-        .select('id, title, image_url, thumbnail_url, user_id, like_count, view_count, average_rating, category, camera_body, phone_model, brand, is_featured')
-        .eq('is_hidden', false)
-        .eq('is_featured', true)
-        .order('created_at', { ascending: false })
+        .from("photos")
+        .select(
+          "id, title, image_url, thumbnail_url, user_id, like_count, view_count, average_rating, category, camera_body, phone_model, brand, is_featured",
+        )
+        .eq("is_hidden", false)
+        .eq("is_featured", true)
+        .order("created_at", { ascending: false })
         .limit(8);
       if (error) throw error;
       return data;
@@ -301,14 +281,16 @@ export function FeaturedCarousel({
 
   // 高評分精選 — lazy load when row2 enters viewport
   const { data: topRatedPhotos, isLoading: l2 } = useQuery({
-    queryKey: ['featured-photos-top-rated'],
+    queryKey: ["featured-photos-top-rated"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('photos')
-        .select('id, title, image_url, thumbnail_url, user_id, like_count, view_count, average_rating, category, camera_body, phone_model, brand, is_featured')
-        .eq('is_hidden', false)
-        .eq('is_featured', true)
-        .order('average_rating', { ascending: false })
+        .from("photos")
+        .select(
+          "id, title, image_url, thumbnail_url, user_id, like_count, view_count, average_rating, category, camera_body, phone_model, brand, is_featured",
+        )
+        .eq("is_hidden", false)
+        .eq("is_featured", true)
+        .order("average_rating", { ascending: false })
         .limit(8);
       if (error) throw error;
       return data;
@@ -320,13 +302,13 @@ export function FeaturedCarousel({
   const userIds = [...new Set(allPhotos.map((p) => p.user_id))];
 
   const { data: profilesData } = useQuery({
-    queryKey: ['featured-photos-profiles', userIds.join(',')],
+    queryKey: ["featured-photos-profiles", userIds.join(",")],
     queryFn: async () => {
       if (!userIds.length) return [];
       const { data } = await supabase
-        .from('profiles')
-        .select('user_id, username, display_name, avatar_url')
-        .in('user_id', userIds);
+        .from("profiles")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", userIds);
       return data || [];
     },
     enabled: userIds.length > 0,
@@ -359,12 +341,8 @@ export function FeaturedCarousel({
             </div>
           ) : (
             <div>
-              <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-                {sectionTitle || '精選作品'}
-              </h2>
-              <p className="text-muted-foreground">
-                {sectionSubtitle || '社群精選的優質攝影作品'}
-              </p>
+              <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">{sectionTitle || "精選作品"}</h2>
+              <p className="text-muted-foreground">{sectionSubtitle || "論壇精選的優質攝影作品"}</p>
             </div>
           )}
           {!l1 && (
@@ -382,7 +360,7 @@ export function FeaturedCarousel({
         ) : (
           <>
             <ClassicCarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
-            
+
             {/* Row 2 — lazy loaded via IntersectionObserver */}
             <div ref={row2Ref}>
               {row2Visible ? (
@@ -391,7 +369,10 @@ export function FeaturedCarousel({
                     <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
                     <div className="flex gap-4 overflow-hidden">
                       {Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl" />
+                        <div
+                          key={i}
+                          className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl"
+                        />
                       ))}
                     </div>
                   </div>

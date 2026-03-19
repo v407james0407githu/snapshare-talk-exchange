@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Eye, Star, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { pickImageSrc, SIZES } from '@/lib/responsiveImage';
+import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
 
 interface FeaturedPhoto {
   id: string;
@@ -30,16 +30,14 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
     >
       {/* Fixed aspect-ratio — prevents CLS */}
       <div className="aspect-[4/3] overflow-hidden relative bg-muted">
-        {!imgLoaded && (
-          <div className="absolute inset-0 bg-muted animate-pulse" />
-        )}
+        {!imgLoaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
         <img
           src={imgSrc}
           sizes={SIZES.card}
           alt={photo.title}
           width={400}
           height={300}
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
           loading="lazy"
           decoding="async"
           onLoad={() => setImgLoaded(true)}
@@ -49,12 +47,15 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
       {/* Hover overlay — desktop only */}
       <div className="absolute inset-0 bg-gradient-to-t from-charcoal/90 via-charcoal/20 to-transparent opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h3 className="font-serif text-lg font-bold text-cream mb-1">
-            {photo.title}
-          </h3>
+          <h3 className="font-serif text-lg font-bold text-cream mb-1">{photo.title}</h3>
           <div className="flex items-center gap-2 mb-3">
             {photo.avatarUrl ? (
-              <img src={photo.avatarUrl} alt={photo.author} className="w-5 h-5 rounded-full object-cover" loading="lazy" />
+              <img
+                src={photo.avatarUrl}
+                alt={photo.author}
+                className="w-5 h-5 rounded-full object-cover"
+                loading="lazy"
+              />
             ) : (
               <span className="w-5 h-5 rounded-full bg-primary/50 flex items-center justify-center text-xs text-cream">
                 {photo.author.charAt(0)}
@@ -101,7 +102,10 @@ function PhotoCardSkeleton() {
   );
 }
 
-export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
+export function FeaturedGallery({
+  sectionTitle,
+  sectionSubtitle,
+}: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const [photos, setPhotos] = useState<FeaturedPhoto[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -109,7 +113,9 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
     async function fetchLatest() {
       const { data, error } = await supabase
         .from("photos")
-        .select("id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, created_at")
+        .select(
+          "id, title, image_url, thumbnail_url, like_count, comment_count, view_count, average_rating, camera_body, phone_model, brand, user_id, created_at",
+        )
         .eq("is_hidden", false)
         .order("created_at", { ascending: false })
         .limit(20);
@@ -127,21 +133,26 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
       }
 
       const seenUsers = new Set<string>();
-      const unique = data.filter((p) => {
-        if (seenUsers.has(p.user_id)) return false;
-        seenUsers.add(p.user_id);
-        return true;
-      }).slice(0, 13);
+      const unique = data
+        .filter((p) => {
+          if (seenUsers.has(p.user_id)) return false;
+          seenUsers.add(p.user_id);
+          return true;
+        })
+        .slice(0, 13);
 
       const userIds = [...new Set(unique.map((p) => p.user_id))];
-      const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> = {};
+      const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> =
+        {};
 
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
           .from("profiles")
           .select("user_id, username, display_name, avatar_url")
           .in("user_id", userIds);
-        profilesData?.forEach((p) => { profileMap[p.user_id] = p; });
+        profilesData?.forEach((p) => {
+          profileMap[p.user_id] = p;
+        });
       }
 
       const mapped: FeaturedPhoto[] = unique.map((p: any) => {
@@ -179,12 +190,8 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
       <div className="container">
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              {sectionTitle || "精選作品"}
-            </h2>
-            <p className="text-muted-foreground">
-              {sectionSubtitle || "社群精選的優質攝影作品"}
-            </p>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">{sectionTitle || "精選作品"}</h2>
+            <p className="text-muted-foreground">{sectionSubtitle || "論壇精選的優質攝影作品"}</p>
           </div>
           <Link to="/gallery">
             <Button variant="outline" className="hidden sm:flex gap-2">
@@ -197,30 +204,42 @@ export function FeaturedGallery({ sectionTitle, sectionSubtitle }: { sectionTitl
         {loading ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <PhotoCardSkeleton key={i} />
+              ))}
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 5 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <PhotoCardSkeleton key={i} />
+              ))}
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 4 }).map((_, i) => <PhotoCardSkeleton key={i} />)}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <PhotoCardSkeleton key={i} />
+              ))}
             </div>
           </div>
         ) : (
           <>
             {row1.length > 0 && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {row1.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
+                {row1.map((photo) => (
+                  <PhotoCard key={photo.id} photo={photo} />
+                ))}
               </div>
             )}
             {row2.length > 0 && (
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mt-4">
-                {row2.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
+                {row2.map((photo) => (
+                  <PhotoCard key={photo.id} photo={photo} />
+                ))}
               </div>
             )}
             {row3.length > 0 && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                {row3.map((photo) => <PhotoCard key={photo.id} photo={photo} />)}
+                {row3.map((photo) => (
+                  <PhotoCard key={photo.id} photo={photo} />
+                ))}
               </div>
             )}
           </>
