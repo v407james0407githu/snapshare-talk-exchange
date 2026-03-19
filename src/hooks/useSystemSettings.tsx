@@ -20,8 +20,7 @@ export function useSystemSettings() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const get = (key: string, fallback = "") =>
-    settings.find((s) => s.setting_key === key)?.setting_value ?? fallback;
+  const get = (key: string, fallback = "") => settings.find((s) => s.setting_key === key)?.setting_value ?? fallback;
 
   const getBool = (key: string, fallback = true) => {
     const val = settings.find((s) => s.setting_key === key)?.setting_value;
@@ -42,7 +41,7 @@ export function useSystemSettings() {
     forumEnabled: getBool("forum_enabled"),
     marketplaceEnabled: getBool("marketplace_enabled"),
     registrationEnabled: getBool("registration_enabled"),
-    siteName: get("site_name", "光影社群"),
+    siteName: get("site_name", "IP543攝影論壇"),
     siteLogo: get("site_logo_url", ""),
   };
 }
