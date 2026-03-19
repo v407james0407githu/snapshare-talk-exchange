@@ -1138,6 +1138,16 @@ export type Database = {
           read_ct: number
         }[]
       }
+      update_own_profile: {
+        Args: {
+          _avatar_url?: string
+          _bio?: string
+          _display_name?: string
+          _phone?: string
+          _username?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
