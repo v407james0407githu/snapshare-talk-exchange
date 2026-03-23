@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -6,21 +6,34 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 import {
   MessageSquare,
   Send,
   Loader2,
   ArrowLeft,
-  User,
   Package,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import { resizeImage, getOutputExtension, getOutputMimeType } from '@/lib/imageResize';
+
+const IMAGE_PREFIX = '[img]';
+
+function isImageMessage(content: string): boolean {
+  return content.startsWith(IMAGE_PREFIX);
+}
+
+function getImageUrl(content: string): string {
+  return content.slice(IMAGE_PREFIX.length);
+}
 
 interface Conversation {
   id: string;
@@ -58,8 +71,14 @@ export default function Messages() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [newMessage, setNewMessage] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -79,7 +98,6 @@ export default function Messages() {
 
       if (error) throw error;
 
-      // 獲取其他參與者資料
       const otherUserIds = data.map((c) =>
         c.participant1_id === user?.id ? c.participant2_id : c.participant1_id
       );
@@ -105,14 +123,12 @@ export default function Messages() {
         listingsRes.data?.map((l) => [l.id, l] as [string, any]) || []
       );
 
-      // 獲取最後訊息和未讀數
       const conversationsWithDetails = await Promise.all(
         data.map(async (conv) => {
           const otherUserId = conv.participant1_id === user?.id
             ? conv.participant2_id
             : conv.participant1_id;
 
-          // 獲取最後訊息
           const { data: lastMsg } = await supabase
             .from('messages')
             .select('content')
@@ -121,7 +137,6 @@ export default function Messages() {
             .limit(1)
             .single();
 
-          // 獲取未讀數
           const { count } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
@@ -156,7 +171,6 @@ export default function Messages() {
 
       if (error) throw error;
 
-      // 標記為已讀
       await supabase
         .from('messages')
         .update({ is_read: true })
@@ -199,19 +213,76 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // 選擇圖片
+  const handleImageSelect = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: '只能傳送圖片檔案', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: '圖片大小不能超過 10MB', variant: 'destructive' });
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  }, [toast]);
+
+  const clearImage = useCallback(() => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+  }, [imagePreview]);
+
+  // 上傳圖片
+  const uploadImage = useCallback(async (file: File): Promise<string> => {
+    const resized = await resizeImage(file, 1200, 1200, 0.8);
+    const ext = getOutputExtension();
+    const mime = getOutputMimeType();
+    const path = `messages/${user?.id}/${Date.now()}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from('photos')
+      .upload(path, resized.blob, { cacheControl: '3600', upsert: false, contentType: mime });
+
+    if (error) throw error;
+
+    const { data } = supabase.storage.from('photos').getPublicUrl(path);
+    return data.publicUrl;
+  }, [user?.id]);
+
   const sendMessage = useMutation({
     mutationFn: async () => {
-      if (!newMessage.trim() || !conversationId) return;
+      if (!conversationId || (!newMessage.trim() && !imageFile)) return;
+      setUploading(true);
 
-      const { error } = await supabase.from('messages').insert({
-        conversation_id: conversationId,
-        sender_id: user?.id,
-        content: newMessage.trim(),
-      });
+      let content = newMessage.trim();
 
-      if (error) throw error;
+      // 如果有圖片，先上傳
+      if (imageFile) {
+        const imageUrl = await uploadImage(imageFile);
+        // 如果只有圖片沒有文字，用 image prefix
+        if (!content) {
+          content = `${IMAGE_PREFIX}${imageUrl}`;
+        } else {
+          // 先傳圖片訊息
+          await supabase.from('messages').insert({
+            conversation_id: conversationId,
+            sender_id: user?.id,
+            content: `${IMAGE_PREFIX}${imageUrl}`,
+          });
+          // 文字訊息接著傳
+        }
+      }
 
-      // 更新對話的最後訊息時間
+      if (content) {
+        const { error } = await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          sender_id: user?.id,
+          content,
+        });
+        if (error) throw error;
+      }
+
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -219,12 +290,24 @@ export default function Messages() {
     },
     onSuccess: () => {
       setNewMessage('');
+      clearImage();
+      setUploading(false);
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+    },
+    onError: (err: any) => {
+      setUploading(false);
+      toast({ title: '傳送失敗', description: err.message, variant: 'destructive' });
     },
   });
 
   const selectedConversation = conversations?.find((c) => c.id === conversationId);
+
+  const formatLastMessage = (content: string | undefined) => {
+    if (!content) return undefined;
+    if (isImageMessage(content)) return '📷 圖片';
+    return content;
+  };
 
   if (authLoading || !user) {
     return (
@@ -241,9 +324,7 @@ export default function Messages() {
       <div className="container py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">私訊</h1>
-          <p className="text-muted-foreground">
-            與其他用戶進行私人對話
-          </p>
+          <p className="text-muted-foreground">與其他用戶進行私人對話</p>
         </div>
 
         <div className="grid lg:grid-cols-[350px,1fr] gap-6 h-[600px]">
@@ -293,7 +374,7 @@ export default function Messages() {
                       )}
                       {conv.last_message && (
                         <p className="text-sm text-muted-foreground truncate">
-                          {conv.last_message}
+                          {formatLastMessage(conv.last_message)}
                         </p>
                       )}
                     </div>
@@ -363,23 +444,36 @@ export default function Messages() {
                     <div className="space-y-4">
                       {messages.map((message) => {
                         const isOwn = message.sender_id === user?.id;
+                        const isImg = isImageMessage(message.content);
                         return (
                           <div
                             key={message.id}
                             className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                           >
                             <div
-                              className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                              className={`max-w-[70%] rounded-2xl ${
+                                isImg ? 'p-1' : 'px-4 py-2'
+                              } ${
                                 isOwn
                                   ? 'bg-primary text-primary-foreground'
                                   : 'bg-muted'
                               }`}
                             >
-                              <p className="whitespace-pre-wrap break-words">
-                                {message.content}
-                              </p>
+                              {isImg ? (
+                                <img
+                                  src={getImageUrl(message.content)}
+                                  alt="圖片訊息"
+                                  className="rounded-xl max-h-64 max-w-full object-contain cursor-pointer"
+                                  loading="lazy"
+                                  onClick={() => setLightboxUrl(getImageUrl(message.content))}
+                                />
+                              ) : (
+                                <p className="whitespace-pre-wrap break-words">
+                                  {message.content}
+                                </p>
+                              )}
                               <p
-                                className={`text-xs mt-1 ${
+                                className={`text-xs mt-1 ${isImg ? 'px-2 pb-1' : ''} ${
                                   isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                 }`}
                               >
@@ -398,6 +492,25 @@ export default function Messages() {
                   )}
                 </ScrollArea>
 
+                {/* 圖片預覽 */}
+                {imagePreview && (
+                  <div className="px-4 pt-2 border-t">
+                    <div className="relative inline-block">
+                      <img
+                        src={imagePreview}
+                        alt="預覽"
+                        className="h-20 rounded-lg object-cover"
+                      />
+                      <button
+                        onClick={clearImage}
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* 輸入框 */}
                 <div className="p-4 border-t">
                   <form
@@ -405,20 +518,41 @@ export default function Messages() {
                       e.preventDefault();
                       sendMessage.mutate();
                     }}
-                    className="flex gap-2"
+                    className="flex gap-2 items-center"
                   >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      <ImagePlus className="h-5 w-5" />
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageSelect(file);
+                        e.target.value = '';
+                      }}
+                    />
                     <Input
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder="輸入訊息..."
-                      disabled={sendMessage.isPending}
+                      disabled={uploading}
                       maxLength={2000}
                     />
                     <Button
                       type="submit"
-                      disabled={!newMessage.trim() || sendMessage.isPending}
+                      disabled={(!newMessage.trim() && !imageFile) || uploading}
                     >
-                      {sendMessage.isPending ? (
+                      {uploading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Send className="h-4 w-4" />
@@ -438,6 +572,27 @@ export default function Messages() {
           </Card>
         </div>
       </div>
+
+      {/* 圖片燈箱 */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <X className="h-8 w-8" />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="放大圖片"
+            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </MainLayout>
   );
 }
