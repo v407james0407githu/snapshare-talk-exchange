@@ -107,12 +107,24 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
   const handleUploadImage = useCallback(async (file: File) => {
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
+      // Resize image before upload for consistency
+      const { resizeImage, getOutputExtension, getOutputMimeType } = await import("@/lib/imageResize");
+      const resized = await resizeImage(file);
+      const ext = getOutputExtension();
+      const mimeType = getOutputMimeType();
+
       const path = `content/${pageKey}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
+      console.log("[ContentUpload] uploading to path:", path, "size:", resized.blob.size, "type:", mimeType);
+
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from("photos")
-        .upload(path, file, { cacheControl: "3600", upsert: false });
-      if (uploadError) throw uploadError;
+        .upload(path, resized.blob, { cacheControl: "3600", upsert: true, contentType: mimeType });
+
+      if (uploadError) {
+        console.error("[ContentUpload] upload error:", JSON.stringify(uploadError));
+        throw uploadError;
+      }
+      console.log("[ContentUpload] upload success:", uploadData);
 
       const { data: urlData } = supabase.storage.from("photos").getPublicUrl(path);
       const imageUrl = urlData.publicUrl;
@@ -127,6 +139,7 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
         sort_order: (blocks.length + 1) * 10,
       });
     } catch (err: any) {
+      console.error("[ContentUpload] full error:", err);
       toast({ title: "上傳失敗", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
