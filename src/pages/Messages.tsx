@@ -13,6 +13,16 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   MessageSquare,
   Send,
   Loader2,
@@ -20,6 +30,7 @@ import {
   Package,
   ImagePlus,
   X,
+  Trash2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
@@ -79,6 +90,7 @@ export default function Messages() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -191,7 +203,7 @@ export default function Messages() {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
@@ -250,6 +262,39 @@ export default function Messages() {
     return data.publicUrl;
   }, [user?.id]);
 
+  // 刪除訊息
+  const deleteMessage = useMutation({
+    mutationFn: async (message: Message) => {
+      // 如果是圖片訊息，也從 storage 刪除
+      if (isImageMessage(message.content)) {
+        const url = getImageUrl(message.content);
+        // 從 URL 中提取 storage path
+        const match = url.match(/\/photos\/(.+)$/);
+        if (match) {
+          const storagePath = decodeURIComponent(match[1]);
+          await supabase.storage.from('photos').remove([storagePath]);
+        }
+      }
+
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', message.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: '訊息已刪除' });
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+      setDeleteTarget(null);
+    },
+    onError: (err: any) => {
+      toast({ title: '刪除失敗', description: err.message, variant: 'destructive' });
+      setDeleteTarget(null);
+    },
+  });
+
   const sendMessage = useMutation({
     mutationFn: async () => {
       if (!conversationId || (!newMessage.trim() && !imageFile)) return;
@@ -257,20 +302,16 @@ export default function Messages() {
 
       let content = newMessage.trim();
 
-      // 如果有圖片，先上傳
       if (imageFile) {
         const imageUrl = await uploadImage(imageFile);
-        // 如果只有圖片沒有文字，用 image prefix
         if (!content) {
           content = `${IMAGE_PREFIX}${imageUrl}`;
         } else {
-          // 先傳圖片訊息
           await supabase.from('messages').insert({
             conversation_id: conversationId,
             sender_id: user?.id,
             content: `${IMAGE_PREFIX}${imageUrl}`,
           });
-          // 文字訊息接著傳
         }
       }
 
@@ -448,8 +489,18 @@ export default function Messages() {
                         return (
                           <div
                             key={message.id}
-                            className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                            className={`group flex ${isOwn ? 'justify-end' : 'justify-start'}`}
                           >
+                            {/* 刪除按鈕 - 自己的訊息在左邊 */}
+                            {isOwn && (
+                              <button
+                                onClick={() => setDeleteTarget(message)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity self-center mr-2 p-1 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                                title="刪除訊息"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <div
                               className={`max-w-[70%] rounded-2xl ${
                                 isImg ? 'p-1' : 'px-4 py-2'
@@ -480,6 +531,16 @@ export default function Messages() {
                                 {format(new Date(message.created_at), 'HH:mm')}
                               </p>
                             </div>
+                            {/* 刪除按鈕 - 對方的訊息在右邊 */}
+                            {!isOwn && (
+                              <button
+                                onClick={() => setDeleteTarget(message)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity self-center ml-2 p-1 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                                title="刪除訊息"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                         );
                       })}
@@ -593,6 +654,32 @@ export default function Messages() {
           />
         </div>
       )}
+
+      {/* 刪除確認對話框 */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認刪除訊息</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && isImageMessage(deleteTarget.content)
+                ? '刪除後圖片將從雙方對話中永久移除，且無法復原。'
+                : '刪除後訊息將從雙方對話中永久移除，且無法復原。'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMessage.mutate(deleteTarget)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMessage.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
+              刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
