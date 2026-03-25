@@ -439,7 +439,7 @@ export default function Messages() {
                   <div
                     key={conv.id}
                     onClick={() => navigate(`/messages/${conv.id}`)}
-                    className={`flex items-start gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                    className={`group/conv flex items-start gap-3 p-4 cursor-pointer hover:bg-muted/50 transition-colors relative ${
                       conv.id === conversationId ? 'bg-muted' : ''
                     }`}
                   >
@@ -473,9 +473,21 @@ export default function Messages() {
                         </p>
                       )}
                     </div>
-                    {(conv.unread_count || 0) > 0 && (
-                      <Badge className="shrink-0">{conv.unread_count}</Badge>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {(conv.unread_count || 0) > 0 && (
+                        <Badge className="shrink-0">{conv.unread_count}</Badge>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConvTarget(conv.id);
+                        }}
+                        className="opacity-0 group-hover/conv:opacity-100 transition-opacity p-1 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                        title="刪除對話"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (
