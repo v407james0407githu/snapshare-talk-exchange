@@ -91,6 +91,7 @@ export default function Messages() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
+  const [deleteConvTarget, setDeleteConvTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
