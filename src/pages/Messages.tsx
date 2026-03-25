@@ -526,6 +526,15 @@ export default function Messages() {
                         </Link>
                       )}
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteConvTarget(conversationId!)}
+                      title="刪除整個對話"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardHeader>
 
