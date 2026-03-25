@@ -349,7 +349,7 @@ export default function Messages() {
     },
   });
 
-
+  const sendMessage = useMutation({
     mutationFn: async () => {
       if (!conversationId || (!newMessage.trim() && !imageFile)) return;
       setUploading(true);
