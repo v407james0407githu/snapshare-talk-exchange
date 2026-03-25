@@ -129,8 +129,11 @@ export default function Messages() {
           : Promise.resolve({ data: [] }),
       ]);
 
+      const profilesData = profileResults
+        .map(r => r.data?.[0])
+        .filter(Boolean);
       const profilesMap = new Map<string, any>(
-        profilesRes.data?.map((p) => [p.user_id, p] as [string, any]) || []
+        profilesData.map((p: any) => [p.user_id, p] as [string, any])
       );
       const listingsMap = new Map<string, any>(
         listingsRes.data?.map((l) => [l.id, l] as [string, any]) || []
