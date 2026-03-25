@@ -115,11 +115,12 @@ export default function Messages() {
       );
       const listingIds = data.filter((c) => c.listing_id).map((c) => c.listing_id);
 
-      const [profilesRes, listingsRes] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('user_id, username, display_name, avatar_url')
-          .in('user_id', otherUserIds),
+      // Use RPC to fetch public profiles (bypasses RLS restrictions)
+      const profilePromises = otherUserIds.map(uid =>
+        supabase.rpc('get_public_profile', { target_user_id: uid })
+      );
+      const [profileResults, listingsRes] = await Promise.all([
+        Promise.all(profilePromises),
         listingIds.length > 0
           ? supabase
               .from('marketplace_listings')
