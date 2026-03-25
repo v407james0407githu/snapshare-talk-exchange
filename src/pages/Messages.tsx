@@ -91,6 +91,7 @@ export default function Messages() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
+  const [deleteConvTarget, setDeleteConvTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -299,6 +300,55 @@ export default function Messages() {
     },
   });
 
+  // 刪除整個對話
+  const deleteConversation = useMutation({
+    mutationFn: async (convId: string) => {
+      // First delete all messages in the conversation that belong to the user (storage cleanup for images)
+      const { data: convMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', convId)
+        .eq('sender_id', user?.id || '');
+
+      if (convMessages) {
+        for (const msg of convMessages) {
+          if (isImageMessage(msg.content)) {
+            const url = getImageUrl(msg.content);
+            const match = url.match(/\/photos\/(.+)$/);
+            if (match) {
+              const storagePath = decodeURIComponent(match[1]);
+              await supabase.storage.from('photos').remove([storagePath]);
+            }
+          }
+        }
+        // Delete own messages
+        await supabase
+          .from('messages')
+          .delete()
+          .eq('conversation_id', convId)
+          .eq('sender_id', user?.id || '');
+      }
+
+      // Delete conversation
+      const { error } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', convId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: '對話已刪除' });
+      setDeleteConvTarget(null);
+      queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+      navigate('/messages');
+    },
+    onError: (err: any) => {
+      toast({ title: '刪除失敗', description: err.message, variant: 'destructive' });
+      setDeleteConvTarget(null);
+    },
+  });
+
   const sendMessage = useMutation({
     mutationFn: async () => {
       if (!conversationId || (!newMessage.trim() && !imageFile)) return;
@@ -476,6 +526,15 @@ export default function Messages() {
                         </Link>
                       )}
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteConvTarget(conversationId!)}
+                      title="刪除整個對話"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardHeader>
 
@@ -535,16 +594,6 @@ export default function Messages() {
                                 {format(new Date(message.created_at), 'HH:mm')}
                               </p>
                             </div>
-                            {/* 刪除按鈕 - 對方的訊息在右邊 */}
-                            {!isOwn && (
-                              <button
-                                onClick={() => setDeleteTarget(message)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity self-center ml-2 p-1 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                                title="刪除訊息"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
                           </div>
                         );
                       })}
@@ -680,6 +729,30 @@ export default function Messages() {
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
               ) : null}
               刪除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 刪除對話確認對話框 */}
+      <AlertDialog open={!!deleteConvTarget} onOpenChange={(open) => !open && setDeleteConvTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認刪除整個對話</AlertDialogTitle>
+            <AlertDialogDescription>
+              刪除後此對話及您傳送的所有訊息將永久移除，且無法復原。對方傳送的訊息不會被刪除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConvTarget && deleteConversation.mutate(deleteConvTarget)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteConversation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
+              刪除對話
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
