@@ -585,16 +585,6 @@ export default function Messages() {
                                 {format(new Date(message.created_at), 'HH:mm')}
                               </p>
                             </div>
-                            {/* 刪除按鈕 - 對方的訊息在右邊 */}
-                            {!isOwn && (
-                              <button
-                                onClick={() => setDeleteTarget(message)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity self-center ml-2 p-1 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                                title="刪除訊息"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            )}
                           </div>
                         );
                       })}
