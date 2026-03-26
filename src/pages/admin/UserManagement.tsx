@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,8 @@ import { Search, MoreHorizontal, Ban, CheckCircle, AlertTriangle, Shield, Users,
 import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { formatDistanceToNow, format } from "date-fns";
-import { zhTW } from "date-fns/locale";
+import { format } from "date-fns";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -38,13 +38,38 @@ interface UserWithRole {
 
 const roleLabels: Record<string, string> = { user: "一般會員", moderator: "版主", admin: "管理員" };
 
+async function fetchAllUsers(): Promise<UserWithRole[]> {
+  const [profilesRes, rolesRes, emailsRes] = await Promise.all([
+    supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+    supabase.from("user_roles").select("user_id, role"),
+    supabase.rpc("get_user_emails"),
+  ]);
+  if (profilesRes.error) throw profilesRes.error;
+  if (rolesRes.error) throw rolesRes.error;
+
+  const roleMap = new Map(rolesRes.data?.map(r => [r.user_id, r.role]) || []);
+  const emailMap = new Map((emailsRes.data as { user_id: string; email: string }[] || []).map(e => [e.user_id, e.email]));
+
+  return (profilesRes.data || []).map(p => ({
+    ...p,
+    role: roleMap.get(p.user_id) || "user",
+    email: emailMap.get(p.user_id) || "",
+  }));
+}
+
 export default function UserManagement() {
-  const [users, setUsers] = useState<UserWithRole[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState(false);
+
+  const { data: users = [], isLoading: loading } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: fetchAllUsers,
+    staleTime: 3 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
   // Suspend dialog
   const [suspendDialog, setSuspendDialog] = useState<{
@@ -60,34 +85,6 @@ export default function UserManagement() {
     open: boolean;
     user: UserWithRole | null;
   }>({ open: false, user: null });
-
-  useEffect(() => { fetchUsers(); }, []);
-
-  async function fetchUsers() {
-    try {
-      const [profilesRes, rolesRes, emailsRes] = await Promise.all([
-        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-        supabase.from("user_roles").select("user_id, role"),
-        supabase.rpc("get_user_emails"),
-      ]);
-      if (profilesRes.error) throw profilesRes.error;
-      if (rolesRes.error) throw rolesRes.error;
-
-      const roleMap = new Map(rolesRes.data?.map(r => [r.user_id, r.role]) || []);
-      const emailMap = new Map((emailsRes.data as { user_id: string; email: string }[] || []).map(e => [e.user_id, e.email]));
-
-      setUsers((profilesRes.data || []).map(p => ({
-        ...p,
-        role: roleMap.get(p.user_id) || "user",
-        email: emailMap.get(p.user_id) || "",
-      })));
-    } catch (error) {
-      console.error(error);
-      toast.error("載入會員列表失敗");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const getStatus = (u: UserWithRole) => {
     if (u.suspended_until && new Date(u.suspended_until) > new Date()) {
@@ -114,6 +111,8 @@ export default function UserManagement() {
     suspended: users.filter(u => getStatus(u) !== "active").length,
     vip: users.filter(u => u.is_vip).length,
   };
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin-users"] });
 
   const handleSuspend = async () => {
     if (!suspendDialog.user) return;
@@ -142,7 +141,7 @@ export default function UserManagement() {
 
     setSuspendDialog({ open: false, user: null, type: "suspend", duration: "7", reason: "" });
     setActionLoading(false);
-    fetchUsers();
+    invalidate();
   };
 
   const handleChangeRole = async (newRole: AppRole) => {
@@ -150,7 +149,7 @@ export default function UserManagement() {
     setActionLoading(true);
     const u = roleDialog.user;
 
-    const { data: existing } = await supabase.from("user_roles").select("id").eq("user_id", u.user_id).single();
+    const { data: existing } = await supabase.from("user_roles").select("id").eq("user_id", u.user_id).maybeSingle();
     const { error } = existing
       ? await supabase.from("user_roles").update({ role: newRole }).eq("user_id", u.user_id)
       : await supabase.from("user_roles").insert({ user_id: u.user_id, role: newRole });
@@ -160,7 +159,7 @@ export default function UserManagement() {
 
     setRoleDialog({ open: false, user: null });
     setActionLoading(false);
-    fetchUsers();
+    invalidate();
   };
 
   const toggleVip = async (u: UserWithRole) => {
@@ -169,7 +168,9 @@ export default function UserManagement() {
     if (error) toast.error("更新 VIP 失敗");
     else {
       toast.success(newVal ? `已設定 ${u.username} 為 VIP` : `已取消 ${u.username} 的 VIP`);
-      setUsers(prev => prev.map(p => p.user_id === u.user_id ? { ...p, is_vip: newVal } : p));
+      queryClient.setQueryData<UserWithRole[]>(["admin-users"], old =>
+        old?.map(p => p.user_id === u.user_id ? { ...p, is_vip: newVal } : p) ?? []
+      );
     }
   };
 
