@@ -48,6 +48,17 @@ const PhotoManagement = lazy(() => import("./pages/admin/PhotoManagement"));
 const AnalyticsDashboard = lazy(() => import("./pages/admin/AnalyticsDashboard"));
 const SystemSettings = lazy(() => import("./pages/admin/SystemSettings"));
 
+// New admin modules
+const HomepageSections = lazy(() => import("./pages/admin/HomepageSections"));
+const HomepageCopy = lazy(() => import("./pages/admin/HomepageCopy"));
+const ContentPages = lazy(() => import("./pages/admin/ContentPages"));
+const SeoSettings = lazy(() => import("./pages/admin/SeoSettings"));
+const FooterSettings = lazy(() => import("./pages/admin/FooterSettings"));
+const CommunityForums = lazy(() => import("./pages/admin/CommunityForums"));
+const CommunityMarketplace = lazy(() => import("./pages/admin/CommunityMarketplace"));
+const MemberRoles = lazy(() => import("./pages/admin/MemberRoles"));
+const FeatureToggle = lazy(() => import("./pages/admin/FeatureToggle"));
+
 function PageFallback() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
