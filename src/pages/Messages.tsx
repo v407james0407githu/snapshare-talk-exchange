@@ -500,7 +500,7 @@ export default function Messages() {
           </Card>
 
           {/* 訊息區域 */}
-          <Card className="flex flex-col overflow-hidden">
+          <Card className={`flex flex-col overflow-hidden ${conversationId ? '' : 'hidden lg:flex'}`}>
             {conversationId && selectedConversation ? (
               <>
                 {/* 對話標題 */}
