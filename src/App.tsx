@@ -149,15 +149,7 @@ const App = () => (
                 <Route path="analytics" element={<AnalyticsDashboard />} />
                 <Route path="settings" element={<SystemSettings />} />
                 <Route path="settings/features" element={<FeatureToggle />} />
-                {/* Legacy routes */}
-                <Route path="users" element={<UserManagement />} />
-                <Route path="reports" element={<ReportManagement />} />
-                <Route path="banners" element={<BannerManagement />} />
-                <Route path="categories" element={<CategoryManagement />} />
-                <Route path="content" element={<ContentManagement />} />
-                <Route path="photos" element={<PhotoManagement />} />
-                <Route path="sections" element={<HomepageSections />} />
-              </Route>
+            </Route>
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/terms" element={<Terms />} />
