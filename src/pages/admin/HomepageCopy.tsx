@@ -199,7 +199,7 @@ export default function HomepageCopy() {
                   {groupName}
                   <Badge variant="secondary" className="text-xs">{items.length}</Badge>
                 </h3>
-                <div className="grid gap-3">
+                <div className="grid gap-3 max-w-4xl">
                   {items.map((item) => (
                     <Card key={item.id} className={!item.is_active ? "opacity-50" : ""}>
                       <CardContent className="flex items-center gap-4 p-4">
