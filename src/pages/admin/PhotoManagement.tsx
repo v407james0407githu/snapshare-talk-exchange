@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Star, Eye, Heart, MessageCircle, Loader2, EyeOff, CheckSquare, X, StarOff, EyeIcon, GripVertical, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   closestCenter,
@@ -265,8 +266,8 @@ function PhotoCard({
 }
 
 export default function PhotoManagement() {
+  const queryClient = useQueryClient();
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "featured" | "hidden">("all");
@@ -299,75 +300,70 @@ export default function PhotoManagement() {
     setOrderDirty(false);
   }, [debouncedSearch, filter]);
 
-  const fetchPhotos = useCallback(async (pageNum: number) => {
-    setLoading(true);
-    try {
-      const from = pageNum * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+  const fetchPhotosFn = useCallback(async (pageNum: number) => {
+    const from = pageNum * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
 
-      let query = supabase
-        .from("photos")
-        .select("*");
+    let query = supabase.from("photos").select("*");
 
-      if (filter === "featured") {
-        query = query.eq("is_featured", true)
-          .order("featured_order", { ascending: true })
-          .order("like_count", { ascending: false });
-      } else {
-        query = query.order("created_at", { ascending: false });
-      }
-
-      if (filter === "hidden") query = query.eq("is_hidden", true);
-
-      if (debouncedSearch) {
-        query = query.or(
-          `title.ilike.%${debouncedSearch}%,brand.ilike.%${debouncedSearch}%,camera_body.ilike.%${debouncedSearch}%,phone_model.ilike.%${debouncedSearch}%`
-        );
-      }
-
-      query = query.range(from, to);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const userIds = [...new Set((data || []).map((p) => p.user_id))];
-      const profileMap = new Map<string, string>();
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, username, display_name")
-          .in("user_id", userIds);
-        profiles?.forEach((p) => {
-          profileMap.set(p.user_id, p.display_name || p.username);
-        });
-      }
-
-      const mapped: PhotoRow[] = (data || []).map((p: any) => ({
-        ...p,
-        is_featured: p.is_featured ?? false,
-        is_hidden: p.is_hidden ?? false,
-        featured_order: p.featured_order ?? 0,
-        like_count: p.like_count ?? 0,
-        comment_count: p.comment_count ?? 0,
-        view_count: p.view_count ?? 0,
-        average_rating: p.average_rating ?? 0,
-        author_name: profileMap.get(p.user_id) || "未知",
-      }));
-
-      if (pageNum === 0) setPhotos(mapped);
-      else setPhotos((prev) => [...prev, ...mapped]);
-      setHasMore(mapped.length === PAGE_SIZE);
-    } catch (err) {
-      console.error(err);
-      toast.error("載入作品失敗");
-    } finally {
-      setLoading(false);
+    if (filter === "featured") {
+      query = query.eq("is_featured", true)
+        .order("featured_order", { ascending: true })
+        .order("like_count", { ascending: false });
+    } else {
+      query = query.order("created_at", { ascending: false });
     }
+
+    if (filter === "hidden") query = query.eq("is_hidden", true);
+
+    if (debouncedSearch) {
+      query = query.or(
+        `title.ilike.%${debouncedSearch}%,brand.ilike.%${debouncedSearch}%,camera_body.ilike.%${debouncedSearch}%,phone_model.ilike.%${debouncedSearch}%`
+      );
+    }
+
+    query = query.range(from, to);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const userIds = [...new Set((data || []).map((p) => p.user_id))];
+    const profileMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name")
+        .in("user_id", userIds);
+      profiles?.forEach((p) => {
+        profileMap.set(p.user_id, p.display_name || p.username);
+      });
+    }
+
+    return (data || []).map((p: any) => ({
+      ...p,
+      is_featured: p.is_featured ?? false,
+      is_hidden: p.is_hidden ?? false,
+      featured_order: p.featured_order ?? 0,
+      like_count: p.like_count ?? 0,
+      comment_count: p.comment_count ?? 0,
+      view_count: p.view_count ?? 0,
+      average_rating: p.average_rating ?? 0,
+      author_name: profileMap.get(p.user_id) || "未知",
+    })) as PhotoRow[];
   }, [debouncedSearch, filter]);
 
-  useEffect(() => {
-    fetchPhotos(page);
-  }, [page, fetchPhotos]);
+  const { isLoading: loading } = useQuery({
+    queryKey: ["admin-photos", debouncedSearch, filter, page],
+    queryFn: async () => {
+      const mapped = await fetchPhotosFn(page);
+      if (page === 0) setPhotos(mapped);
+      else setPhotos((prev) => [...prev, ...mapped]);
+      setHasMore(mapped.length === PAGE_SIZE);
+      return mapped;
+    },
+    staleTime: 3 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
