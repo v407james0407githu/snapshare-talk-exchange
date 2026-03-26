@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
