@@ -589,13 +589,18 @@ export default function Messages() {
                                   {message.content}
                                 </p>
                               )}
-                              <p
-                                className={`text-xs mt-1 ${isImg ? 'px-2 pb-1' : ''} ${
+                              <div
+                                className={`flex items-center gap-1 text-xs mt-1 ${isImg ? 'px-2 pb-1' : ''} ${
                                   isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                 }`}
                               >
-                                {format(new Date(message.created_at), 'HH:mm')}
-                              </p>
+                                <span>{format(new Date(message.created_at), 'HH:mm')}</span>
+                                {isOwn && (
+                                  <span className={message.is_read ? 'text-primary-foreground/90 font-medium' : 'opacity-60'}>
+                                    {message.is_read ? '✓✓ 已讀' : '✓ 已送出'}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
