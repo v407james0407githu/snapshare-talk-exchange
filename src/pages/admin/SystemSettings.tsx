@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,7 +87,7 @@ export default function SystemSettings() {
   const groupKeys = Object.keys(groupConfig).filter((k) => groups[k]);
 
   return (
-    <AdminLayout title="系統設定" subtitle="管理網站基本設定、SEO、頁尾與郵件模板">
+    <>
       {hasChanges && (
         <div className="mb-6 flex items-center gap-4 p-4 bg-primary/10 rounded-xl border border-primary/20">
           <span className="text-sm font-medium flex-1">
@@ -188,6 +188,6 @@ export default function SystemSettings() {
           ))}
         </Tabs>
       )}
-    </AdminLayout>
+    </>
   );
 }

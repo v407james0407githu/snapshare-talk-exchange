@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -289,11 +289,11 @@ export default function AnalyticsDashboard() {
     });
   }
 
+  useAdminPage("數據分析", "全站數據統計與趨勢分析");
+
   if (loading) {
     return (
-      <AdminLayout title="數據分析" subtitle="全站數據統計與趨勢分析">
-        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      </AdminLayout>
+      <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
     );
   }
 
@@ -302,7 +302,7 @@ export default function AnalyticsDashboard() {
     : RANGE_OPTIONS.find(r => r.value === String(rangeDays))?.label || `近 ${rangeDays} 天`;
 
   return (
-    <AdminLayout title="數據分析" subtitle="全站數據統計與趨勢分析">
+    <>
       {/* Today Highlight Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <HighlightCard icon={<UserPlus className="h-5 w-5" />} label="今日新會員" value={stats?.todayNewUsers || 0} sub={`本週 +${stats?.weekNewUsers || 0}`} color="text-primary bg-primary/10" />
@@ -614,7 +614,7 @@ export default function AnalyticsDashboard() {
           )}
         </TabsContent>
       </Tabs>
-    </AdminLayout>
+    </>
   );
 }
 

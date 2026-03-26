@@ -24,7 +24,7 @@ import {
   HardDrive,
   BarChart3,
 } from "lucide-react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, format, subDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -281,8 +281,10 @@ export default function AdminDashboard() {
     { label: "數據分析", href: "/admin/analytics", icon: BarChart3 },
   ];
 
+  useAdminPage("管理總覽", "網站營運狀態一覽");
+
   return (
-    <AdminLayout title="管理總覽" subtitle="網站營運狀態一覽">
+    <>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <KpiCard
@@ -514,6 +516,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

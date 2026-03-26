@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Image, MessageSquare, Eye, CheckCircle, XCircle, ExternalLink, ShoppingBag, AlertTriangle, Search, Loader2, Flag, Clock, Ban } from "lucide-react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
@@ -160,7 +160,7 @@ export default function ReportManagement() {
   };
 
   return (
-    <AdminLayout title="檢舉處理中心" subtitle="審核和處理用戶提交的檢舉，維護社群秩序">
+    <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
@@ -321,6 +321,6 @@ export default function ReportManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </>
   );
 }

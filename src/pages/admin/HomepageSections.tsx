@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -317,8 +317,10 @@ export default function HomepageSections() {
     setSectionsDirty(true);
   };
 
+  useAdminPage("區塊排序", "管理首頁各區塊的顯示順序、標題與可見性");
+
   return (
-    <AdminLayout title="區塊排序" subtitle="管理首頁各區塊的顯示順序、標題與可見性">
+    <>
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
           拖拉調整首頁各區塊的顯示順序，點擊鉛筆圖示可自訂區塊在前台顯示的名稱與副標題。
@@ -379,6 +381,6 @@ export default function HomepageSections() {
           </DndContext>
         )}
       </div>
-    </AdminLayout>
+    </>
   );
 }

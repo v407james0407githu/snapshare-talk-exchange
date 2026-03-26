@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -543,8 +543,10 @@ export default function PhotoManagement() {
     );
   };
 
+  useAdminPage("作品管理", "管理所有作品，設定精選或隱藏作品");
+
   return (
-    <AdminLayout title="作品管理" subtitle="管理所有作品，設定精選或隱藏作品">
+    <>
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-4 mb-4">
         <div className="relative flex-1">
@@ -648,6 +650,6 @@ export default function PhotoManagement() {
           )}
         </>
       )}
-    </AdminLayout>
+    </>
   );
 }

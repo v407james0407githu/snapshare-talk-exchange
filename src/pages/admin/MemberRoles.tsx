@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,7 +87,7 @@ export default function MemberRoles() {
   const moderators = roleUsers.filter(u => u.role === "moderator");
 
   return (
-    <AdminLayout title="權限角色" subtitle="管理管理員與版主角色分配">
+    <>
       {/* Role Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {([
@@ -210,6 +210,6 @@ export default function MemberRoles() {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </>
   );
 }
