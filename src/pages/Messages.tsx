@@ -451,7 +451,7 @@ export default function Messages() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium truncate">
+                        <span className={`truncate ${(conv.unread_count || 0) > 0 ? 'font-bold' : 'font-medium'}`}>
                           {conv.other_user?.display_name || conv.other_user?.username}
                         </span>
                         <span className="text-xs text-muted-foreground">
@@ -468,7 +468,7 @@ export default function Messages() {
                         </div>
                       )}
                       {conv.last_message && (
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className={`text-sm truncate ${(conv.unread_count || 0) > 0 ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                           {formatLastMessage(conv.last_message)}
                         </p>
                       )}
