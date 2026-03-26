@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -167,7 +167,7 @@ export default function HomepageCopy() {
   const grouped = groupContents(filtered);
 
   return (
-    <AdminLayout title="首頁文案" subtitle="管理首頁各區塊的文案內容、CTA 與頁尾文字">
+    <>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
@@ -344,6 +344,6 @@ export default function HomepageCopy() {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </>
   );
 }

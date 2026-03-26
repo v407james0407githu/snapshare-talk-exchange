@@ -10,7 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, MoreHorizontal, Ban, CheckCircle, AlertTriangle, Shield, Users, Crown, UserX, Star, Loader2 } from "lucide-react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
@@ -180,7 +180,7 @@ export default function UserManagement() {
   };
 
   return (
-    <AdminLayout title="會員管理" subtitle="管理會員帳號、角色、VIP 與停權狀態">
+    <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         {[
@@ -386,6 +386,6 @@ export default function UserManagement() {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </>
   );
 }
