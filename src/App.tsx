@@ -147,7 +147,6 @@ const App = () => (
               <Route path="/admin/members" element={<UserManagement />} />
               <Route path="/admin/members/roles" element={<MemberRoles />} />
               {/* Moderation */}
-              <Route path="/admin/moderation/photos" element={<PhotoManagement />} />
               <Route path="/admin/moderation/reports" element={<ReportManagement />} />
               {/* Analytics & Settings */}
               <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
