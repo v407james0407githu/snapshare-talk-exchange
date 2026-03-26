@@ -82,11 +82,13 @@ async function fetchDashboardStats(get: (key: string, fallback?: string) => stri
   todayStart.setHours(0, 0, 0, 0);
   const todayISO = todayStart.toISOString();
 
+  // ALL queries in a single Promise.all — no sequential waterfall
   const [
     usersRes, photosRes, topicsRes, listingsRes,
     pendingReportsRes, reportsRes,
     todayUsersRes, todayPhotosRes, todayTopicsRes, todayListingsRes,
     todayViewsRes,
+    pagesRes, bannerCountRes, homeSectionsRes,
   ] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }),
     supabase.from("photos").select("id", { count: "exact", head: true }),
@@ -99,6 +101,10 @@ async function fetchDashboardStats(get: (key: string, fallback?: string) => stri
     supabase.from("forum_topics").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
     supabase.from("marketplace_listings").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
     supabase.from("page_views").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
+    // Health check queries — run in parallel, not sequentially
+    supabase.from("site_content").select("section_key, content_value").in("section_key", ["about_content", "contact_content", "terms_content", "privacy_content"]),
+    supabase.from("hero_banners").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("homepage_sections").select("section_key, is_visible"),
   ]);
 
   const stats = {
@@ -114,7 +120,7 @@ async function fetchDashboardStats(get: (key: string, fallback?: string) => stri
     todayViews: todayViewsRes.count || 0,
   };
 
-  // Reports with profiles
+  // Reports with profiles — single additional query
   let recentReports: Report[] = [];
   if (reportsRes.data?.length) {
     const reporterIds = [...new Set(reportsRes.data.map((r) => r.reporter_id))];
@@ -129,7 +135,7 @@ async function fetchDashboardStats(get: (key: string, fallback?: string) => stri
     }));
   }
 
-  // Health warnings
+  // Health warnings — all data already fetched above
   const warnings: { text: string; link: string }[] = [];
   const seoTitle = get("seo_title", "");
   const seoDesc = get("seo_description", "");
@@ -140,34 +146,25 @@ async function fetchDashboardStats(get: (key: string, fallback?: string) => stri
   if (!ogImage) warnings.push({ text: "OG 社群分享圖片未設定", link: "/admin/content/seo" });
   if (!favicon) warnings.push({ text: "Favicon 尚未設定", link: "/admin/content/seo" });
 
-  const { data: pages } = await supabase
-    .from("site_content")
-    .select("section_key, content_value")
-    .in("section_key", ["about_content", "contact_content", "terms_content", "privacy_content"]);
   const pageLabels: Record<string, string> = {
     about_content: "關於我們",
     contact_content: "聯絡我們",
     terms_content: "使用條款",
     privacy_content: "隱私政策",
   };
-  pages?.forEach((p) => {
+  pagesRes.data?.forEach((p) => {
     if (!p.content_value || p.content_value.trim().length < 10) {
       warnings.push({ text: `${pageLabels[p.section_key] || p.section_key} 頁面內容為空`, link: "/admin/content/pages" });
     }
   });
 
-  const { count: bannerCount } = await supabase
-    .from("hero_banners")
-    .select("id", { count: "exact", head: true })
-    .eq("is_active", true);
-  if (!bannerCount) warnings.push({ text: "首頁 Banner 尚未設定", link: "/admin/homepage/banners" });
+  if (!bannerCountRes.count) warnings.push({ text: "首頁 Banner 尚未設定", link: "/admin/homepage/banners" });
 
   const galleryEnabled = get("gallery_enabled", "true") === "true";
   const forumEnabled = get("forum_enabled", "true") === "true";
   const marketplaceEnabled = get("marketplace_enabled", "true") === "true";
-  const { data: homeSections } = await supabase.from("homepage_sections").select("section_key, is_visible");
-  if (homeSections) {
-    const visibleKeys = homeSections.filter((s) => s.is_visible).map((s) => s.section_key);
+  if (homeSectionsRes.data) {
+    const visibleKeys = homeSectionsRes.data.filter((s) => s.is_visible).map((s) => s.section_key);
     if (!galleryEnabled && visibleKeys.includes("featured_gallery")) {
       warnings.push({ text: "作品功能已關閉，但首頁仍顯示「精選作品」區塊", link: "/admin/settings/features" });
     }
