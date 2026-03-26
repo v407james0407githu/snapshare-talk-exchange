@@ -48,6 +48,17 @@ const PhotoManagement = lazy(() => import("./pages/admin/PhotoManagement"));
 const AnalyticsDashboard = lazy(() => import("./pages/admin/AnalyticsDashboard"));
 const SystemSettings = lazy(() => import("./pages/admin/SystemSettings"));
 
+// New admin modules
+const HomepageSections = lazy(() => import("./pages/admin/HomepageSections"));
+const HomepageCopy = lazy(() => import("./pages/admin/HomepageCopy"));
+const ContentPages = lazy(() => import("./pages/admin/ContentPages"));
+const SeoSettings = lazy(() => import("./pages/admin/SeoSettings"));
+const FooterSettings = lazy(() => import("./pages/admin/FooterSettings"));
+const CommunityForums = lazy(() => import("./pages/admin/CommunityForums"));
+const CommunityMarketplace = lazy(() => import("./pages/admin/CommunityMarketplace"));
+const MemberRoles = lazy(() => import("./pages/admin/MemberRoles"));
+const FeatureToggle = lazy(() => import("./pages/admin/FeatureToggle"));
+
 function PageFallback() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -119,15 +130,37 @@ const App = () => (
               <Route path="/messages/:conversationId" element={<Messages />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              {/* Homepage management */}
+              <Route path="/admin/homepage/sections" element={<HomepageSections />} />
+              <Route path="/admin/homepage/banners" element={<BannerManagement />} />
+              <Route path="/admin/homepage/copy" element={<HomepageCopy />} />
+              {/* Content management */}
+              <Route path="/admin/content/pages" element={<ContentPages />} />
+              <Route path="/admin/content/seo" element={<SeoSettings />} />
+              <Route path="/admin/content/footer" element={<FooterSettings />} />
+              {/* Community management */}
+              <Route path="/admin/community/photos" element={<PhotoManagement />} />
+              <Route path="/admin/community/forums" element={<CommunityForums />} />
+              <Route path="/admin/community/marketplace" element={<CommunityMarketplace />} />
+              <Route path="/admin/community/categories" element={<CategoryManagement />} />
+              {/* Members */}
+              <Route path="/admin/members" element={<UserManagement />} />
+              <Route path="/admin/members/roles" element={<MemberRoles />} />
+              {/* Moderation */}
+              <Route path="/admin/moderation/photos" element={<PhotoManagement />} />
+              <Route path="/admin/moderation/reports" element={<ReportManagement />} />
+              {/* Analytics & Settings */}
+              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
+              <Route path="/admin/settings" element={<SystemSettings />} />
+              <Route path="/admin/settings/features" element={<FeatureToggle />} />
+              {/* Legacy routes redirect */}
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/reports" element={<ReportManagement />} />
               <Route path="/admin/banners" element={<BannerManagement />} />
               <Route path="/admin/categories" element={<CategoryManagement />} />
               <Route path="/admin/content" element={<ContentManagement />} />
               <Route path="/admin/photos" element={<PhotoManagement />} />
-              <Route path="/admin/sections" element={<ContentManagement />} />
-              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
-              <Route path="/admin/settings" element={<SystemSettings />} />
+              <Route path="/admin/sections" element={<HomepageSections />} />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/terms" element={<Terms />} />

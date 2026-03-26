@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Users,
   Image,
@@ -9,45 +10,50 @@ import {
   Flag,
   Settings,
   TrendingUp,
-  TrendingDown,
   Eye,
   AlertTriangle,
   CheckCircle,
-  Clock,
   Ban,
+  Store,
+  Home,
+  Globe,
+  FileText,
+  Shield,
+  ArrowRight,
+  Activity,
+  HardDrive,
+  BarChart3,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 
-interface StatCardProps {
+interface KpiCardProps {
   title: string;
   value: string;
-  change?: number;
+  subtitle?: string;
   icon: React.ReactNode;
   loading?: boolean;
+  accent?: boolean;
 }
 
-function StatCard({ title, value, change, icon, loading }: StatCardProps) {
-  const isPositive = (change ?? 0) >= 0;
+function KpiCard({ title, value, subtitle, icon, loading, accent }: KpiCardProps) {
   return (
-    <div className="bg-card rounded-xl border border-border p-6 hover-lift">
-      <div className="flex items-start justify-between mb-4">
-        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+    <div className={`rounded-xl border p-5 ${accent ? 'bg-primary/5 border-primary/20' : 'bg-card border-border'}`}>
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`p-2 rounded-lg ${accent ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
           {icon}
         </div>
-        {change !== undefined && (
-          <div className={`flex items-center gap-1 text-sm ${isPositive ? "text-green-600" : "text-red-600"}`}>
-            {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            {Math.abs(change)}%
-          </div>
-        )}
+        <span className="text-sm text-muted-foreground">{title}</span>
       </div>
-      <div className="text-2xl font-bold mb-1">
-        {loading ? <div className="h-8 w-16 bg-muted animate-pulse rounded" /> : value}
-      </div>
-      <div className="text-sm text-muted-foreground">{title}</div>
+      {loading ? (
+        <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+      ) : (
+        <div className="text-2xl font-bold tracking-tight">{value}</div>
+      )}
+      {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
     </div>
   );
 }
@@ -55,26 +61,11 @@ function StatCard({ title, value, change, icon, loading }: StatCardProps) {
 interface Report {
   id: string;
   content_type: string;
-  content_id: string;
   reason: string;
   status: string;
   created_at: string;
-  reporter_profile?: {
-    username: string;
-  };
+  reporter_profile?: { username: string };
 }
-
-const statusColors: Record<string, string> = {
-  pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-  resolved: "bg-green-500/10 text-green-600 border-green-500/20",
-  dismissed: "bg-muted text-muted-foreground border-border",
-};
-
-const statusLabels: Record<string, string> = {
-  pending: "待處理",
-  resolved: "已處理",
-  dismissed: "已駁回",
-};
 
 const contentTypeLabels: Record<string, string> = {
   photo: "照片",
@@ -85,232 +76,326 @@ const contentTypeLabels: Record<string, string> = {
 };
 
 export default function AdminDashboard() {
+  const { get, getNum } = useSystemSettings();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalPhotos: 0,
-    pendingReports: 0,
     totalTopics: 0,
+    totalListings: 0,
+    pendingReports: 0,
+    todayUsers: 0,
+    todayPhotos: 0,
+    todayTopics: 0,
+    todayListings: 0,
+    todayViews: 0,
   });
   const [recentReports, setRecentReports] = useState<Report[]>([]);
+  const [healthWarnings, setHealthWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch stats in parallel
-        const [usersRes, photosRes, reportsRes, topicsRes, pendingReportsRes] = await Promise.all([
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayISO = todayStart.toISOString();
+
+        const [
+          usersRes, photosRes, topicsRes, listingsRes,
+          pendingReportsRes, reportsRes,
+          todayUsersRes, todayPhotosRes, todayTopicsRes, todayListingsRes,
+          todayViewsRes,
+        ] = await Promise.all([
           supabase.from("profiles").select("id", { count: "exact", head: true }),
           supabase.from("photos").select("id", { count: "exact", head: true }),
-          supabase.from("reports").select("*").order("created_at", { ascending: false }).limit(5),
           supabase.from("forum_topics").select("id", { count: "exact", head: true }),
+          supabase.from("marketplace_listings").select("id", { count: "exact", head: true }),
           supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "pending"),
+          supabase.from("reports").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(5),
+          supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
+          supabase.from("photos").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
+          supabase.from("forum_topics").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
+          supabase.from("marketplace_listings").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
+          supabase.from("page_views").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
         ]);
 
         setStats({
           totalUsers: usersRes.count || 0,
           totalPhotos: photosRes.count || 0,
-          pendingReports: pendingReportsRes.count || 0,
           totalTopics: topicsRes.count || 0,
+          totalListings: listingsRes.count || 0,
+          pendingReports: pendingReportsRes.count || 0,
+          todayUsers: todayUsersRes.count || 0,
+          todayPhotos: todayPhotosRes.count || 0,
+          todayTopics: todayTopicsRes.count || 0,
+          todayListings: todayListingsRes.count || 0,
+          todayViews: todayViewsRes.count || 0,
         });
 
-        // Fetch reporter profiles separately
-        if (reportsRes.data) {
+        // Reports with profiles
+        if (reportsRes.data?.length) {
           const reporterIds = [...new Set(reportsRes.data.map((r) => r.reporter_id))];
           const { data: profiles } = await supabase
             .from("profiles")
             .select("user_id, username")
             .in("user_id", reporterIds);
-
           const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
-          
-          const reportsWithProfiles = reportsRes.data.map((report) => ({
-            ...report,
-            reporter_profile: profileMap.get(report.reporter_id),
-          }));
-
-          setRecentReports(reportsWithProfiles);
+          setRecentReports(
+            reportsRes.data.map((r) => ({
+              ...r,
+              reporter_profile: profileMap.get(r.reporter_id),
+            }))
+          );
         }
+
+        // Health warnings
+        const warnings: string[] = [];
+        const seoTitle = get("seo_title", "");
+        const seoDesc = get("seo_description", "");
+        const favicon = get("site_favicon_url", "");
+        if (!seoTitle || seoTitle.includes("IP543")) warnings.push("SEO 標題尚未自訂");
+        if (!seoDesc) warnings.push("SEO 描述尚未設定");
+        if (!favicon) warnings.push("Favicon 尚未設定");
+
+        // Check static pages
+        const { data: pages } = await supabase
+          .from("site_content")
+          .select("section_key, content_value")
+          .in("section_key", ["about_content", "contact_content", "terms_content", "privacy_content"]);
+        const pageLabels: Record<string, string> = {
+          about_content: "關於我們",
+          contact_content: "聯絡我們",
+          terms_content: "使用條款",
+          privacy_content: "隱私政策",
+        };
+        pages?.forEach((p) => {
+          if (!p.content_value || p.content_value.trim().length < 10) {
+            warnings.push(`${pageLabels[p.section_key] || p.section_key} 頁面內容為空`);
+          }
+        });
+
+        // Check banners
+        const { count: bannerCount } = await supabase
+          .from("hero_banners")
+          .select("id", { count: "exact", head: true })
+          .eq("is_active", true);
+        if (!bannerCount) warnings.push("首頁 Banner 尚未設定");
+
+        setHealthWarnings(warnings);
       } catch (error) {
         console.error("Error fetching admin data:", error);
       } finally {
         setLoading(false);
       }
     }
-
     fetchData();
-  }, []);
+  }, [get]);
+
+  const storageUsed = getNum("storage_used_mb", 0);
+  const storageQuota = getNum("storage_quota_mb", 8192);
+  const storagePercent = storageQuota > 0 ? Math.round((storageUsed / storageQuota) * 100) : 0;
 
   const handleResolveReport = async (reportId: string, resolution: "resolved" | "dismissed") => {
     const { error } = await supabase
       .from("reports")
-      .update({ 
-        status: resolution, 
-        resolved_at: new Date().toISOString() 
-      })
+      .update({ status: resolution, resolved_at: new Date().toISOString() })
       .eq("id", reportId);
-
     if (!error) {
-      setRecentReports((prev) =>
-        prev.map((r) => (r.id === reportId ? { ...r, status: resolution } : r))
-      );
-      setStats((prev) => ({ ...prev, pendingReports: prev.pendingReports - 1 }));
+      setRecentReports((prev) => prev.filter((r) => r.id !== reportId));
+      setStats((prev) => ({ ...prev, pendingReports: Math.max(0, prev.pendingReports - 1) }));
     }
   };
 
+  const quickActions = [
+    { label: "管理 Banner", href: "/admin/homepage/banners", icon: Home },
+    { label: "編輯首頁文案", href: "/admin/homepage/copy", icon: FileText },
+    { label: "待審核內容", href: "/admin/moderation/photos", icon: Shield },
+    { label: "檢舉處理", href: "/admin/moderation/reports", icon: Flag, badge: stats.pendingReports },
+    { label: "SEO 設定", href: "/admin/content/seo", icon: Globe },
+    { label: "靜態頁面", href: "/admin/content/pages", icon: FileText },
+    { label: "會員管理", href: "/admin/members", icon: Users },
+    { label: "數據分析", href: "/admin/analytics", icon: BarChart3 },
+  ];
+
   return (
-    <AdminLayout title="歡迎回來" subtitle="以下是今日的網站概況">
-      {/* Stats Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          title="總會員數"
-          value={stats.totalUsers.toLocaleString()}
-          icon={<Users className="h-5 w-5" />}
+    <AdminLayout title="管理總覽" subtitle="網站營運狀態一覽">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <KpiCard
+          title="今日新會員"
+          value={stats.todayUsers.toLocaleString()}
+          subtitle={`累計 ${stats.totalUsers.toLocaleString()}`}
+          icon={<Users className="h-4 w-4" />}
           loading={loading}
         />
-        <StatCard
-          title="總作品數"
-          value={stats.totalPhotos.toLocaleString()}
-          icon={<Image className="h-5 w-5" />}
+        <KpiCard
+          title="今日新作品"
+          value={stats.todayPhotos.toLocaleString()}
+          subtitle={`累計 ${stats.totalPhotos.toLocaleString()}`}
+          icon={<Image className="h-4 w-4" />}
           loading={loading}
         />
-        <StatCard
-          title="討論主題"
-          value={stats.totalTopics.toLocaleString()}
-          icon={<MessageSquare className="h-5 w-5" />}
+        <KpiCard
+          title="今日新討論"
+          value={stats.todayTopics.toLocaleString()}
+          subtitle={`累計 ${stats.totalTopics.toLocaleString()}`}
+          icon={<MessageSquare className="h-4 w-4" />}
           loading={loading}
         />
-        <StatCard
-          title="待處理檢舉"
-          value={stats.pendingReports.toLocaleString()}
-          icon={<AlertTriangle className="h-5 w-5" />}
+        <KpiCard
+          title="今日新刊登"
+          value={stats.todayListings.toLocaleString()}
+          subtitle={`累計 ${stats.totalListings.toLocaleString()}`}
+          icon={<Store className="h-4 w-4" />}
+          loading={loading}
+        />
+        <KpiCard
+          title="今日瀏覽量"
+          value={stats.todayViews.toLocaleString()}
+          icon={<Eye className="h-4 w-4" />}
           loading={loading}
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Recent Reports */}
-        <div className="bg-card rounded-xl border border-border">
-          <div className="p-6 border-b border-border flex items-center justify-between">
-            <h2 className="font-semibold">最新檢舉</h2>
-            <Link to="/admin/reports">
-              <Button variant="ghost" size="sm">
-                查看全部
-              </Button>
-            </Link>
+      {/* Alerts Row */}
+      <div className="grid lg:grid-cols-3 gap-4 mb-6">
+        {/* Pending Reports */}
+        {stats.pendingReports > 0 && (
+          <Link
+            to="/admin/moderation/reports"
+            className="flex items-center gap-3 p-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors"
+          >
+            <div className="p-2 rounded-lg bg-destructive/15 text-destructive">
+              <Flag className="h-4 w-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">{stats.pendingReports} 則待處理檢舉</p>
+              <p className="text-xs text-muted-foreground">點擊前往處理</p>
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        )}
+
+        {/* Storage */}
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">
+          <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+            <HardDrive className="h-4 w-4" />
           </div>
-          <div className="divide-y divide-border">
-            {loading ? (
-              <div className="p-8 text-center text-muted-foreground">載入中...</div>
-            ) : recentReports.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">暫無檢舉記錄</div>
-            ) : (
-              recentReports.map((report) => (
-                <div key={report.id} className="p-4 flex items-start gap-4">
-                  <div className="p-2 rounded-lg bg-muted">
-                    {report.content_type === "photo" && <Image className="h-4 w-4" />}
-                    {(report.content_type === "comment" || 
-                      report.content_type === "forum_topic" || 
-                      report.content_type === "forum_reply") && <MessageSquare className="h-4 w-4" />}
-                    {report.content_type === "listing" && <Eye className="h-4 w-4" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium truncate">
-                        {contentTypeLabels[report.content_type] || report.content_type}
-                      </span>
-                      <Badge variant="outline" className={statusColors[report.status] || statusColors.pending}>
-                        {statusLabels[report.status] || report.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {report.reason} · 由 {report.reporter_profile?.username || "匿名"} 檢舉
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {formatDistanceToNow(new Date(report.created_at), { addSuffix: true, locale: zhTW })}
-                    </p>
-                  </div>
-                  {report.status === "pending" && (
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-green-600"
-                        onClick={() => handleResolveReport(report.id, "resolved")}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => handleResolveReport(report.id, "dismissed")}
-                      >
-                        <Ban className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">儲存空間</p>
+            <Progress value={storagePercent} className="h-1.5 mt-1.5" />
+            <p className="text-xs text-muted-foreground mt-1">
+              {(storageUsed / 1024).toFixed(1)} / {(storageQuota / 1024).toFixed(1)} GB
+            </p>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="space-y-6">
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="font-semibold mb-4">快速操作</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <Link to="/admin/users">
-                <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                  <Users className="h-5 w-5" />
-                  <span>會員管理</span>
-                </Button>
-              </Link>
-              <Link to="/admin/reports">
-                <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2 relative">
-                  <Flag className="h-5 w-5" />
-                  <span>檢舉處理</span>
-                  {stats.pendingReports > 0 && (
-                    <Badge className="absolute -top-2 -right-2 bg-destructive">
-                      {stats.pendingReports}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-              <Link to="/admin/photos">
-                <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                  <Image className="h-5 w-5" />
-                  <span>作品審核</span>
-                </Button>
-              </Link>
-              <Link to="/admin/settings">
-                <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                  <Settings className="h-5 w-5" />
-                  <span>系統設定</span>
-                </Button>
-              </Link>
-            </div>
+        {/* System Health */}
+        <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card">
+          <div className="p-2 rounded-lg bg-green-500/10 text-green-600">
+            <Activity className="h-4 w-4" />
           </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">系統狀態</p>
+            <p className="text-xs text-green-600 font-medium">正常運作</p>
+          </div>
+        </div>
+      </div>
 
-          {/* Activity Log - placeholder for now */}
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h2 className="font-semibold mb-4">系統資訊</h2>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-sm">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="flex-1">
-                  <span className="text-muted-foreground">資料庫狀態：</span>
-                  <span className="font-medium text-green-600">正常運作</span>
-                </span>
+      {/* Health Warnings */}
+      {healthWarnings.length > 0 && (
+        <div className="mb-6 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <span className="text-sm font-medium text-yellow-700">內容健康檢查</span>
+          </div>
+          <ul className="space-y-1">
+            {healthWarnings.map((w, i) => (
+              <li key={i} className="text-sm text-yellow-700/80 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
+                {w}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="grid lg:grid-cols-5 gap-6">
+        {/* Quick Actions - left 3 cols */}
+        <div className="lg:col-span-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">快速操作</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {quickActions.map((action) => (
+              <Link key={action.href} to={action.href}>
+                <div className="relative p-4 rounded-xl border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-colors text-center group">
+                  <action.icon className="h-5 w-5 mx-auto mb-2 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <span className="text-xs font-medium">{action.label}</span>
+                  {action.badge ? (
+                    <Badge className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[10px] h-5 min-w-5 flex items-center justify-center">
+                      {action.badge}
+                    </Badge>
+                  ) : null}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Reports - right 2 cols */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">最新檢舉</h2>
+            <Link to="/admin/moderation/reports">
+              <Button variant="ghost" size="sm" className="text-xs h-7">
+                全部 <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </Link>
+          </div>
+          <div className="rounded-xl border border-border bg-card divide-y divide-border">
+            {loading ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">載入中...</div>
+            ) : recentReports.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500 opacity-50" />
+                目前無待處理檢舉
               </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="flex-1">
-                  <span className="text-muted-foreground">儲存空間：</span>
-                  <span className="font-medium">正常</span>
-                </span>
-              </div>
-            </div>
+            ) : (
+              recentReports.map((report) => (
+                <div key={report.id} className="p-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {contentTypeLabels[report.content_type] || report.content_type}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {report.reason} · {report.reporter_profile?.username || "匿名"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatDistanceToNow(new Date(report.created_at), { addSuffix: true, locale: zhTW })}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      onClick={() => handleResolveReport(report.id, "resolved")}
+                      title="標記已處理"
+                    >
+                      <CheckCircle className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleResolveReport(report.id, "dismissed")}
+                      title="駁回"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
