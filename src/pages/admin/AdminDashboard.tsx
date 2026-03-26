@@ -204,6 +204,32 @@ export default function AdminDashboard() {
         }
 
         setHealthWarnings(warnings);
+
+        // Fetch 7-day trend data
+        const days: { date: string; 新會員: number; 新作品: number; 瀏覽量: number }[] = [];
+        const now = new Date();
+        const sevenDaysAgo = subDays(now, 6);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+        const sevenDaysISO = sevenDaysAgo.toISOString();
+
+        const [trendUsers, trendPhotos, trendViews] = await Promise.all([
+          supabase.from("profiles").select("created_at").gte("created_at", sevenDaysISO),
+          supabase.from("photos").select("created_at").gte("created_at", sevenDaysISO),
+          supabase.from("page_views").select("created_at").gte("created_at", sevenDaysISO),
+        ]);
+
+        for (let i = 6; i >= 0; i--) {
+          const day = subDays(now, i);
+          const dayStr = format(day, "yyyy-MM-dd");
+          const label = format(day, "MM/dd");
+          days.push({
+            date: label,
+            新會員: (trendUsers.data || []).filter((r) => r.created_at.startsWith(dayStr)).length,
+            新作品: (trendPhotos.data || []).filter((r) => r.created_at.startsWith(dayStr)).length,
+            瀏覽量: (trendViews.data || []).filter((r) => r.created_at.startsWith(dayStr)).length,
+          });
+        }
+        setTrendData(days);
       } catch (error) {
         console.error("Error fetching admin data:", error);
       } finally {
