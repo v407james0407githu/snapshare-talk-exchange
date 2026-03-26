@@ -26,9 +26,10 @@ import {
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format, subDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface KpiCardProps {
   title: string;
