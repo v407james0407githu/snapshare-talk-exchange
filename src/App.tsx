@@ -130,37 +130,34 @@ const App = () => (
               <Route path="/messages" element={<Messages />} />
               <Route path="/messages/:conversationId" element={<Messages />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              {/* Homepage management */}
-              <Route path="/admin/homepage/sections" element={<HomepageSections />} />
-              <Route path="/admin/homepage/banners" element={<BannerManagement />} />
-              <Route path="/admin/homepage/copy" element={<HomepageCopy />} />
-              {/* Content management */}
-              <Route path="/admin/content/pages" element={<ContentPages />} />
-              <Route path="/admin/content/seo" element={<SeoSettings />} />
-              <Route path="/admin/content/footer" element={<FooterSettings />} />
-              {/* Community management */}
-              <Route path="/admin/community/photos" element={<PhotoManagement />} />
-              <Route path="/admin/community/forums" element={<CommunityForums />} />
-              <Route path="/admin/community/marketplace" element={<CommunityMarketplace />} />
-              <Route path="/admin/community/categories" element={<CategoryManagement />} />
-              {/* Members */}
-              <Route path="/admin/members" element={<UserManagement />} />
-              <Route path="/admin/members/roles" element={<MemberRoles />} />
-              {/* Moderation */}
-              <Route path="/admin/moderation/reports" element={<ReportManagement />} />
-              {/* Analytics & Settings */}
-              <Route path="/admin/analytics" element={<AnalyticsDashboard />} />
-              <Route path="/admin/settings" element={<SystemSettings />} />
-              <Route path="/admin/settings/features" element={<FeatureToggle />} />
-              {/* Legacy routes redirect */}
-              <Route path="/admin/users" element={<UserManagement />} />
-              <Route path="/admin/reports" element={<ReportManagement />} />
-              <Route path="/admin/banners" element={<BannerManagement />} />
-              <Route path="/admin/categories" element={<CategoryManagement />} />
-              <Route path="/admin/content" element={<ContentManagement />} />
-              <Route path="/admin/photos" element={<PhotoManagement />} />
-              <Route path="/admin/sections" element={<HomepageSections />} />
+              {/* Admin routes - persistent layout */}
+              <Route path="/admin" element={<AdminLayoutRoute />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="homepage/sections" element={<HomepageSections />} />
+                <Route path="homepage/banners" element={<BannerManagement />} />
+                <Route path="homepage/copy" element={<HomepageCopy />} />
+                <Route path="content/pages" element={<ContentPages />} />
+                <Route path="content/seo" element={<SeoSettings />} />
+                <Route path="content/footer" element={<FooterSettings />} />
+                <Route path="community/photos" element={<PhotoManagement />} />
+                <Route path="community/forums" element={<CommunityForums />} />
+                <Route path="community/marketplace" element={<CommunityMarketplace />} />
+                <Route path="community/categories" element={<CategoryManagement />} />
+                <Route path="members" element={<UserManagement />} />
+                <Route path="members/roles" element={<MemberRoles />} />
+                <Route path="moderation/reports" element={<ReportManagement />} />
+                <Route path="analytics" element={<AnalyticsDashboard />} />
+                <Route path="settings" element={<SystemSettings />} />
+                <Route path="settings/features" element={<FeatureToggle />} />
+                {/* Legacy routes */}
+                <Route path="users" element={<UserManagement />} />
+                <Route path="reports" element={<ReportManagement />} />
+                <Route path="banners" element={<BannerManagement />} />
+                <Route path="categories" element={<CategoryManagement />} />
+                <Route path="content" element={<ContentManagement />} />
+                <Route path="photos" element={<PhotoManagement />} />
+                <Route path="sections" element={<HomepageSections />} />
+              </Route>
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/terms" element={<Terms />} />
