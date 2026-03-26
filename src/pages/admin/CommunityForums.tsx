@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,37 +6,58 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Pin, Lock, EyeOff, Eye, Loader2, MessageSquare, Clock, TrendingUp } from "lucide-react";
+import { Search, Pin, Lock, EyeOff, Loader2, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface TopicRow {
-  id: string;
-  title: string;
-  category: string;
-  user_id: string;
-  reply_count: number;
-  view_count: number;
-  is_pinned: boolean;
-  is_locked: boolean;
-  is_hidden: boolean;
-  created_at: string;
-  last_reply_at: string | null;
-  author_name?: string;
+  id: string; title: string; category: string; user_id: string;
+  reply_count: number; view_count: number;
+  is_pinned: boolean; is_locked: boolean; is_hidden: boolean;
+  created_at: string; last_reply_at: string | null; author_name?: string;
 }
 
 const PAGE_SIZE = 30;
+const STALE_TIME = 3 * 60 * 1000;
+
+async function fetchTopicsPage(debouncedSearch: string, filter: string, page: number): Promise<TopicRow[]> {
+  const from = page * PAGE_SIZE;
+  let query = supabase.from("forum_topics").select("*").order("created_at", { ascending: false }).range(from, from + PAGE_SIZE - 1);
+  if (filter === "pinned") query = query.eq("is_pinned", true);
+  if (filter === "locked") query = query.eq("is_locked", true);
+  if (filter === "hidden") query = query.eq("is_hidden", true);
+  if (debouncedSearch) query = query.ilike("title", `%${debouncedSearch}%`);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const userIds = [...new Set((data || []).map((t: any) => t.user_id))];
+  const profileMap = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase.from("profiles").select("user_id, username, display_name").in("user_id", userIds);
+    profiles?.forEach((p: any) => profileMap.set(p.user_id, p.display_name || p.username));
+  }
+
+  return (data || []).map((t: any) => ({
+    ...t,
+    is_pinned: t.is_pinned ?? false, is_locked: t.is_locked ?? false, is_hidden: t.is_hidden ?? false,
+    reply_count: t.reply_count ?? 0, view_count: t.view_count ?? 0,
+    author_name: profileMap.get(t.user_id) || "未知",
+  }));
+}
 
 export default function CommunityForums() {
-  const [topics, setTopics] = useState<TopicRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "pinned" | "locked" | "hidden">("all");
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [allTopics, setAllTopics] = useState<TopicRow[]>([]);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+
+  useAdminPage("社群討論管理", "管理論壇討論主題");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -44,53 +65,28 @@ export default function CommunityForums() {
   }, [search]);
 
   useEffect(() => {
-    setTopics([]);
+    setAllTopics([]);
     setPage(0);
-    setHasMore(true);
   }, [debouncedSearch, filter]);
 
-  const fetchTopics = useCallback(async (p: number) => {
-    setLoading(true);
-    try {
-      const from = p * PAGE_SIZE;
-      let query = supabase.from("forum_topics").select("*").order("created_at", { ascending: false }).range(from, from + PAGE_SIZE - 1);
+  const { data: pageData, isLoading: loading } = useQuery({
+    queryKey: ["admin-forums", debouncedSearch, filter, page],
+    queryFn: () => fetchTopicsPage(debouncedSearch, filter, page),
+    staleTime: STALE_TIME,
+  });
 
-      if (filter === "pinned") query = query.eq("is_pinned", true);
-      if (filter === "locked") query = query.eq("is_locked", true);
-      if (filter === "hidden") query = query.eq("is_hidden", true);
-      if (debouncedSearch) query = query.ilike("title", `%${debouncedSearch}%`);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const userIds = [...new Set((data || []).map((t: any) => t.user_id))];
-      const profileMap = new Map<string, string>();
-      if (userIds.length > 0) {
-        const { data: profiles } = await supabase.from("profiles").select("user_id, username, display_name").in("user_id", userIds);
-        profiles?.forEach((p: any) => profileMap.set(p.user_id, p.display_name || p.username));
-      }
-
-      const mapped: TopicRow[] = (data || []).map((t: any) => ({
-        ...t,
-        is_pinned: t.is_pinned ?? false,
-        is_locked: t.is_locked ?? false,
-        is_hidden: t.is_hidden ?? false,
-        reply_count: t.reply_count ?? 0,
-        view_count: t.view_count ?? 0,
-        author_name: profileMap.get(t.user_id) || "未知",
-      }));
-
-      if (p === 0) setTopics(mapped);
-      else setTopics(prev => [...prev, ...mapped]);
-      setHasMore(mapped.length === PAGE_SIZE);
-    } catch {
-      toast.error("載入討論失敗");
-    } finally {
-      setLoading(false);
+  // Accumulate pages
+  useEffect(() => {
+    if (pageData) {
+      if (page === 0) setAllTopics(pageData);
+      else setAllTopics(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        return [...prev, ...pageData.filter(t => !existingIds.has(t.id))];
+      });
     }
-  }, [debouncedSearch, filter]);
+  }, [pageData, page]);
 
-  useEffect(() => { fetchTopics(page); }, [page, fetchTopics]);
+  const hasMore = (pageData?.length || 0) === PAGE_SIZE;
 
   const toggle = async (topic: TopicRow, field: "is_pinned" | "is_locked" | "is_hidden") => {
     setTogglingIds(prev => new Set(prev).add(topic.id));
@@ -99,11 +95,9 @@ export default function CommunityForums() {
     if (error) {
       toast.error("操作失敗");
     } else {
-      setTopics(prev => prev.map(t => t.id === topic.id ? { ...t, [field]: newVal } : t));
+      setAllTopics(prev => prev.map(t => t.id === topic.id ? { ...t, [field]: newVal } : t));
       const labels: Record<string, [string, string]> = {
-        is_pinned: ["已置頂", "已取消置頂"],
-        is_locked: ["已鎖定", "已解鎖"],
-        is_hidden: ["已隱藏", "已恢復顯示"],
+        is_pinned: ["已置頂", "已取消置頂"], is_locked: ["已鎖定", "已解鎖"], is_hidden: ["已隱藏", "已恢復顯示"],
       };
       toast.success(newVal ? labels[field][0] : labels[field][1]);
     }
@@ -111,15 +105,14 @@ export default function CommunityForums() {
   };
 
   const stats = {
-    total: topics.length,
-    pinned: topics.filter(t => t.is_pinned).length,
-    locked: topics.filter(t => t.is_locked).length,
-    hidden: topics.filter(t => t.is_hidden).length,
+    total: allTopics.length,
+    pinned: allTopics.filter(t => t.is_pinned).length,
+    locked: allTopics.filter(t => t.is_locked).length,
+    hidden: allTopics.filter(t => t.is_hidden).length,
   };
 
   return (
     <>
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: "討論主題", value: stats.total, icon: MessageSquare },
@@ -137,7 +130,6 @@ export default function CommunityForums() {
         ))}
       </div>
 
-      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -154,10 +146,9 @@ export default function CommunityForums() {
         </Select>
       </div>
 
-      {/* Table */}
-      {loading && topics.length === 0 ? (
+      {loading && allTopics.length === 0 ? (
         <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-      ) : topics.length === 0 ? (
+      ) : allTopics.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">沒有找到符合條件的討論</div>
       ) : (
         <>
@@ -175,7 +166,7 @@ export default function CommunityForums() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topics.map(topic => (
+                {allTopics.map(topic => (
                   <TableRow key={topic.id} className={topic.is_hidden ? "opacity-50" : ""}>
                     <TableCell>
                       <div className="space-y-1">
@@ -189,24 +180,15 @@ export default function CommunityForums() {
                     </TableCell>
                     <TableCell className="text-center text-sm">{topic.reply_count}</TableCell>
                     <TableCell className="text-center text-sm">{topic.view_count}</TableCell>
-                    <TableCell className="text-center">
-                      <Switch checked={topic.is_pinned} onCheckedChange={() => toggle(topic, "is_pinned")} disabled={togglingIds.has(topic.id)} />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch checked={topic.is_locked} onCheckedChange={() => toggle(topic, "is_locked")} disabled={togglingIds.has(topic.id)} />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch checked={topic.is_hidden} onCheckedChange={() => toggle(topic, "is_hidden")} disabled={togglingIds.has(topic.id)} />
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(topic.created_at), "yyyy/MM/dd")}
-                    </TableCell>
+                    <TableCell className="text-center"><Switch checked={topic.is_pinned} onCheckedChange={() => toggle(topic, "is_pinned")} disabled={togglingIds.has(topic.id)} /></TableCell>
+                    <TableCell className="text-center"><Switch checked={topic.is_locked} onCheckedChange={() => toggle(topic, "is_locked")} disabled={togglingIds.has(topic.id)} /></TableCell>
+                    <TableCell className="text-center"><Switch checked={topic.is_hidden} onCheckedChange={() => toggle(topic, "is_hidden")} disabled={togglingIds.has(topic.id)} /></TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(topic.created_at), "yyyy/MM/dd")}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-
           {hasMore && (
             <div className="flex justify-center mt-6">
               <Button variant="outline" onClick={() => setPage(p => p + 1)} disabled={loading}>

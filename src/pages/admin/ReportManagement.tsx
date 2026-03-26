@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,9 @@ import { Image, MessageSquare, Eye, CheckCircle, XCircle, ExternalLink, Shopping
 import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { formatDistanceToNow, format } from "date-fns";
-import { zhTW } from "date-fns/locale";
+import { format } from "date-fns";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Report {
   id: string;
@@ -30,58 +30,53 @@ interface Report {
   reported_user_name?: string;
 }
 
+const STALE_TIME = 3 * 60 * 1000;
 const statusLabels: Record<string, string> = { pending: "待處理", resolved: "已處理", dismissed: "已駁回" };
 const contentTypeLabels: Record<string, string> = { photo: "照片", comment: "留言", forum_topic: "討論主題", forum_reply: "討論回覆", listing: "商品" };
 const reasonLabels: Record<string, string> = { spam: "垃圾訊息", harassment: "騷擾行為", inappropriate: "不當內容", copyright: "版權問題", other: "其他" };
-
 const contentTypeIcons: Record<string, typeof Image> = { photo: Image, comment: MessageSquare, forum_topic: MessageSquare, forum_reply: MessageSquare, listing: ShoppingBag };
+
+async function fetchReports(statusFilter: string, typeFilter: string): Promise<Report[]> {
+  let query = supabase.from("reports").select("*").order("created_at", { ascending: false });
+  if (statusFilter !== "all") query = query.eq("status", statusFilter);
+  if (typeFilter !== "all") query = query.eq("content_type", typeFilter);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  if (!data) return [];
+
+  const allIds = [...new Set([...data.map(r => r.reporter_id), ...data.filter(r => r.reported_user_id).map(r => r.reported_user_id!)])];
+  const profileMap = new Map<string, string>();
+  if (allIds.length > 0) {
+    const { data: profiles } = await supabase.from("profiles").select("user_id, username, display_name").in("user_id", allIds);
+    profiles?.forEach(p => profileMap.set(p.user_id, p.display_name || p.username));
+  }
+  return data.map(r => ({
+    ...r,
+    reporter_name: profileMap.get(r.reporter_id) || "未知",
+    reported_user_name: r.reported_user_id ? profileMap.get(r.reported_user_id) || "未知" : undefined,
+  }));
+}
 
 export default function ReportManagement() {
   const { user } = useAdmin();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState("pending");
   const [typeFilter, setTypeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [actionDialog, setActionDialog] = useState<{
-    open: boolean;
-    report: Report | null;
-    action: "resolve" | "dismiss" | "hide" | "warn";
+    open: boolean; report: Report | null; action: "resolve" | "dismiss" | "hide" | "warn";
   }>({ open: false, report: null, action: "resolve" });
   const [resolutionNote, setResolutionNote] = useState("");
 
-  useEffect(() => { fetchReports(); }, [statusFilter, typeFilter]);
+  useAdminPage("檢舉管理", "審查與處理用戶檢舉");
 
-  async function fetchReports() {
-    setLoading(true);
-    try {
-      let query = supabase.from("reports").select("*").order("created_at", { ascending: false });
-      if (statusFilter !== "all") query = query.eq("status", statusFilter);
-      if (typeFilter !== "all") query = query.eq("content_type", typeFilter);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      if (data) {
-        const allIds = [...new Set([...data.map(r => r.reporter_id), ...data.filter(r => r.reported_user_id).map(r => r.reported_user_id!)])];
-        const profileMap = new Map<string, string>();
-        if (allIds.length > 0) {
-          const { data: profiles } = await supabase.from("profiles").select("user_id, username, display_name").in("user_id", allIds);
-          profiles?.forEach(p => profileMap.set(p.user_id, p.display_name || p.username));
-        }
-        setReports(data.map(r => ({
-          ...r,
-          reporter_name: profileMap.get(r.reporter_id) || "未知",
-          reported_user_name: r.reported_user_id ? profileMap.get(r.reported_user_id) || "未知" : undefined,
-        })));
-      }
-    } catch {
-      toast.error("載入檢舉記錄失敗");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const { data: reports = [], isLoading: loading } = useQuery({
+    queryKey: ["admin-reports", statusFilter, typeFilter],
+    queryFn: () => fetchReports(statusFilter, typeFilter),
+    staleTime: STALE_TIME,
+  });
 
   const handleAction = async () => {
     if (!actionDialog.report || !user) return;
@@ -93,54 +88,30 @@ export default function ReportManagement() {
         const { data: profile } = await supabase.from("profiles").select("warning_count").eq("user_id", report.reported_user_id).single();
         const newCount = (profile?.warning_count || 0) + 1;
         await supabase.from("profiles").update({ warning_count: newCount }).eq("user_id", report.reported_user_id);
-
-        // Auto-suspend at 3 warnings
         if (newCount >= 3) {
-          const until = new Date();
-          until.setDate(until.getDate() + 7);
-          await supabase.from("profiles").update({
-            is_suspended: true, suspended_until: until.toISOString(),
-            suspension_reason: `累計 ${newCount} 次警告，自動停權 7 天`,
-          }).eq("user_id", report.reported_user_id);
+          const until = new Date(); until.setDate(until.getDate() + 7);
+          await supabase.from("profiles").update({ is_suspended: true, suspended_until: until.toISOString(), suspension_reason: `累計 ${newCount} 次警告，自動停權 7 天` }).eq("user_id", report.reported_user_id);
         }
-
-        await supabase.from("reports").update({
-          status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id,
-          resolution_note: resolutionNote || "已對用戶發出警告",
-        }).eq("id", report.id);
+        await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "已對用戶發出警告" }).eq("id", report.id);
         toast.success(`已對用戶發出警告（累計 ${newCount} 次）`);
       } else if (action === "hide") {
         const tableMap: Record<string, string> = { photo: "photos", comment: "comments", forum_topic: "forum_topics", forum_reply: "forum_replies", listing: "marketplace_listings" };
         const table = tableMap[report.content_type];
         if (table) await supabase.from(table as any).update({ is_hidden: true } as any).eq("id", report.content_id);
-
-        await supabase.from("reports").update({
-          status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id,
-          resolution_note: resolutionNote || "內容已隱藏",
-        }).eq("id", report.id);
+        await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "內容已隱藏" }).eq("id", report.id);
         toast.success("內容已隱藏，檢舉已處理");
       } else if (action === "resolve") {
-        await supabase.from("reports").update({
-          status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id,
-          resolution_note: resolutionNote || "已處理",
-        }).eq("id", report.id);
+        await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "已處理" }).eq("id", report.id);
         toast.success("檢舉已標記為已處理");
       } else if (action === "dismiss") {
-        await supabase.from("reports").update({
-          status: "dismissed", resolved_at: new Date().toISOString(), resolved_by: user.id,
-          resolution_note: resolutionNote || "檢舉不成立",
-        }).eq("id", report.id);
+        await supabase.from("reports").update({ status: "dismissed", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "檢舉不成立" }).eq("id", report.id);
         toast.success("檢舉已駁回");
       }
-
       setActionDialog({ open: false, report: null, action: "resolve" });
       setResolutionNote("");
-      fetchReports();
-    } catch {
-      toast.error("操作失敗");
-    } finally {
-      setActionLoading(false);
-    }
+      queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
+    } catch { toast.error("操作失敗"); }
+    finally { setActionLoading(false); }
   };
 
   const stats = {
@@ -238,25 +209,19 @@ export default function ReportManagement() {
                         <span className="text-xs">{contentTypeLabels[report.content_type] || report.content_type}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">{reasonLabels[report.reason] || report.reason}</Badge>
-                    </TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs">{reasonLabels[report.reason] || report.reason}</Badge></TableCell>
                     <TableCell className="text-sm">{report.reporter_name}</TableCell>
                     <TableCell className="text-sm">{report.reported_user_name || "-"}</TableCell>
                     <TableCell>
                       <p className="text-xs text-muted-foreground line-clamp-2">{report.description || "-"}</p>
-                      {report.resolution_note && (
-                        <p className="text-xs text-primary mt-1 line-clamp-1">處理：{report.resolution_note}</p>
-                      )}
+                      {report.resolution_note && <p className="text-xs text-primary mt-1 line-clamp-1">處理：{report.resolution_note}</p>}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant={report.status === "pending" ? "outline" : "secondary"} className={`text-xs ${report.status === "pending" ? "border-amber-500/30 text-amber-600" : ""}`}>
                         {statusLabels[report.status]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {format(new Date(report.created_at), "MM/dd HH:mm")}
-                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(report.created_at), "MM/dd HH:mm")}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {getContentUrl(report) && (
@@ -266,20 +231,12 @@ export default function ReportManagement() {
                         )}
                         {report.status === "pending" && (
                           <>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => setActionDialog({ open: true, report, action: "hide" })}>
-                              <XCircle className="h-3 w-3" />隱藏
-                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => setActionDialog({ open: true, report, action: "hide" })}><XCircle className="h-3 w-3" />隱藏</Button>
                             {report.reported_user_id && (
-                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setActionDialog({ open: true, report, action: "warn" })}>
-                                <AlertTriangle className="h-3 w-3" />警告
-                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setActionDialog({ open: true, report, action: "warn" })}><AlertTriangle className="h-3 w-3" />警告</Button>
                             )}
-                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setActionDialog({ open: true, report, action: "resolve" })}>
-                              <CheckCircle className="h-3 w-3" />處理
-                            </Button>
-                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => setActionDialog({ open: true, report, action: "dismiss" })}>
-                              駁回
-                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setActionDialog({ open: true, report, action: "resolve" })}><CheckCircle className="h-3 w-3" />處理</Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => setActionDialog({ open: true, report, action: "dismiss" })}>駁回</Button>
                           </>
                         )}
                       </div>
