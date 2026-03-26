@@ -1,22 +1,30 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   LayoutDashboard,
   Users,
   Image,
-  ImageIcon,
   MessageSquare,
   Flag,
   Settings,
   BarChart3,
   Menu,
   X,
-  Search,
   Bell,
   ChevronDown,
+  ChevronRight,
   FileText,
+  Home,
+  Shield,
+  Store,
+  Layers,
+  Globe,
+  Tag,
+  UserCog,
+  AlertTriangle,
+  ScrollText,
+  LogOut,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -26,19 +34,82 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { cn } from "@/lib/utils";
 
-const navItems = [
-  { label: "總覽", href: "/admin", icon: LayoutDashboard },
-  { label: "會員管理", href: "/admin/users", icon: Users },
-  { label: "Banner管理", href: "/admin/banners", icon: ImageIcon },
-  { label: "內容管理", href: "/admin/content", icon: FileText },
-  { label: "分類管理", href: "/admin/categories", icon: MessageSquare },
-  { label: "檢舉處理", href: "/admin/reports", icon: Flag },
-  { label: "作品審核", href: "/admin/photos", icon: Image },
-  { label: "數據分析", href: "/admin/analytics", icon: BarChart3 },
-  { label: "系統設定", href: "/admin/settings", icon: Settings },
+interface NavGroup {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  items: { label: string; href: string; icon: React.ComponentType<{ className?: string }> }[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    label: "總覽",
+    icon: LayoutDashboard,
+    items: [
+      { label: "管理總覽", href: "/admin", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "首頁管理",
+    icon: Home,
+    items: [
+      { label: "區塊排序", href: "/admin/homepage/sections", icon: Layers },
+      { label: "Banner 管理", href: "/admin/homepage/banners", icon: Image },
+      { label: "首頁文案", href: "/admin/homepage/copy", icon: FileText },
+    ],
+  },
+  {
+    label: "內容管理",
+    icon: FileText,
+    items: [
+      { label: "靜態頁面", href: "/admin/content/pages", icon: ScrollText },
+      { label: "SEO 設定", href: "/admin/content/seo", icon: Globe },
+      { label: "頁尾連結", href: "/admin/content/footer", icon: FileText },
+    ],
+  },
+  {
+    label: "社群管理",
+    icon: MessageSquare,
+    items: [
+      { label: "作品管理", href: "/admin/community/photos", icon: Image },
+      { label: "討論管理", href: "/admin/community/forums", icon: MessageSquare },
+      { label: "市集管理", href: "/admin/community/marketplace", icon: Store },
+      { label: "分類管理", href: "/admin/community/categories", icon: Tag },
+    ],
+  },
+  {
+    label: "會員管理",
+    icon: Users,
+    items: [
+      { label: "會員列表", href: "/admin/members", icon: Users },
+      { label: "權限角色", href: "/admin/members/roles", icon: UserCog },
+    ],
+  },
+  {
+    label: "審核與風控",
+    icon: Shield,
+    items: [
+      { label: "作品審核", href: "/admin/moderation/photos", icon: Image },
+      { label: "檢舉處理", href: "/admin/moderation/reports", icon: Flag },
+    ],
+  },
+  {
+    label: "數據分析",
+    icon: BarChart3,
+    items: [
+      { label: "流量概況", href: "/admin/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "系統設定",
+    icon: Settings,
+    items: [
+      { label: "基本設定", href: "/admin/settings", icon: Settings },
+      { label: "功能開關", href: "/admin/settings/features", icon: Settings },
+    ],
+  },
 ];
 
 interface AdminLayoutProps {
@@ -49,25 +120,40 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const location = useLocation();
   const navigate = useNavigate();
   const { loading, user, isAdmin, isModerator } = useAdmin();
   const { siteLogo } = useSystemSettings();
 
+  // Auto-expand the group containing the current route
+  useEffect(() => {
+    const activeGroup = navGroups.find((g) =>
+      g.items.some((item) => item.href === location.pathname)
+    );
+    if (activeGroup) {
+      setExpandedGroups((prev) => new Set(prev).add(activeGroup.label));
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (loading) return;
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    if (!isAdmin && !isModerator) {
-      navigate("/");
-    }
+    if (!user) { navigate("/auth"); return; }
+    if (!isAdmin && !isModerator) { navigate("/"); }
   }, [loading, user, isAdmin, isModerator, navigate]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
+  };
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
   };
 
   if (loading || !user || (!isAdmin && !isModerator)) {
@@ -85,7 +171,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
         <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
           <Menu className="h-5 w-5" />
         </Button>
-        <span className="font-serif font-bold">{title}</span>
+        <span className="font-semibold text-sm">{title}</span>
         <Button variant="ghost" size="icon">
           <Bell className="h-5 w-5" />
         </Button>
@@ -94,80 +180,136 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform lg:translate-x-0 lg:static ${
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-[260px] bg-card border-r border-border transform transition-transform lg:translate-x-0 lg:static flex flex-col",
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          )}
         >
-          <div className="flex flex-col h-full">
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <Link to="/admin" className="flex items-center gap-2">
-                {siteLogo ? (
-                  <img src={siteLogo} alt="Logo" className="h-7 max-w-[120px] object-contain" />
-                ) : (
-                  <span className="font-serif text-xl font-bold">
-                    後台<span className="text-gradient">管理</span>
-                  </span>
-                )}
-              </Link>
-              <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsSidebarOpen(false)}>
-                <X className="h-5 w-5" />
+          {/* Logo */}
+          <div className="p-5 border-b border-border flex items-center justify-between shrink-0">
+            <Link to="/admin" className="flex items-center gap-2">
+              {siteLogo ? (
+                <img src={siteLogo} alt="Logo" className="h-7 max-w-[120px] object-contain" />
+              ) : (
+                <span className="font-semibold text-lg tracking-tight">後台管理</span>
+              )}
+            </Link>
+            <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => setIsSidebarOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Nav Groups */}
+          <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+            {navGroups.map((group) => {
+              const isExpanded = expandedGroups.has(group.label);
+              const isActiveGroup = group.items.some((i) => i.href === location.pathname);
+              const isSingle = group.items.length === 1;
+
+              if (isSingle) {
+                const item = group.items[0];
+                const isActive = location.pathname === item.href;
+                return (
+                  <Link
+                    key={group.label}
+                    to={item.href}
+                    onClick={() => setIsSidebarOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <group.icon className="h-4 w-4 shrink-0" />
+                    {group.label}
+                  </Link>
+                );
+              }
+
+              return (
+                <div key={group.label}>
+                  <button
+                    onClick={() => toggleGroup(group.label)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                      isActiveGroup
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <group.icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronRight
+                      className={cn(
+                        "h-3.5 w-3.5 transition-transform",
+                        isExpanded && "rotate-90"
+                      )}
+                    />
+                  </button>
+                  {isExpanded && (
+                    <div className="ml-4 pl-3 border-l border-border space-y-0.5 mt-0.5 mb-1">
+                      {group.items.map((item) => {
+                        const isActive = location.pathname === item.href;
+                        return (
+                          <Link
+                            key={item.href}
+                            to={item.href}
+                            onClick={() => setIsSidebarOpen(false)}
+                            className={cn(
+                              "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
+                              isActive
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            <item.icon className="h-3.5 w-3.5 shrink-0" />
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* Bottom */}
+          <div className="p-3 border-t border-border space-y-2 shrink-0">
+            <Link to="/">
+              <Button variant="outline" size="sm" className="w-full text-xs">
+                返回前台
               </Button>
-            </div>
-
-            <nav className="flex-1 p-4 space-y-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    location.pathname === item.href
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="p-4 border-t border-border">
-              <Link to="/">
-                <Button variant="outline" className="w-full">
-                  返回前台
-                </Button>
-              </Link>
-            </div>
+            </Link>
           </div>
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen">
+        <main className="flex-1 min-h-screen min-w-0">
           {/* Top Bar */}
-          <header className="hidden lg:flex items-center justify-between px-8 py-4 border-b border-border bg-card">
-            <div className="relative w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="搜尋..." className="pl-10" />
+          <header className="hidden lg:flex items-center justify-between px-8 py-3 border-b border-border bg-card">
+            <div>
+              <h1 className="text-lg font-semibold">{title}</h1>
+              {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
             </div>
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="relative h-9 w-9">
+                <Bell className="h-4 w-4" />
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 flex items-center justify-center text-zinc-900 font-bold text-sm">
+                  <Button variant="ghost" className="gap-2 h-9 px-3">
+                    <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-xs">
                       A
                     </div>
-                    <span>管理員</span>
-                    <ChevronDown className="h-4 w-4" />
+                    <span className="text-sm">管理員</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>個人設定</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive gap-2">
+                    <LogOut className="h-4 w-4" />
                     登出
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -176,27 +318,13 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
           </header>
 
           {/* Page Content */}
-          <div className="p-6 lg:p-8">
-            <div className="mb-8">
-              <h1 className="font-serif text-2xl lg:text-3xl font-bold mb-2">
-                {title.split("").map((char, i) =>
-                  i === 0 ? (
-                    char
-                  ) : (
-                    <span key={i} className={i === 1 ? "text-gradient" : ""}>
-                      {char}
-                    </span>
-                  ),
-                )}
-              </h1>
-              {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
-            </div>
+          <div className="p-5 lg:p-8">
             {children}
           </div>
         </main>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
