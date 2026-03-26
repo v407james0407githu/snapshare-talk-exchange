@@ -304,7 +304,7 @@ export default function BannerManagement() {
   };
 
   return (
-    <AdminLayout title="Banner管理" subtitle="管理首頁輪播橫幅（拖拉可調整順序）">
+    <AdminLayout title="Banner 管理" subtitle="管理首頁 Hero 輪播橫幅，支援拖拉排序">
       <div className="flex justify-end mb-6">
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
