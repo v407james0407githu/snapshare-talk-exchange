@@ -194,7 +194,7 @@ export default function CommunityMarketplace() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm line-clamp-1">{listing.title}</span>
-                          {listing.is_sold && <Badge className="bg-green-500/10 text-green-600 text-[10px] px-1.5 py-0">已售出</Badge>}
+                          {listing.is_sold && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">已售出</Badge>}
                           {listing.is_verified && <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-0.5 text-primary"><ShieldCheck className="h-2.5 w-2.5" />已驗證</Badge>}
                         </div>
                         <p className="text-xs text-muted-foreground">{listing.author_name} · {listing.category}{listing.brand ? ` · ${listing.brand}` : ""}</p>
