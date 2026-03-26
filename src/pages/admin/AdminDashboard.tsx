@@ -90,7 +90,7 @@ export default function AdminDashboard() {
     todayViews: 0,
   });
   const [recentReports, setRecentReports] = useState<Report[]>([]);
-  const [healthWarnings, setHealthWarnings] = useState<string[]>([]);
+  const [healthWarnings, setHealthWarnings] = useState<{ text: string; link: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -148,14 +148,16 @@ export default function AdminDashboard() {
           );
         }
 
-        // Health warnings
-        const warnings: string[] = [];
+        // Health warnings with links
+        const warnings: { text: string; link: string }[] = [];
         const seoTitle = get("seo_title", "");
         const seoDesc = get("seo_description", "");
+        const ogImage = get("seo_og_image_url", "");
         const favicon = get("site_favicon_url", "");
-        if (!seoTitle || seoTitle.includes("IP543")) warnings.push("SEO 標題尚未自訂");
-        if (!seoDesc) warnings.push("SEO 描述尚未設定");
-        if (!favicon) warnings.push("Favicon 尚未設定");
+        if (!seoTitle || seoTitle.includes("IP543")) warnings.push({ text: "SEO 標題尚未自訂", link: "/admin/content/seo" });
+        if (!seoDesc) warnings.push({ text: "SEO 描述尚未設定", link: "/admin/content/seo" });
+        if (!ogImage) warnings.push({ text: "OG 社群分享圖片未設定", link: "/admin/content/seo" });
+        if (!favicon) warnings.push({ text: "Favicon 尚未設定", link: "/admin/content/seo" });
 
         // Check static pages
         const { data: pages } = await supabase
@@ -170,7 +172,7 @@ export default function AdminDashboard() {
         };
         pages?.forEach((p) => {
           if (!p.content_value || p.content_value.trim().length < 10) {
-            warnings.push(`${pageLabels[p.section_key] || p.section_key} 頁面內容為空`);
+            warnings.push({ text: `${pageLabels[p.section_key] || p.section_key} 頁面內容為空`, link: "/admin/content/pages" });
           }
         });
 
@@ -179,7 +181,25 @@ export default function AdminDashboard() {
           .from("hero_banners")
           .select("id", { count: "exact", head: true })
           .eq("is_active", true);
-        if (!bannerCount) warnings.push("首頁 Banner 尚未設定");
+        if (!bannerCount) warnings.push({ text: "首頁 Banner 尚未設定", link: "/admin/homepage/banners" });
+
+        // Check feature toggles vs homepage sections
+        const galleryEnabled = get("gallery_enabled", "true") === "true";
+        const forumEnabled = get("forum_enabled", "true") === "true";
+        const marketplaceEnabled = get("marketplace_enabled", "true") === "true";
+        const { data: homeSections } = await supabase.from("homepage_sections").select("section_key, is_visible");
+        if (homeSections) {
+          const visibleKeys = homeSections.filter((s) => s.is_visible).map((s) => s.section_key);
+          if (!galleryEnabled && visibleKeys.includes("featured_gallery")) {
+            warnings.push({ text: "作品功能已關閉，但首頁仍顯示「精選作品」區塊", link: "/admin/settings/features" });
+          }
+          if (!forumEnabled && visibleKeys.includes("forum_preview")) {
+            warnings.push({ text: "討論功能已關閉，但首頁仍顯示「熱門討論」區塊", link: "/admin/settings/features" });
+          }
+          if (!marketplaceEnabled && visibleKeys.includes("marketplace_preview")) {
+            warnings.push({ text: "市集功能已關閉，但首頁仍顯示「二手市集」區塊", link: "/admin/settings/features" });
+          }
+        }
 
         setHealthWarnings(warnings);
       } catch (error) {
@@ -309,11 +329,14 @@ export default function AdminDashboard() {
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <span className="text-sm font-medium text-yellow-700">內容健康檢查</span>
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {healthWarnings.map((w, i) => (
-              <li key={i} className="text-sm text-yellow-700/80 flex items-center gap-2">
+              <li key={i} className="text-sm flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
-                {w}
+                <Link to={w.link} className="text-yellow-700/80 hover:text-yellow-900 hover:underline transition-colors">
+                  {w.text}
+                </Link>
+                <ArrowRight className="h-3 w-3 text-yellow-500/60 shrink-0" />
               </li>
             ))}
           </ul>

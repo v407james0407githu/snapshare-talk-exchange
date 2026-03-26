@@ -119,21 +119,13 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
+    new Set(navGroups.map((g) => g.label))
+  );
   const location = useLocation();
   const navigate = useNavigate();
   const { loading, user, isAdmin, isModerator } = useAdmin();
   const { siteLogo } = useSystemSettings();
-
-  // Auto-expand the group containing the current route
-  useEffect(() => {
-    const activeGroup = navGroups.find((g) =>
-      g.items.some((item) => item.href === location.pathname)
-    );
-    if (activeGroup) {
-      setExpandedGroups((prev) => new Set(prev).add(activeGroup.label));
-    }
-  }, [location.pathname]);
 
   useEffect(() => {
     if (loading) return;
@@ -199,7 +191,7 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
           </div>
 
           {/* Nav Groups */}
-          <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+          <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5 min-h-0">
             {navGroups.map((group) => {
               const isExpanded = expandedGroups.has(group.label);
               const isActiveGroup = group.items.some((i) => i.href === location.pathname);
@@ -272,16 +264,19 @@ export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
                 </div>
               );
             })}
-          </nav>
 
-          {/* Bottom */}
-          <div className="p-3 border-t border-border space-y-2 shrink-0">
-            <Link to="/">
-              <Button variant="outline" size="sm" className="w-full text-xs">
+            {/* 返回前台 - inside nav, after all groups */}
+            <div className="pt-3 mt-2 border-t border-border">
+              <Link
+                to="/"
+                onClick={() => setIsSidebarOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Home className="h-4 w-4 shrink-0" />
                 返回前台
-              </Button>
-            </Link>
-          </div>
+              </Link>
+            </div>
+          </nav>
         </aside>
 
         {/* Main Content */}
