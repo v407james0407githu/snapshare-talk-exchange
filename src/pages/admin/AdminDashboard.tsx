@@ -329,11 +329,14 @@ export default function AdminDashboard() {
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <span className="text-sm font-medium text-yellow-700">內容健康檢查</span>
           </div>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {healthWarnings.map((w, i) => (
-              <li key={i} className="text-sm text-yellow-700/80 flex items-center gap-2">
+              <li key={i} className="text-sm flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
-                {w}
+                <Link to={w.link} className="text-yellow-700/80 hover:text-yellow-900 hover:underline transition-colors">
+                  {w.text}
+                </Link>
+                <ArrowRight className="h-3 w-3 text-yellow-500/60 shrink-0" />
               </li>
             ))}
           </ul>
