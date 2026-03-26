@@ -422,9 +422,9 @@ export default function Messages() {
           <p className="text-muted-foreground">與其他用戶進行私人對話</p>
         </div>
 
-        <div className="grid lg:grid-cols-[350px,1fr] gap-6 h-[600px]">
-          {/* 對話列表 */}
-          <Card className="overflow-hidden">
+        <div className="grid lg:grid-cols-[350px,1fr] gap-6 h-[calc(100vh-220px)] min-h-[400px]">
+          {/* 對話列表 - 手機版選中對話後隱藏 */}
+          <Card className={`overflow-hidden ${conversationId ? 'hidden lg:flex lg:flex-col' : 'flex flex-col'}`}>
             <CardHeader className="py-4">
               <CardTitle className="text-lg">對話列表</CardTitle>
             </CardHeader>
