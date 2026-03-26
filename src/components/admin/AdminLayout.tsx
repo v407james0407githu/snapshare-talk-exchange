@@ -119,11 +119,12 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children, title, subtitle }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
-    const active = navGroups.find((g) => g.items.some((i) => i.href === location.pathname));
+    const path = window.location.pathname;
+    const active = navGroups.find((g) => g.items.some((i) => i.href === path));
     return active ? new Set([active.label]) : new Set<string>();
   });
-  const location = useLocation();
   const navigate = useNavigate();
   const { loading, user, isAdmin, isModerator } = useAdmin();
   const { siteLogo } = useSystemSettings();
