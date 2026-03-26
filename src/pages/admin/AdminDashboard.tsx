@@ -90,7 +90,7 @@ export default function AdminDashboard() {
     todayViews: 0,
   });
   const [recentReports, setRecentReports] = useState<Report[]>([]);
-  const [healthWarnings, setHealthWarnings] = useState<string[]>([]);
+  const [healthWarnings, setHealthWarnings] = useState<{ text: string; link: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
