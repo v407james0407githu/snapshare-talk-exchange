@@ -371,6 +371,37 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* 7-Day Trend Chart */}
+      <div className="mb-6 rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="h-4 w-4 text-primary" />
+          <h2 className="text-sm font-semibold">近 7 天趨勢</h2>
+        </div>
+        {loading ? (
+          <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">載入中...</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} className="text-muted-foreground" />
+              <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" allowDecimals={false} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "8px",
+                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "hsl(var(--card))",
+                  fontSize: "12px",
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: "12px" }} />
+              <Line type="monotone" dataKey="新會員" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="新作品" stroke="hsl(210, 80%, 55%)" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="瀏覽量" stroke="hsl(150, 60%, 45%)" strokeWidth={2} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Quick Actions - left 3 cols */}
         <div className="lg:col-span-3">
