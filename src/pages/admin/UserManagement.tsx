@@ -179,6 +179,8 @@ export default function UserManagement() {
     return <Badge variant="destructive">永久封禁</Badge>;
   };
 
+  useAdminPage("會員管理", "管理會員帳號、角色、VIP 與停權狀態");
+
   return (
     <>
       {/* Stats */}

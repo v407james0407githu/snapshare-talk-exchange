@@ -543,6 +543,8 @@ export default function PhotoManagement() {
     );
   };
 
+  useAdminPage("作品管理", "管理所有作品，設定精選或隱藏作品");
+
   return (
     <>
       {/* Toolbar */}

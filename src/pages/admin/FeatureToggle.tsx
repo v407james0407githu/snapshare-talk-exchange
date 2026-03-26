@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";

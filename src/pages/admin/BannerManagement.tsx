@@ -303,8 +303,10 @@ export default function BannerManagement() {
     return `${dirMap[form.gradient_type] || ""} 透明度 ${Math.round(form.gradient_opacity * 100)}%`;
   };
 
+  useAdminPage("Banner 管理", "管理首頁 Hero 輪播橫幅，支援拖拉排序");
+
   return (
-    <AdminLayout title="Banner 管理" subtitle="管理首頁 Hero 輪播橫幅，支援拖拉排序">
+    <>
       <div className="flex justify-end mb-6">
         <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
@@ -498,7 +500,7 @@ export default function BannerManagement() {
           </SortableContext>
         </DndContext>
       )}
-    </AdminLayout>
+    </>
   );
 }
 

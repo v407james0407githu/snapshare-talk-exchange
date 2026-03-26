@@ -289,11 +289,11 @@ export default function AnalyticsDashboard() {
     });
   }
 
+  useAdminPage("數據分析", "全站數據統計與趨勢分析");
+
   if (loading) {
     return (
-      <AdminLayout title="數據分析" subtitle="全站數據統計與趨勢分析">
-        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-      </AdminLayout>
+      <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
     );
   }
 

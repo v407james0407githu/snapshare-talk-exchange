@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AdminLayout } from "@/components/admin/AdminLayout";
+import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

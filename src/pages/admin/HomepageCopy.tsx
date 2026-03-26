@@ -166,6 +166,8 @@ export default function HomepageCopy() {
   );
   const grouped = groupContents(filtered);
 
+  useAdminPage("首頁文案", "管理首頁各區塊的文案內容、CTA 與頁尾文字");
+
   return (
     <>
       <div className="space-y-6">

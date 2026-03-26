@@ -317,6 +317,8 @@ export default function HomepageSections() {
     setSectionsDirty(true);
   };
 
+  useAdminPage("區塊排序", "管理首頁各區塊的顯示順序、標題與可見性");
+
   return (
     <>
       <div className="space-y-4">
