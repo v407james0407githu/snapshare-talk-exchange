@@ -118,7 +118,7 @@ export default function CommunityForums() {
   };
 
   return (
-    <AdminLayout title="討論管理" subtitle="管理討論區主題：置頂、鎖定、隱藏">
+    <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
@@ -216,6 +216,6 @@ export default function CommunityForums() {
           )}
         </>
       )}
-    </AdminLayout>
+    </>
   );
 }

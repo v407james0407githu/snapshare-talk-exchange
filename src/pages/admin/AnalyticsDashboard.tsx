@@ -302,7 +302,7 @@ export default function AnalyticsDashboard() {
     : RANGE_OPTIONS.find(r => r.value === String(rangeDays))?.label || `近 ${rangeDays} 天`;
 
   return (
-    <AdminLayout title="數據分析" subtitle="全站數據統計與趨勢分析">
+    <>
       {/* Today Highlight Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <HighlightCard icon={<UserPlus className="h-5 w-5" />} label="今日新會員" value={stats?.todayNewUsers || 0} sub={`本週 +${stats?.weekNewUsers || 0}`} color="text-primary bg-primary/10" />
@@ -614,7 +614,7 @@ export default function AnalyticsDashboard() {
           )}
         </TabsContent>
       </Tabs>
-    </AdminLayout>
+    </>
   );
 }
 

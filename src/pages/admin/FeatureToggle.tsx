@@ -96,7 +96,7 @@ export default function FeatureToggle() {
   });
 
   return (
-    <AdminLayout title="功能開關" subtitle="控制各功能模組的啟用與停用狀態，變更即時影響前台">
+    <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div className="bg-card border rounded-xl p-4 flex items-center gap-3">
@@ -190,6 +190,6 @@ export default function FeatureToggle() {
           })}
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

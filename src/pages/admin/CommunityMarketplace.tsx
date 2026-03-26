@@ -129,7 +129,7 @@ export default function CommunityMarketplace() {
   };
 
   return (
-    <AdminLayout title="市集管理" subtitle="管理二手市集商品：審核、下架、標記售出">
+    <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
@@ -244,6 +244,6 @@ export default function CommunityMarketplace() {
           {previewImage && <img src={previewImage} alt="驗證圖片" className="w-full rounded-lg" />}
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </>
   );
 }

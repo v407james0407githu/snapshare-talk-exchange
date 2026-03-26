@@ -178,7 +178,7 @@ export default function CategoryManagement() {
   const totalSub = categories.filter(c => c.parent_id).length;
 
   return (
-    <AdminLayout title="分類管理" subtitle="管理討論區分類與子分類">
+    <>
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <div className="bg-card border rounded-xl p-4 flex items-center gap-3">
@@ -258,6 +258,6 @@ export default function CategoryManagement() {
           ))}
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

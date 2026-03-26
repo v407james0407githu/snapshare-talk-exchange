@@ -437,7 +437,7 @@ export default function ContentManagement() {
   const grouped = groupContents(filtered);
 
   return (
-    <AdminLayout title="內容管理" subtitle="管理首頁區塊排序、頁面文字與版位設定">
+    <>
       <Tabs defaultValue="sections" className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="sections" className="gap-2">
@@ -666,6 +666,6 @@ export default function ContentManagement() {
           </div>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </>
   );
 }
