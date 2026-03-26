@@ -91,6 +91,8 @@ export default function AdminDashboard() {
     todayViews: 0,
   });
   const [trendData, setTrendData] = useState<{ date: string; 新會員: number; 新作品: number; 瀏覽量: number }[]>([]);
+  const [trendRange, setTrendRange] = useState(7);
+  const [trendLoading, setTrendLoading] = useState(false);
   const [recentReports, setRecentReports] = useState<Report[]>([]);
   const [healthWarnings, setHealthWarnings] = useState<{ text: string; link: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,20 +207,34 @@ export default function AdminDashboard() {
 
         setHealthWarnings(warnings);
 
-        // Fetch 7-day trend data
-        const days: { date: string; 新會員: number; 新作品: number; 瀏覽量: number }[] = [];
+        // Trend data is fetched separately via trendRange effect
+      } catch (error) {
+        console.error("Error fetching admin data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [get]);
+
+  // Separate effect for trend data driven by trendRange
+  useEffect(() => {
+    async function fetchTrend() {
+      setTrendLoading(true);
+      try {
         const now = new Date();
-        const sevenDaysAgo = subDays(now, 6);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
-        const sevenDaysISO = sevenDaysAgo.toISOString();
+        const rangeStart = subDays(now, trendRange - 1);
+        rangeStart.setHours(0, 0, 0, 0);
+        const rangeISO = rangeStart.toISOString();
 
         const [trendUsers, trendPhotos, trendViews] = await Promise.all([
-          supabase.from("profiles").select("created_at").gte("created_at", sevenDaysISO),
-          supabase.from("photos").select("created_at").gte("created_at", sevenDaysISO),
-          supabase.from("page_views").select("created_at").gte("created_at", sevenDaysISO),
+          supabase.from("profiles").select("created_at").gte("created_at", rangeISO),
+          supabase.from("photos").select("created_at").gte("created_at", rangeISO),
+          supabase.from("page_views").select("created_at").gte("created_at", rangeISO),
         ]);
 
-        for (let i = 6; i >= 0; i--) {
+        const days: { date: string; 新會員: number; 新作品: number; 瀏覽量: number }[] = [];
+        for (let i = trendRange - 1; i >= 0; i--) {
           const day = subDays(now, i);
           const dayStr = format(day, "yyyy-MM-dd");
           const label = format(day, "MM/dd");
@@ -231,13 +247,13 @@ export default function AdminDashboard() {
         }
         setTrendData(days);
       } catch (error) {
-        console.error("Error fetching admin data:", error);
+        console.error("Error fetching trend data:", error);
       } finally {
-        setLoading(false);
+        setTrendLoading(false);
       }
     }
-    fetchData();
-  }, [get]);
+    fetchTrend();
+  }, [trendRange]);
 
   const storageUsed = getNum("storage_used_mb", 0);
   const storageQuota = getNum("storage_quota_mb", 8192);
@@ -371,13 +387,30 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* 7-Day Trend Chart */}
+      {/* Trend Chart */}
       <div className="mb-6 rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-semibold">近 7 天趨勢</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">近 {trendRange} 天趨勢</h2>
+          </div>
+          <div className="flex gap-1">
+            {[7, 14, 30].map((d) => (
+              <button
+                key={d}
+                onClick={() => setTrendRange(d)}
+                className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
+                  trendRange === d
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {d} 天
+              </button>
+            ))}
+          </div>
         </div>
-        {loading ? (
+        {loading || trendLoading ? (
           <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">載入中...</div>
         ) : (
           <ResponsiveContainer width="100%" height={260}>
