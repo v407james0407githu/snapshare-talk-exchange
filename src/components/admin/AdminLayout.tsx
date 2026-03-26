@@ -35,9 +35,6 @@ const navGroups: NavGroup[] = [
       { label: "區塊排序", href: "/admin/homepage/sections", icon: Layers },
       { label: "Banner 管理", href: "/admin/homepage/banners", icon: Image },
       { label: "首頁文案", href: "/admin/homepage/copy", icon: FileText },
-      { label: "靜態頁面", href: "/admin/content/pages", icon: ScrollText },
-      { label: "SEO 設定", href: "/admin/content/seo", icon: Globe },
-      { label: "頁尾連結", href: "/admin/content/footer", icon: FileText },
     ],
   },
   {
