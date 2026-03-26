@@ -253,7 +253,7 @@ export default function AdminDashboard() {
   const quickActions = [
     { label: "管理 Banner", href: "/admin/homepage/banners", icon: Home },
     { label: "編輯首頁文案", href: "/admin/homepage/copy", icon: FileText },
-    { label: "待審核內容", href: "/admin/moderation/photos", icon: Shield },
+    { label: "待審核內容", href: "/admin/community/photos", icon: Shield },
     { label: "檢舉處理", href: "/admin/moderation/reports", icon: Flag, badge: stats.pendingReports },
     { label: "SEO 設定", href: "/admin/content/seo", icon: Globe },
     { label: "靜態頁面", href: "/admin/content/pages", icon: FileText },
