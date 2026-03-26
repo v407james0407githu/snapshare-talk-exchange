@@ -91,7 +91,6 @@ const navGroups: NavGroup[] = [
     label: "審核與風控",
     icon: Shield,
     items: [
-      { label: "作品審核", href: "/admin/moderation/photos", icon: Image },
       { label: "檢舉處理", href: "/admin/moderation/reports", icon: Flag },
     ],
   },
@@ -107,7 +106,7 @@ const navGroups: NavGroup[] = [
     icon: Settings,
     items: [
       { label: "基本設定", href: "/admin/settings", icon: Settings },
-      { label: "功能開關", href: "/admin/settings/features", icon: Settings },
+      { label: "功能開關", href: "/admin/settings/features", icon: AlertTriangle },
     ],
   },
 ];
