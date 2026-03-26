@@ -33,6 +33,7 @@ const groupConfig: Record<string, { label: string; icon: React.ReactNode; descri
 
 // Filter out 'features' group — managed in FeatureToggle page
 const EXCLUDED_GROUPS = new Set(["features"]);
+const EXCLUDED_KEYS = new Set(["bandwidth_quota_gb", "storage_quota_gb"]);
 
 export default function SystemSettings() {
   const queryClient = useQueryClient();
@@ -76,7 +77,7 @@ export default function SystemSettings() {
   };
 
   const groups = settings
-    .filter(s => !EXCLUDED_GROUPS.has(s.setting_group))
+    .filter(s => !EXCLUDED_GROUPS.has(s.setting_group) && !EXCLUDED_KEYS.has(s.setting_key))
     .reduce<Record<string, SystemSetting[]>>((acc, s) => {
       if (!acc[s.setting_group]) acc[s.setting_group] = [];
       acc[s.setting_group].push(s);
