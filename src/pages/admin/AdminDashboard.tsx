@@ -90,6 +90,7 @@ export default function AdminDashboard() {
     todayListings: 0,
     todayViews: 0,
   });
+  const [trendData, setTrendData] = useState<{ date: string; 新會員: number; 新作品: number; 瀏覽量: number }[]>([]);
   const [recentReports, setRecentReports] = useState<Report[]>([]);
   const [healthWarnings, setHealthWarnings] = useState<{ text: string; link: string }[]>([]);
   const [loading, setLoading] = useState(true);
