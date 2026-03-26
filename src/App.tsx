@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
@@ -37,6 +37,9 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 
+// Admin layout (persistent shell)
+const AdminLayoutRoute = lazy(() => import("@/components/admin/AdminLayout").then((m) => ({ default: m.AdminLayout })));
+
 // Admin pages (heavy, rarely accessed)
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const UserManagement = lazy(() => import("./pages/admin/UserManagement"));
@@ -47,8 +50,6 @@ const ContentManagement = lazy(() => import("./pages/admin/ContentManagement"));
 const PhotoManagement = lazy(() => import("./pages/admin/PhotoManagement"));
 const AnalyticsDashboard = lazy(() => import("./pages/admin/AnalyticsDashboard"));
 const SystemSettings = lazy(() => import("./pages/admin/SystemSettings"));
-
-// New admin modules
 const HomepageSections = lazy(() => import("./pages/admin/HomepageSections"));
 const HomepageCopy = lazy(() => import("./pages/admin/HomepageCopy"));
 const ContentPages = lazy(() => import("./pages/admin/ContentPages"));
