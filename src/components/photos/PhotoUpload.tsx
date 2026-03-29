@@ -409,14 +409,6 @@ export function PhotoUpload() {
                     placeholder="例如：iPhone 15 Pro Max"
                   />
                 )}
-                {phoneModel === '__other__' && (
-                  <Input
-                    className="mt-2"
-                    value=""
-                    onChange={(e) => setPhoneModel(e.target.value)}
-                    placeholder="請輸入型號名稱"
-                  />
-                )}
               </div>
             )}
 
