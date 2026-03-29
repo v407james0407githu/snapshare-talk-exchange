@@ -346,7 +346,7 @@ export function PhotoUpload() {
                   type="button"
                   variant={category === 'phone' ? 'gold' : 'outline'}
                   className="flex-1"
-                  onClick={() => { setCategory('phone'); setBrand(''); setPhoneModel(''); }}
+                  onClick={() => { setCategory('phone'); setBrand(''); setCustomBrand(''); setPhoneModel(''); }}
                 >
                   <Smartphone className="mr-2 h-4 w-4" />
                   手機
@@ -355,7 +355,7 @@ export function PhotoUpload() {
                   type="button"
                   variant={category === 'camera' ? 'gold' : 'outline'}
                   className="flex-1"
-                  onClick={() => { setCategory('camera'); setBrand(''); setCameraBody(''); }}
+                  onClick={() => { setCategory('camera'); setBrand(''); setCustomBrand(''); setCameraBody(''); }}
                 >
                   <Camera className="mr-2 h-4 w-4" />
                   相機
