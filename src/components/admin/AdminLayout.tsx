@@ -73,6 +73,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "基本設定", href: "/admin/settings", icon: Settings },
       { label: "功能開關", href: "/admin/settings/features", icon: AlertTriangle },
+      { label: "型號管理", href: "/admin/settings/models", icon: Tag },
     ],
   },
 ];
