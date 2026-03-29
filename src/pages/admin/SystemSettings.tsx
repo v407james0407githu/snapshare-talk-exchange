@@ -141,54 +141,10 @@ export default function SystemSettings() {
                   </CardTitle>
                   <CardDescription>{groupConfig[groupKey]?.description}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {groups[groupKey]?.map((setting) => {
-                    const val = getValue(setting);
-                    const isEdited = editedValues[setting.id] !== undefined;
-
-                    return (
-                      <div key={setting.id} className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Label className={isEdited ? "text-primary" : ""}>
-                            {setting.setting_label}
-                          </Label>
-                          {isEdited && (
-                            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                              已修改
-                            </span>
-                          )}
-                        </div>
-
-                        {setting.setting_type === "image" ? (
-                          <LogoUpload
-                            value={val}
-                            onChange={(url) => setValue(setting, url)}
-                            {...(setting.setting_key === "site_favicon_url" ? {
-                              placeholder: "尚未設定 Favicon，將顯示預設圖示",
-                              uploadLabel: "上傳新 Favicon",
-                              hint: "建議尺寸：32×32px 或 64×64px，PNG、ICO 或 SVG 格式，最大 2MB",
-                            } : {})}
-                          />
-                        ) : setting.setting_type === "boolean" ? (
-                          <div className="flex items-center gap-3">
-                            <Switch
-                              checked={val === "true"}
-                              onCheckedChange={(checked) => setValue(setting, checked ? "true" : "false")}
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              {val === "true" ? "啟用" : "停用"}
-                            </span>
-                          </div>
-                        ) : setting.setting_type === "textarea" ? (
-                          <Textarea value={val} onChange={(e) => setValue(setting, e.target.value)} rows={4} />
-                        ) : setting.setting_type === "number" ? (
-                          <Input type="number" value={val} onChange={(e) => setValue(setting, e.target.value)} />
-                        ) : (
-                          <Input value={val} onChange={(e) => setValue(setting, e.target.value)} />
-                        )}
-                      </div>
-                    );
-                  })}
+                <CardContent>
+                  {groupKey === "footer"
+                    ? renderFooterGroup(groups[groupKey] || [])
+                    : renderDefaultGroup(groups[groupKey] || [])}
                 </CardContent>
               </Card>
             </TabsContent>
