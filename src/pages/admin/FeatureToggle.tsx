@@ -20,10 +20,11 @@ interface FeatureSetting {
   sort_order: number;
 }
 
+// 由首頁區塊排序控制的功能，不在此處顯示
+const EXCLUDED_FEATURE_KEYS = new Set(["forum_enabled", "marketplace_enabled"]);
+
 const featureIcons: Record<string, typeof Image> = {
   gallery_enabled: Image,
-  forum_enabled: MessageSquare,
-  marketplace_enabled: Store,
   featured_enabled: Star,
 };
 
