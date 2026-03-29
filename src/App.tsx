@@ -59,6 +59,7 @@ const CommunityForums = lazy(() => import("./pages/admin/CommunityForums"));
 const CommunityMarketplace = lazy(() => import("./pages/admin/CommunityMarketplace"));
 const MemberRoles = lazy(() => import("./pages/admin/MemberRoles"));
 const FeatureToggle = lazy(() => import("./pages/admin/FeatureToggle"));
+const ModelManagement = lazy(() => import("./pages/admin/ModelManagement"));
 
 function PageFallback() {
   return (
@@ -149,6 +150,7 @@ const App = () => (
                 <Route path="analytics" element={<AnalyticsDashboard />} />
                 <Route path="settings" element={<SystemSettings />} />
                 <Route path="settings/features" element={<FeatureToggle />} />
+                <Route path="settings/models" element={<ModelManagement />} />
             </Route>
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
