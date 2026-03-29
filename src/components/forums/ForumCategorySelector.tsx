@@ -123,8 +123,8 @@ export function ForumCategorySidebar({
                         : "hover:bg-muted/50 text-muted-foreground"
                     }`}
                   >
-                    <span>{sub.icon}</span>
-                    <span>{sub.name}</span>
+                     {sub.icon && <span>{sub.icon}</span>}
+                     <span>{sub.name}</span>
                   </button>
                 ))}
               </div>

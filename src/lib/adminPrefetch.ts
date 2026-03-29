@@ -681,9 +681,11 @@ export function scheduleAdminWarmup(queryClient: QueryClient) {
     });
   };
 
-  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-    (window as any).requestIdleCallback(() => run());
-  } else {
-    window.setTimeout(run, 250);
+  if (typeof window !== "undefined") {
+    if ("requestIdleCallback" in window) {
+      (window as any).requestIdleCallback(() => run());
+    } else {
+      setTimeout(run, 250);
+    }
   }
 }

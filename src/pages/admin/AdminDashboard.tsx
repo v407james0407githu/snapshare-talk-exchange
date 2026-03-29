@@ -275,7 +275,7 @@ export default function AdminDashboard() {
       pendingReports: 0, todayUsers: 0, todayPhotos: 0, todayTopics: 0,
       todayListings: 0, todayViews: 0,
     }),
-    pendingReports: reportData?.pendingReports ?? statsData?.pendingReports ?? 0,
+    pendingReports: reportData?.pendingReports ?? 0,
   };
   const loading = statsLoading;
   const recentReports = reportData?.recentReports ?? [];
