@@ -267,17 +267,17 @@ function PhotoCard({
 
 export default function PhotoManagement() {
   const queryClient = useQueryClient();
-  const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "featured" | "hidden">("all");
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchLoading, setBatchLoading] = useState(false);
   const [orderDirty, setOrderDirty] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
+  // Local overrides for optimistic updates (drag reorder, toggle, batch)
+  const [localOverrides, setLocalOverrides] = useState<PhotoRow[] | null>(null);
 
   const isFeaturedMode = filter === "featured";
   const isSelectMode = selectedIds.size > 0;
@@ -293,11 +293,10 @@ export default function PhotoManagement() {
   }, [searchQuery]);
 
   useEffect(() => {
-    setPhotos([]);
     setPage(0);
-    setHasMore(true);
     setSelectedIds(new Set());
     setOrderDirty(false);
+    setLocalOverrides(null);
   }, [debouncedSearch, filter]);
 
   const fetchPhotosFn = useCallback(async (pageNum: number) => {
@@ -352,18 +351,40 @@ export default function PhotoManagement() {
     })) as PhotoRow[];
   }, [debouncedSearch, filter]);
 
-  const { isLoading: loading } = useQuery({
+  // Fetch all pages up to current page
+  const { data: queryData, isLoading: loading } = useQuery({
     queryKey: ["admin-photos", debouncedSearch, filter, page],
     queryFn: async () => {
-      const mapped = await fetchPhotosFn(page);
-      if (page === 0) setPhotos(mapped);
-      else setPhotos((prev) => [...prev, ...mapped]);
-      setHasMore(mapped.length === PAGE_SIZE);
-      return mapped;
+      // Fetch all pages 0..page
+      const allPages: PhotoRow[] = [];
+      for (let p = 0; p <= page; p++) {
+        const cached = p < page
+          ? queryClient.getQueryData<PhotoRow[]>(["admin-photos", debouncedSearch, filter, p])
+          : null;
+        if (cached) {
+          allPages.push(...cached);
+        } else {
+          const pageData = await fetchPhotosFn(p);
+          allPages.push(...pageData);
+        }
+      }
+      return allPages;
     },
     staleTime: 3 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
+
+  // Derive photos: use localOverrides if set (for drag/optimistic), otherwise query data
+  const photos = localOverrides ?? queryData ?? [];
+  const hasMore = queryData ? queryData.length === (page + 1) * PAGE_SIZE : true;
+
+  // Helper to update photos (sets localOverrides)
+  const setPhotos = useCallback((updater: PhotoRow[] | ((prev: PhotoRow[]) => PhotoRow[])) => {
+    setLocalOverrides(prev => {
+      const current = prev ?? queryData ?? [];
+      return typeof updater === 'function' ? updater(current) : updater;
+    });
+  }, [queryData]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
