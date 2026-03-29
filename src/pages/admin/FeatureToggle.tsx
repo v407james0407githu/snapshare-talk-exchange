@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Save, Loader2, Image, MessageSquare, Store, Star, ToggleLeft, AlertTriangle, Info } from "lucide-react";
+import { Save, Loader2, Image, Star, ToggleLeft, AlertTriangle, Info } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,25 +20,22 @@ interface FeatureSetting {
   sort_order: number;
 }
 
+// 由首頁區塊排序控制的功能，不在此處顯示
+const EXCLUDED_FEATURE_KEYS = new Set(["forum_enabled", "marketplace_enabled"]);
+
 const featureIcons: Record<string, typeof Image> = {
   gallery_enabled: Image,
-  forum_enabled: MessageSquare,
-  marketplace_enabled: Store,
   featured_enabled: Star,
 };
 
 const featureDescriptions: Record<string, string> = {
   gallery_enabled: "啟用後，使用者可上傳與瀏覽攝影作品。停用會隱藏導覽列「作品」入口與首頁相關區塊。",
-  forum_enabled: "啟用後，使用者可在討論區發表主題與回覆。停用會隱藏導覽列「討論」入口與首頁相關區塊。",
-  marketplace_enabled: "啟用後，使用者可在二手市集刊登與瀏覽商品。停用會隱藏導覽列「市集」入口與首頁相關區塊。",
   featured_enabled: "啟用後，首頁將顯示精選作品輪播區塊。",
   registration_enabled: "啟用後，新使用者可以註冊帳號。停用後註冊頁面會顯示暫停註冊訊息。",
 };
 
 const featureWarnings: Record<string, string> = {
   gallery_enabled: "停用後，已上傳的作品仍會保留，但前台將無法存取。",
-  forum_enabled: "停用後，所有討論資料仍會保留，但前台將無法存取。",
-  marketplace_enabled: "停用後，所有商品資料仍會保留，但前台將無法存取。",
   registration_enabled: "停用後，新使用者將無法註冊。現有使用者不受影響。",
 };
 
@@ -59,7 +56,7 @@ export default function FeatureToggle() {
         .eq("setting_type", "boolean")
         .order("sort_order");
       if (error) throw error;
-      return data as FeatureSetting[];
+      return (data as FeatureSetting[]).filter(f => !EXCLUDED_FEATURE_KEYS.has(f.setting_key));
     },
   });
 
