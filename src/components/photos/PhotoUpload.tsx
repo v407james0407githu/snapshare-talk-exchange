@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,28 +24,48 @@ import {
 import { resizeImage, createThumbnail, getOutputExtension, getOutputMimeType } from '@/lib/imageResize';
 import { TagInput } from '@/components/forums/TagInput';
 
-const phoneBrands = [
-  { value: 'apple', label: 'Apple' },
-  { value: 'samsung', label: 'Samsung' },
-  { value: 'xiaomi', label: '小米' },
-  { value: 'vivo', label: 'Vivo' },
-  { value: 'oppo', label: 'OPPO' },
-  { value: 'google', label: 'Google' },
-  { value: 'huawei', label: 'Huawei' },
-  { value: 'other', label: '其他' },
-];
+function useBrandOptions() {
+  return useQuery({
+    queryKey: ['upload-brand-options'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('forum_categories')
+        .select('name, slug, parent_id, sort_order')
+        .not('parent_id', 'is', null)
+        .order('sort_order');
+      if (error) throw error;
 
-const cameraBrands = [
-  { value: 'sony', label: 'Sony' },
-  { value: 'canon', label: 'Canon' },
-  { value: 'nikon', label: 'Nikon' },
-  { value: 'fujifilm', label: 'Fujifilm' },
-  { value: 'ricoh', label: 'Ricoh' },
-  { value: 'leica', label: 'Leica' },
-  { value: 'panasonic', label: 'Panasonic' },
-  { value: 'olympus', label: 'Olympus' },
-  { value: 'other', label: '其他' },
-];
+      // Get parent categories to identify mobile vs camera
+      const { data: parents } = await supabase
+        .from('forum_categories')
+        .select('id, slug')
+        .is('parent_id', null);
+
+      const mobileParentId = parents?.find(p => p.slug === 'mobile')?.id;
+      const cameraParentId = parents?.find(p => p.slug === 'camera')?.id;
+
+      const toBrandOption = (cat: any) => ({
+        value: cat.slug.replace(/^(mobile|camera)-/, ''),
+        label: cat.name,
+      });
+
+      const phoneBrands = (data || [])
+        .filter(c => c.parent_id === mobileParentId)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map(toBrandOption);
+      phoneBrands.push({ value: 'other', label: '其他' });
+
+      const cameraBrands = (data || [])
+        .filter(c => c.parent_id === cameraParentId)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map(toBrandOption);
+      cameraBrands.push({ value: 'other', label: '其他' });
+
+      return { phoneBrands, cameraBrands };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 interface UploadedFile {
   file: File;
@@ -55,6 +76,9 @@ interface UploadedFile {
 export function PhotoUpload() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { data: brandOptions } = useBrandOptions();
+  const phoneBrands = brandOptions?.phoneBrands ?? [];
+  const cameraBrands = brandOptions?.cameraBrands ?? [];
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
