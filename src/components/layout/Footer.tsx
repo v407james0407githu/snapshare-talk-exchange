@@ -2,13 +2,6 @@ import { Link } from "react-router-dom";
 import { Camera, Facebook, Instagram, Twitter, Youtube } from "lucide-react";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 
-const aboutLinks = [
-  { label: "關於我們", key: "footer_about_url", fallback: "/about" },
-  { label: "聯絡我們", key: "footer_contact_url", fallback: "/contact" },
-  { label: "使用條款", key: "footer_terms_url", fallback: "/terms" },
-  { label: "隱私政策", key: "footer_privacy_url", fallback: "/privacy" },
-];
-
 const footerSections = [
   {
     enabledKey: "footer_community_enabled",
@@ -32,6 +25,39 @@ const footerSections = [
       { labelKey: "footer_photo_label_4", urlKey: "footer_photo_url_4", defaultLabel: "配件週邊", defaultUrl: "/equipment/accessories" },
     ],
   },
+  {
+    enabledKey: "footer_section3_enabled",
+    titleKey: "footer_section3_title",
+    defaultTitle: "資源",
+    links: [
+      { labelKey: "footer_section3_label_1", urlKey: "footer_section3_url_1", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section3_label_2", urlKey: "footer_section3_url_2", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section3_label_3", urlKey: "footer_section3_url_3", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section3_label_4", urlKey: "footer_section3_url_4", defaultLabel: "", defaultUrl: "" },
+    ],
+  },
+  {
+    enabledKey: "footer_section4_enabled",
+    titleKey: "footer_section4_title",
+    defaultTitle: "支援",
+    links: [
+      { labelKey: "footer_section4_label_1", urlKey: "footer_section4_url_1", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section4_label_2", urlKey: "footer_section4_url_2", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section4_label_3", urlKey: "footer_section4_url_3", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section4_label_4", urlKey: "footer_section4_url_4", defaultLabel: "", defaultUrl: "" },
+    ],
+  },
+  {
+    enabledKey: "footer_section5_enabled",
+    titleKey: "footer_section5_title",
+    defaultTitle: "其他",
+    links: [
+      { labelKey: "footer_section5_label_1", urlKey: "footer_section5_url_1", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section5_label_2", urlKey: "footer_section5_url_2", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section5_label_3", urlKey: "footer_section5_url_3", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_section5_label_4", urlKey: "footer_section5_url_4", defaultLabel: "", defaultUrl: "" },
+    ],
+  },
 ];
 
 export function Footer() {
@@ -46,10 +72,27 @@ export function Footer() {
 
   const visibleSocials = socialLinks.filter((s) => get(s.key));
 
+  // Filter to only enabled sections with at least one visible link
+  const enabledSections = footerSections.filter((section) => {
+    if (!getBool(section.enabledKey)) return false;
+    return section.links.some((l) => get(l.urlKey, l.defaultUrl));
+  });
+
+  // Determine grid columns based on enabled sections count (logo col + section cols)
+  const totalCols = 1 + enabledSections.length;
+  const gridClass =
+    totalCols <= 3
+      ? "grid-cols-2 md:grid-cols-3"
+      : totalCols <= 4
+        ? "grid-cols-2 md:grid-cols-4"
+        : totalCols <= 5
+          ? "grid-cols-2 md:grid-cols-5"
+          : "grid-cols-2 md:grid-cols-6";
+
   return (
     <footer className="border-t border-border bg-card">
       <div className="container py-12 md:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className={`grid ${gridClass} gap-8`}>
           {/* Logo & Description */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
@@ -85,32 +128,13 @@ export function Footer() {
             )}
           </div>
 
-          {/* About Links - dynamic */}
-          {getBool("footer_about_enabled") && (() => {
-            const visibleAbout = aboutLinks.filter((l) => get(l.key, l.fallback));
-            return visibleAbout.length > 0 ? (
-              <div>
-                <h4 className="font-semibold mb-4 text-foreground">關於</h4>
-                <ul className="space-y-2.5">
-                  {visibleAbout.map((link) => (
-                    <li key={link.key}>
-                      <Link
-                        to={get(link.key, link.fallback)}
-                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null;
-          })()}
-
-          {/* Dynamic Nav Links */}
-          {footerSections.map((section) => {
-            if (!getBool(section.enabledKey)) return null;
-            const visibleLinks = section.links.filter((l) => get(l.urlKey, l.defaultUrl));
+          {/* Dynamic Nav Link Sections (up to 5) */}
+          {enabledSections.map((section) => {
+            const visibleLinks = section.links.filter((l) => {
+              const url = get(l.urlKey, l.defaultUrl);
+              const label = get(l.labelKey, l.defaultLabel);
+              return url && label;
+            });
             if (visibleLinks.length === 0) return null;
             return (
               <div key={section.titleKey}>
