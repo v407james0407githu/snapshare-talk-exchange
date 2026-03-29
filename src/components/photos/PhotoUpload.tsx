@@ -10,19 +10,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import {
   Upload,
   X,
-  ImageIcon,
   Camera,
   Smartphone,
   Loader2,
-  Plus,
   CheckCircle
 } from 'lucide-react';
 import { resizeImage, createThumbnail, getOutputExtension, getOutputMimeType } from '@/lib/imageResize';
-import { TagInput } from '@/components/forums/TagInput';
 
 function useBrandOptions() {
   return useQuery({
@@ -35,7 +31,6 @@ function useBrandOptions() {
         .order('sort_order');
       if (error) throw error;
 
-      // Get parent categories to identify mobile vs camera
       const { data: parents } = await supabase
         .from('forum_categories')
         .select('id, slug')
@@ -67,6 +62,24 @@ function useBrandOptions() {
   });
 }
 
+function useBrandModels(category: string, brand: string) {
+  return useQuery({
+    queryKey: ['brand-models', category, brand],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('brand_models' as any)
+        .select('id, model_name, sort_order')
+        .eq('category', category)
+        .eq('brand', brand)
+        .order('sort_order');
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    enabled: !!category && !!brand && brand !== 'other',
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 interface UploadedFile {
   file: File;
   preview: string;
@@ -86,7 +99,6 @@ export function PhotoUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 
-  // 計算今日剩餘上傳額度（台灣時區）
   const getTodayTW = () => {
     const now = new Date();
     const twTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
@@ -99,7 +111,6 @@ export function PhotoUpload() {
   const dailyMax = profile?.is_vip ? 10 : 3;
   const dailyRemaining = Math.max(0, dailyMax - dailyUsed);
   
-  // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<'phone' | 'camera' | ''>('');
@@ -107,7 +118,8 @@ export function PhotoUpload() {
   const [phoneModel, setPhoneModel] = useState('');
   const [cameraBody, setCameraBody] = useState('');
   const [lens, setLens] = useState('');
-  const [customTags, setCustomTags] = useState<string[]>([]);
+
+  const { data: modelOptions } = useBrandModels(category, brand);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -174,44 +186,27 @@ export function PhotoUpload() {
     });
   }, []);
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user) {
-      toast({
-        title: "請先登入",
-        description: "您需要登入才能上傳作品",
-        variant: "destructive",
-      });
+      toast({ title: "請先登入", description: "您需要登入才能上傳作品", variant: "destructive" });
       navigate('/auth');
       return;
     }
 
     if (uploadedFiles.length === 0) {
-      toast({
-        title: "請選擇照片",
-        description: "至少需要上傳一張照片",
-        variant: "destructive",
-      });
+      toast({ title: "請選擇照片", description: "至少需要上傳一張照片", variant: "destructive" });
       return;
     }
 
     if (!title.trim()) {
-      toast({
-        title: "請輸入標題",
-        description: "作品標題為必填",
-        variant: "destructive",
-      });
+      toast({ title: "請輸入標題", description: "作品標題為必填", variant: "destructive" });
       return;
     }
 
     if (!category) {
-      toast({
-        title: "請選擇拍攝類型",
-        description: "請選擇拍攝裝備類型",
-        variant: "destructive",
-      });
+      toast({ title: "請選擇拍攝類型", description: "請選擇拍攝裝備類型", variant: "destructive" });
       return;
     }
 
@@ -219,7 +214,6 @@ export function PhotoUpload() {
 
     try {
       for (const uploadedFile of uploadedFiles) {
-        // Resize image before upload
         const resizedImage = await resizeImage(uploadedFile.file);
         const thumbnail = await createThumbnail(uploadedFile.file);
         
@@ -229,31 +223,20 @@ export function PhotoUpload() {
         const fileName = `${user.id}/${timestamp}_${uploadedFile.id}.${ext}`;
         const thumbFileName = `${user.id}/${timestamp}_${uploadedFile.id}_thumb.${ext}`;
 
-        // Upload resized main image
         const { error: uploadError } = await supabase.storage
           .from('photos')
-          .upload(fileName, resizedImage.blob, {
-            contentType: mime,
-          });
+          .upload(fileName, resizedImage.blob, { contentType: mime });
 
         if (uploadError) throw uploadError;
 
-        // Upload thumbnail
         const { error: thumbError } = await supabase.storage
           .from('photos')
-          .upload(thumbFileName, thumbnail.blob, {
-            contentType: mime,
-          });
+          .upload(thumbFileName, thumbnail.blob, { contentType: mime });
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('photos')
-          .getPublicUrl(fileName);
+        const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(fileName);
+        const { data: { publicUrl: thumbUrl } } = supabase.storage.from('photos').getPublicUrl(thumbFileName);
 
-        const { data: { publicUrl: thumbUrl } } = supabase.storage
-          .from('photos')
-          .getPublicUrl(thumbFileName);
-
-        const { data: photoData, error: insertError } = await supabase
+        const { error: insertError } = await supabase
           .from('photos')
           .insert({
             user_id: user.id,
@@ -271,49 +254,14 @@ export function PhotoUpload() {
           .single();
 
         if (insertError) throw insertError;
-
-        // Save tags for photo
-        if (customTags.length > 0 && photoData) {
-          for (const tagName of customTags) {
-            const { data: existingTag } = await supabase
-              .from("tags" as any)
-              .select("id")
-              .eq("name", tagName)
-              .maybeSingle();
-            let tagId: string;
-            if (existingTag) {
-              tagId = (existingTag as any).id;
-            } else {
-              const { data: newTag } = await supabase
-                .from("tags" as any)
-                .insert({ name: tagName, slug: tagName.toLowerCase().replace(/\s+/g, "-") } as any)
-                .select("id")
-                .single();
-              tagId = (newTag as any).id;
-            }
-            await supabase.from("content_tags" as any).insert({
-              tag_id: tagId, content_id: photoData.id, content_type: "photo",
-            } as any);
-          }
-        }
       }
 
-      toast({
-        title: "上傳成功！",
-        description: `成功上傳 ${uploadedFiles.length} 張照片`,
-      });
-
-      // Clean up previews
+      toast({ title: "上傳成功！", description: `成功上傳 ${uploadedFiles.length} 張照片` });
       uploadedFiles.forEach(f => URL.revokeObjectURL(f.preview));
-      
       navigate('/gallery');
     } catch (error) {
       console.error('Upload error:', error);
-      toast({
-        title: "上傳失敗",
-        description: "請稍後再試",
-        variant: "destructive",
-      });
+      toast({ title: "上傳失敗", description: "請稍後再試", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -324,9 +272,7 @@ export function PhotoUpload() {
       {/* Drop Zone */}
       <Card
         className={`border-2 border-dashed transition-colors ${
-          isDragging
-            ? 'border-primary bg-primary/5'
-            : 'border-border hover:border-primary/50'
+          isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
         }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -341,20 +287,10 @@ export function PhotoUpload() {
             <p className="text-muted-foreground mb-4">
               支援 JPG、PNG、WebP 格式，單檔最大 5MB（上傳時自動壓縮為 WebP）
             </p>
-            <Button
-              variant="gold"
-              onClick={() => fileInputRef.current?.click()}
-            >
+            <Button variant="gold" onClick={() => fileInputRef.current?.click()}>
               選擇檔案
             </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
             <p className="text-sm text-muted-foreground mt-4">
               今日可上傳：{dailyRemaining} / {dailyMax} 張（台灣時間每日重置）
             </p>
@@ -367,11 +303,7 @@ export function PhotoUpload() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {uploadedFiles.map((file) => (
             <div key={file.id} className="relative group aspect-square rounded-lg overflow-hidden">
-              <img
-                src={file.preview}
-                alt="Preview"
-                className="w-full h-full object-cover"
-              />
+              <img src={file.preview} alt="Preview" className="w-full h-full object-cover" />
               <button
                 onClick={() => removeFile(file.id)}
                 className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -392,24 +324,11 @@ export function PhotoUpload() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">標題 *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="為您的作品取個標題"
-                maxLength={100}
-              />
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="為您的作品取個標題" maxLength={100} />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="description">說明</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="描述一下這張照片的故事..."
-                rows={3}
-              />
+              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="描述一下這張照片的故事..." rows={3} />
             </div>
           </CardContent>
         </Card>
@@ -426,10 +345,7 @@ export function PhotoUpload() {
                   type="button"
                   variant={category === 'phone' ? 'gold' : 'outline'}
                   className="flex-1"
-                  onClick={() => {
-                    setCategory('phone');
-                    setBrand('');
-                  }}
+                  onClick={() => { setCategory('phone'); setBrand(''); setPhoneModel(''); }}
                 >
                   <Smartphone className="mr-2 h-4 w-4" />
                   手機
@@ -438,10 +354,7 @@ export function PhotoUpload() {
                   type="button"
                   variant={category === 'camera' ? 'gold' : 'outline'}
                   className="flex-1"
-                  onClick={() => {
-                    setCategory('camera');
-                    setBrand('');
-                  }}
+                  onClick={() => { setCategory('camera'); setBrand(''); setCameraBody(''); }}
                 >
                   <Camera className="mr-2 h-4 w-4" />
                   相機
@@ -452,43 +365,85 @@ export function PhotoUpload() {
             {category && (
               <div className="space-y-2">
                 <Label>品牌</Label>
-                <Select value={brand} onValueChange={setBrand}>
+                <Select value={brand} onValueChange={(v) => { setBrand(v); setPhoneModel(''); setCameraBody(''); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="選擇品牌" />
                   </SelectTrigger>
                   <SelectContent>
                     {(category === 'phone' ? phoneBrands : cameraBrands).map((b) => (
-                      <SelectItem key={b.value} value={b.value}>
-                        {b.label}
-                      </SelectItem>
+                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
 
-            {category === 'phone' && (
+            {category === 'phone' && brand && (
               <div className="space-y-2">
                 <Label htmlFor="phoneModel">型號</Label>
-                <Input
-                  id="phoneModel"
-                  value={phoneModel}
-                  onChange={(e) => setPhoneModel(e.target.value)}
-                  placeholder="例如：iPhone 15 Pro Max"
-                />
+                {brand !== 'other' && modelOptions && modelOptions.length > 0 ? (
+                  <Select value={phoneModel} onValueChange={setPhoneModel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇型號" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modelOptions.map((m: any) => (
+                        <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
+                      ))}
+                      <SelectItem value="__other__">其他（手動輸入）</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="phoneModel"
+                    value={phoneModel}
+                    onChange={(e) => setPhoneModel(e.target.value)}
+                    placeholder="例如：iPhone 15 Pro Max"
+                  />
+                )}
+                {phoneModel === '__other__' && (
+                  <Input
+                    className="mt-2"
+                    value=""
+                    onChange={(e) => setPhoneModel(e.target.value)}
+                    placeholder="請輸入型號名稱"
+                  />
+                )}
               </div>
             )}
 
-            {category === 'camera' && (
+            {category === 'camera' && brand && (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="cameraBody">機身</Label>
-                  <Input
-                    id="cameraBody"
-                    value={cameraBody}
-                    onChange={(e) => setCameraBody(e.target.value)}
-                    placeholder="例如：Sony A7IV"
-                  />
+                  {brand !== 'other' && modelOptions && modelOptions.length > 0 ? (
+                    <Select value={cameraBody} onValueChange={setCameraBody}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="選擇機身" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modelOptions.map((m: any) => (
+                          <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
+                        ))}
+                        <SelectItem value="__other__">其他（手動輸入）</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      id="cameraBody"
+                      value={cameraBody}
+                      onChange={(e) => setCameraBody(e.target.value)}
+                      placeholder="例如：Sony A7IV"
+                    />
+                  )}
+                  {cameraBody === '__other__' && (
+                    <Input
+                      className="mt-2"
+                      value=""
+                      onChange={(e) => setCameraBody(e.target.value)}
+                      placeholder="請輸入機身名稱"
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lens">鏡頭</Label>
@@ -501,31 +456,14 @@ export function PhotoUpload() {
                 </div>
               </>
             )}
-
-            <div className="space-y-2">
-              <Label>標籤</Label>
-              <TagInput tags={customTags} onChange={setCustomTags} placeholder="輸入標籤後按 Enter，例如：風景、夜拍" />
-            </div>
           </CardContent>
         </Card>
 
-        <Button
-          type="submit"
-          variant="gold"
-          size="lg"
-          className="w-full"
-          disabled={isUploading || uploadedFiles.length === 0}
-        >
+        <Button type="submit" variant="gold" size="lg" className="w-full" disabled={isUploading || uploadedFiles.length === 0}>
           {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              上傳中...
-            </>
+            <><Loader2 className="mr-2 h-5 w-5 animate-spin" />上傳中...</>
           ) : (
-            <>
-              <CheckCircle className="mr-2 h-5 w-5" />
-              發布作品
-            </>
+            <><CheckCircle className="mr-2 h-5 w-5" />發布作品</>
           )}
         </Button>
       </form>
