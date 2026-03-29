@@ -75,7 +75,8 @@ export function Footer() {
   // Filter to only enabled sections with at least one visible link
   const enabledSections = footerSections.filter((section) => {
     if (!getBool(section.enabledKey)) return false;
-    return section.links.some((l) => get(l.urlKey, l.defaultUrl));
+    // Show section if it has a title OR at least one link with a label
+    return section.links.some((l) => get(l.labelKey, l.defaultLabel));
   });
 
   // Determine grid columns based on enabled sections count (logo col + section cols)
@@ -131,9 +132,8 @@ export function Footer() {
           {/* Dynamic Nav Link Sections (up to 5) */}
           {enabledSections.map((section) => {
             const visibleLinks = section.links.filter((l) => {
-              const url = get(l.urlKey, l.defaultUrl);
               const label = get(l.labelKey, l.defaultLabel);
-              return url && label;
+              return !!label;
             });
             if (visibleLinks.length === 0) return null;
             return (
@@ -142,16 +142,24 @@ export function Footer() {
                   {get(section.titleKey, section.defaultTitle)}
                 </h4>
                 <ul className="space-y-2.5">
-                  {visibleLinks.map((link) => (
-                    <li key={link.urlKey}>
-                      <Link
-                        to={get(link.urlKey, link.defaultUrl)}
-                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        {get(link.labelKey, link.defaultLabel)}
-                      </Link>
-                    </li>
-                  ))}
+                  {visibleLinks.map((link) => {
+                    const url = get(link.urlKey, link.defaultUrl);
+                    const label = get(link.labelKey, link.defaultLabel);
+                    return (
+                      <li key={link.urlKey}>
+                        {url ? (
+                          <Link
+                            to={url}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            {label}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{label}</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );
