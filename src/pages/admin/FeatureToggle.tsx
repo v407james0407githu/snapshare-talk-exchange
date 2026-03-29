@@ -30,16 +30,12 @@ const featureIcons: Record<string, typeof Image> = {
 
 const featureDescriptions: Record<string, string> = {
   gallery_enabled: "啟用後，使用者可上傳與瀏覽攝影作品。停用會隱藏導覽列「作品」入口與首頁相關區塊。",
-  forum_enabled: "啟用後，使用者可在討論區發表主題與回覆。停用會隱藏導覽列「討論」入口與首頁相關區塊。",
-  marketplace_enabled: "啟用後，使用者可在二手市集刊登與瀏覽商品。停用會隱藏導覽列「市集」入口與首頁相關區塊。",
   featured_enabled: "啟用後，首頁將顯示精選作品輪播區塊。",
   registration_enabled: "啟用後，新使用者可以註冊帳號。停用後註冊頁面會顯示暫停註冊訊息。",
 };
 
 const featureWarnings: Record<string, string> = {
   gallery_enabled: "停用後，已上傳的作品仍會保留，但前台將無法存取。",
-  forum_enabled: "停用後，所有討論資料仍會保留，但前台將無法存取。",
-  marketplace_enabled: "停用後，所有商品資料仍會保留，但前台將無法存取。",
   registration_enabled: "停用後，新使用者將無法註冊。現有使用者不受影響。",
 };
 
