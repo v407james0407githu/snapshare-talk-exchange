@@ -115,6 +115,7 @@ export function PhotoUpload() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<'phone' | 'camera' | ''>('');
   const [brand, setBrand] = useState('');
+  const [customBrand, setCustomBrand] = useState('');
   const [phoneModel, setPhoneModel] = useState('');
   const [cameraBody, setCameraBody] = useState('');
   const [lens, setLens] = useState('');
@@ -245,7 +246,7 @@ export function PhotoUpload() {
             image_url: publicUrl,
             thumbnail_url: thumbError ? null : thumbUrl,
             category,
-            brand,
+            brand: brand === 'other' ? customBrand : brand,
             phone_model: category === 'phone' ? phoneModel : null,
             camera_body: category === 'camera' ? cameraBody : null,
             lens: category === 'camera' ? lens : null,
@@ -363,97 +364,161 @@ export function PhotoUpload() {
             </div>
 
             {category && (
-              <div className="space-y-2">
-                <Label>品牌</Label>
-                <Select value={brand} onValueChange={(v) => { setBrand(v); setPhoneModel(''); setCameraBody(''); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="選擇品牌" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(category === 'phone' ? phoneBrands : cameraBrands).map((b) => (
-                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {category === 'phone' && brand && (
-              <div className="space-y-2">
-                <Label htmlFor="phoneModel">型號</Label>
-                {brand !== 'other' && modelOptions && modelOptions.length > 0 && phoneModel !== '__other__' ? (
-                  <Select value={phoneModel} onValueChange={setPhoneModel}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選擇型號" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modelOptions.map((m: any) => (
-                        <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
-                      ))}
-                      <SelectItem value="__other__">其他（手動輸入）</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : phoneModel === '__other__' ? (
-                  <Input
-                    id="phoneModel"
-                    value=""
-                    onChange={(e) => { if (e.target.value) setPhoneModel(e.target.value); }}
-                    placeholder="請輸入型號名稱"
-                    autoFocus
-                  />
-                ) : (
-                  <Input
-                    id="phoneModel"
-                    value={phoneModel}
-                    onChange={(e) => setPhoneModel(e.target.value)}
-                    placeholder="例如：iPhone 15 Pro Max"
-                  />
-                )}
-              </div>
-            )}
-
-            {category === 'camera' && brand && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="cameraBody">機身</Label>
-                  {brand !== 'other' && modelOptions && modelOptions.length > 0 && cameraBody !== '__other__' ? (
-                    <Select value={cameraBody} onValueChange={setCameraBody}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="選擇機身" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {modelOptions.map((m: any) => (
-                          <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
-                        ))}
-                        <SelectItem value="__other__">其他（手動輸入）</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : cameraBody === '__other__' ? (
-                    <Input
-                      id="cameraBody"
-                      value=""
-                      onChange={(e) => { if (e.target.value) setCameraBody(e.target.value); }}
-                      placeholder="請輸入機身名稱"
-                      autoFocus
-                    />
-                  ) : (
-                    <Input
-                      id="cameraBody"
-                      value={cameraBody}
-                      onChange={(e) => setCameraBody(e.target.value)}
-                      placeholder="例如：Sony A7IV"
-                    />
-                  )}
+                  <Label>品牌</Label>
+                  <Select value={brand} onValueChange={(v) => { setBrand(v); setCustomBrand(''); setPhoneModel(''); setCameraBody(''); }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="選擇品牌" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(category === 'phone' ? phoneBrands : cameraBrands).map((b) => (
+                        <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lens">鏡頭</Label>
-                  <Input
-                    id="lens"
-                    value={lens}
-                    onChange={(e) => setLens(e.target.value)}
-                    placeholder="例如：FE 24-70mm F2.8 GM II"
-                  />
-                </div>
+
+                {/* 品牌選「其他」時：自填品牌 + 型號 */}
+                {brand === 'other' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="customBrand">自訂品牌</Label>
+                      <Input
+                        id="customBrand"
+                        value={customBrand}
+                        onChange={(e) => setCustomBrand(e.target.value)}
+                        placeholder="請輸入品牌名稱"
+                      />
+                    </div>
+                    {category === 'phone' ? (
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneModel">型號</Label>
+                        <Input
+                          id="phoneModel"
+                          value={phoneModel}
+                          onChange={(e) => setPhoneModel(e.target.value)}
+                          placeholder="請輸入型號名稱"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="cameraBody">機身</Label>
+                          <Input
+                            id="cameraBody"
+                            value={cameraBody}
+                            onChange={(e) => setCameraBody(e.target.value)}
+                            placeholder="請輸入機身名稱"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="lens">鏡頭</Label>
+                          <Input
+                            id="lens"
+                            value={lens}
+                            onChange={(e) => setLens(e.target.value)}
+                            placeholder="例如：FE 24-70mm F2.8 GM II"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* 品牌非「其他」時：型號下拉（未選品牌時 disabled） */}
+                {brand !== 'other' && category === 'phone' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneModel">型號</Label>
+                    {!brand ? (
+                      <Select disabled>
+                        <SelectTrigger>
+                          <SelectValue placeholder="請先選擇品牌" />
+                        </SelectTrigger>
+                        <SelectContent><SelectItem value="_">-</SelectItem></SelectContent>
+                      </Select>
+                    ) : modelOptions && modelOptions.length > 0 && phoneModel !== '__other__' ? (
+                      <Select value={phoneModel} onValueChange={setPhoneModel}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="選擇型號" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {modelOptions.map((m: any) => (
+                            <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
+                          ))}
+                          <SelectItem value="__other__">其他（手動輸入）</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : phoneModel === '__other__' ? (
+                      <Input
+                        id="phoneModel"
+                        value=""
+                        onChange={(e) => { if (e.target.value) setPhoneModel(e.target.value); }}
+                        placeholder="請輸入型號名稱"
+                        autoFocus
+                      />
+                    ) : (
+                      <Input
+                        id="phoneModel"
+                        value={phoneModel}
+                        onChange={(e) => setPhoneModel(e.target.value)}
+                        placeholder="例如：iPhone 15 Pro Max"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {brand !== 'other' && category === 'camera' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="cameraBody">機身</Label>
+                      {!brand ? (
+                        <Select disabled>
+                          <SelectTrigger>
+                            <SelectValue placeholder="請先選擇品牌" />
+                          </SelectTrigger>
+                          <SelectContent><SelectItem value="_">-</SelectItem></SelectContent>
+                        </Select>
+                      ) : modelOptions && modelOptions.length > 0 && cameraBody !== '__other__' ? (
+                        <Select value={cameraBody} onValueChange={setCameraBody}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="選擇機身" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {modelOptions.map((m: any) => (
+                              <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
+                            ))}
+                            <SelectItem value="__other__">其他（手動輸入）</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : cameraBody === '__other__' ? (
+                        <Input
+                          id="cameraBody"
+                          value=""
+                          onChange={(e) => { if (e.target.value) setCameraBody(e.target.value); }}
+                          placeholder="請輸入機身名稱"
+                          autoFocus
+                        />
+                      ) : (
+                        <Input
+                          id="cameraBody"
+                          value={cameraBody}
+                          onChange={(e) => setCameraBody(e.target.value)}
+                          placeholder="例如：Sony A7IV"
+                        />
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lens">鏡頭</Label>
+                      <Input
+                        id="lens"
+                        value={lens}
+                        onChange={(e) => setLens(e.target.value)}
+                        placeholder="例如：FE 24-70mm F2.8 GM II"
+                      />
+                    </div>
+                  </>
+                )}
               </>
             )}
           </CardContent>
