@@ -381,7 +381,7 @@ export function PhotoUpload() {
             {category === 'phone' && brand && (
               <div className="space-y-2">
                 <Label htmlFor="phoneModel">型號</Label>
-                {brand !== 'other' && modelOptions && modelOptions.length > 0 ? (
+                {brand !== 'other' && modelOptions && modelOptions.length > 0 && phoneModel !== '__other__' ? (
                   <Select value={phoneModel} onValueChange={setPhoneModel}>
                     <SelectTrigger>
                       <SelectValue placeholder="選擇型號" />
@@ -393,6 +393,14 @@ export function PhotoUpload() {
                       <SelectItem value="__other__">其他（手動輸入）</SelectItem>
                     </SelectContent>
                   </Select>
+                ) : phoneModel === '__other__' ? (
+                  <Input
+                    id="phoneModel"
+                    value=""
+                    onChange={(e) => { if (e.target.value) setPhoneModel(e.target.value); }}
+                    placeholder="請輸入型號名稱"
+                    autoFocus
+                  />
                 ) : (
                   <Input
                     id="phoneModel"
