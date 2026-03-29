@@ -171,6 +171,30 @@ export function Footer() {
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} {siteName}. All rights reserved.
           </p>
+          <div className="flex items-center gap-4 flex-wrap">
+            {getBool("footer_about_enabled") && get("footer_about_url") && (
+              <Link to={get("footer_about_url", "/about")} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                關於我們
+              </Link>
+            )}
+            {get("footer_contact_url") && (
+              <Link to={get("footer_contact_url", "/contact")} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                聯絡我們
+              </Link>
+            )}
+            {get("footer_privacy_url") && (
+              <Link to={get("footer_privacy_url", "/privacy")} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                隱私權政策
+              </Link>
+            )}
+            {get("footer_terms_url") && (
+              <Link to={get("footer_terms_url", "/terms")} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                服務條款
+              </Link>
+            )}
+          </div>
+        </div>
+        <div className="mt-3 text-center">
           <p className="text-xs text-muted-foreground">
             {get("footer_copyright", "Made with ❤️ for photographers")}
           </p>
