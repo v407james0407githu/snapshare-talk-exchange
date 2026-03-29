@@ -47,6 +47,8 @@ export default function FeatureToggle() {
   const { user } = useAuth();
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
 
+  useAdminPage("功能開關", "控制作品、討論、市集與註冊等前台功能");
+
   const { data: features = [], isLoading } = useQuery({
     queryKey: ["admin-feature-settings"],
     queryFn: async () => {
@@ -63,12 +65,16 @@ export default function FeatureToggle() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      for (const [id, value] of Object.entries(editedValues)) {
-        await supabase
-          .from("system_settings")
-          .update({ setting_value: value, updated_at: new Date().toISOString(), updated_by: user?.id })
-          .eq("id", id);
-      }
+      await Promise.all(
+        Object.entries(editedValues).map(async ([id, value]) => {
+          const { error } = await supabase
+            .from("system_settings")
+            .update({ setting_value: value, updated_at: new Date().toISOString(), updated_by: user?.id })
+            .eq("id", id);
+
+          if (error) throw error;
+        })
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-feature-settings"] });

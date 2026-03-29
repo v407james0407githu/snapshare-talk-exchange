@@ -48,7 +48,8 @@ async function fetchReports(statusFilter: string, typeFilter: string): Promise<R
   const allIds = [...new Set([...data.map(r => r.reporter_id), ...data.filter(r => r.reported_user_id).map(r => r.reported_user_id!)])];
   const profileMap = new Map<string, string>();
   if (allIds.length > 0) {
-    const { data: profiles } = await supabase.from("profiles").select("user_id, username, display_name").in("user_id", allIds);
+    const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, username, display_name").in("user_id", allIds);
+    if (profileError) throw profileError;
     profiles?.forEach(p => profileMap.set(p.user_id, p.display_name || p.username));
   }
   return data.map(r => ({
@@ -85,32 +86,44 @@ export default function ReportManagement() {
 
     try {
       if (action === "warn" && report.reported_user_id) {
-        const { data: profile } = await supabase.from("profiles").select("warning_count").eq("user_id", report.reported_user_id).single();
+        const { data: profile, error: profileError } = await supabase.from("profiles").select("warning_count").eq("user_id", report.reported_user_id).single();
+        if (profileError) throw profileError;
         const newCount = (profile?.warning_count || 0) + 1;
-        await supabase.from("profiles").update({ warning_count: newCount }).eq("user_id", report.reported_user_id);
+        const { error: warningError } = await supabase.from("profiles").update({ warning_count: newCount }).eq("user_id", report.reported_user_id);
+        if (warningError) throw warningError;
         if (newCount >= 3) {
           const until = new Date(); until.setDate(until.getDate() + 7);
-          await supabase.from("profiles").update({ is_suspended: true, suspended_until: until.toISOString(), suspension_reason: `累計 ${newCount} 次警告，自動停權 7 天` }).eq("user_id", report.reported_user_id);
+          const { error: suspendError } = await supabase.from("profiles").update({ is_suspended: true, suspended_until: until.toISOString(), suspension_reason: `累計 ${newCount} 次警告，自動停權 7 天` }).eq("user_id", report.reported_user_id);
+          if (suspendError) throw suspendError;
         }
-        await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "已對用戶發出警告" }).eq("id", report.id);
+        const { error: resolveError } = await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "已對用戶發出警告" }).eq("id", report.id);
+        if (resolveError) throw resolveError;
         toast.success(`已對用戶發出警告（累計 ${newCount} 次）`);
       } else if (action === "hide") {
         const tableMap: Record<string, string> = { photo: "photos", comment: "comments", forum_topic: "forum_topics", forum_reply: "forum_replies", listing: "marketplace_listings" };
         const table = tableMap[report.content_type];
-        if (table) await supabase.from(table as any).update({ is_hidden: true } as any).eq("id", report.content_id);
-        await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "內容已隱藏" }).eq("id", report.id);
+        if (table) {
+          const { error: hideError } = await supabase.from(table as any).update({ is_hidden: true } as any).eq("id", report.content_id);
+          if (hideError) throw hideError;
+        }
+        const { error: resolveError } = await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "內容已隱藏" }).eq("id", report.id);
+        if (resolveError) throw resolveError;
         toast.success("內容已隱藏，檢舉已處理");
       } else if (action === "resolve") {
-        await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "已處理" }).eq("id", report.id);
+        const { error: resolveError } = await supabase.from("reports").update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "已處理" }).eq("id", report.id);
+        if (resolveError) throw resolveError;
         toast.success("檢舉已標記為已處理");
       } else if (action === "dismiss") {
-        await supabase.from("reports").update({ status: "dismissed", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "檢舉不成立" }).eq("id", report.id);
+        const { error: dismissError } = await supabase.from("reports").update({ status: "dismissed", resolved_at: new Date().toISOString(), resolved_by: user.id, resolution_note: resolutionNote || "檢舉不成立" }).eq("id", report.id);
+        if (dismissError) throw dismissError;
         toast.success("檢舉已駁回");
       }
       setActionDialog({ open: false, report: null, action: "resolve" });
       setResolutionNote("");
       queryClient.invalidateQueries({ queryKey: ["admin-reports"] });
-    } catch { toast.error("操作失敗"); }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "操作失敗");
+    }
     finally { setActionLoading(false); }
   };
 

@@ -40,6 +40,8 @@ export default function SystemSettings() {
   const { user } = useAuth();
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
 
+  useAdminPage("系統設定", "管理網站基本設定、SEO、頁尾與郵件模板");
+
   const { data: settings = [], isLoading } = useQuery({
     queryKey: ["admin-system-settings"],
     queryFn: async () => {
@@ -55,12 +57,16 @@ export default function SystemSettings() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const entries = Object.entries(editedValues);
-      for (const [id, value] of entries) {
-        await supabase
-          .from("system_settings")
-          .update({ setting_value: value, updated_at: new Date().toISOString(), updated_by: user?.id })
-          .eq("id", id);
-      }
+      await Promise.all(
+        entries.map(async ([id, value]) => {
+          const { error } = await supabase
+            .from("system_settings")
+            .update({ setting_value: value, updated_at: new Date().toISOString(), updated_by: user?.id })
+            .eq("id", id);
+
+          if (error) throw error;
+        })
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-system-settings"] });

@@ -77,57 +77,71 @@ const contentTypeLabels: Record<string, string> = {
   listing: "商品",
 };
 
-async function fetchDashboardStats(get: (key: string, fallback?: string) => string) {
+async function fetchDashboardKpis() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayISO = todayStart.toISOString();
 
-  // ALL queries in a single Promise.all — no sequential waterfall
   const [
     usersRes, photosRes, topicsRes, listingsRes,
-    pendingReportsRes, reportsRes,
     todayUsersRes, todayPhotosRes, todayTopicsRes, todayListingsRes,
     todayViewsRes,
-    pagesRes, bannerCountRes, homeSectionsRes,
   ] = await Promise.all([
     supabase.from("profiles").select("id", { count: "exact", head: true }),
     supabase.from("photos").select("id", { count: "exact", head: true }),
     supabase.from("forum_topics").select("id", { count: "exact", head: true }),
     supabase.from("marketplace_listings").select("id", { count: "exact", head: true }),
-    supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("reports").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(5),
     supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
     supabase.from("photos").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
     supabase.from("forum_topics").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
     supabase.from("marketplace_listings").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
     supabase.from("page_views").select("id", { count: "exact", head: true }).gte("created_at", todayISO),
-    // Health check queries — run in parallel, not sequentially
-    supabase.from("site_content").select("section_key, content_value").in("section_key", ["about_content", "contact_content", "terms_content", "privacy_content"]),
-    supabase.from("hero_banners").select("id", { count: "exact", head: true }).eq("is_active", true),
-    supabase.from("homepage_sections").select("section_key, is_visible"),
   ]);
 
-  const stats = {
+  [
+    usersRes,
+    photosRes,
+    topicsRes,
+    listingsRes,
+    todayUsersRes,
+    todayPhotosRes,
+    todayTopicsRes,
+    todayListingsRes,
+    todayViewsRes,
+  ].forEach((res) => {
+    if (res.error) throw res.error;
+  });
+
+  return {
     totalUsers: usersRes.count || 0,
     totalPhotos: photosRes.count || 0,
     totalTopics: topicsRes.count || 0,
     totalListings: listingsRes.count || 0,
-    pendingReports: pendingReportsRes.count || 0,
     todayUsers: todayUsersRes.count || 0,
     todayPhotos: todayPhotosRes.count || 0,
     todayTopics: todayTopicsRes.count || 0,
     todayListings: todayListingsRes.count || 0,
     todayViews: todayViewsRes.count || 0,
   };
+}
 
-  // Reports with profiles — single additional query
+async function fetchDashboardRecentReports() {
+  const [pendingReportsRes, reportsRes] = await Promise.all([
+    supabase.from("reports").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("reports").select("*").eq("status", "pending").order("created_at", { ascending: false }).limit(5),
+  ]);
+
+  if (pendingReportsRes.error) throw pendingReportsRes.error;
+  if (reportsRes.error) throw reportsRes.error;
+
   let recentReports: Report[] = [];
   if (reportsRes.data?.length) {
     const reporterIds = [...new Set(reportsRes.data.map((r) => r.reporter_id))];
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("user_id, username")
       .in("user_id", reporterIds);
+    if (profilesError) throw profilesError;
     const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
     recentReports = reportsRes.data.map((r) => ({
       ...r,
@@ -135,7 +149,23 @@ async function fetchDashboardStats(get: (key: string, fallback?: string) => stri
     }));
   }
 
-  // Health warnings — all data already fetched above
+  return {
+    pendingReports: pendingReportsRes.count || 0,
+    recentReports,
+  };
+}
+
+async function fetchDashboardHealth(get: (key: string, fallback?: string) => string) {
+  const [pagesRes, bannerCountRes, homeSectionsRes] = await Promise.all([
+    supabase.from("site_content").select("section_key, content_value").in("section_key", ["about_content", "contact_content", "terms_content", "privacy_content"]),
+    supabase.from("hero_banners").select("id", { count: "exact", head: true }).eq("is_active", true),
+    supabase.from("homepage_sections").select("section_key, is_visible"),
+  ]);
+
+  if (pagesRes.error) throw pagesRes.error;
+  if (bannerCountRes.error) throw bannerCountRes.error;
+  if (homeSectionsRes.error) throw homeSectionsRes.error;
+
   const warnings: { text: string; link: string }[] = [];
   const seoTitle = get("seo_title", "");
   const seoDesc = get("seo_description", "");
@@ -176,7 +206,7 @@ async function fetchDashboardStats(get: (key: string, fallback?: string) => stri
     }
   }
 
-  return { stats, recentReports, healthWarnings: warnings };
+  return warnings;
 }
 
 async function fetchTrendData(trendRange: number) {
@@ -211,10 +241,24 @@ export default function AdminDashboard() {
   const [trendRange, setTrendRange] = useState(7);
   const queryClient = useQueryClient();
 
-  const { data: dashData, isLoading: loading } = useQuery({
-    queryKey: ["admin-dashboard-stats"],
-    queryFn: () => fetchDashboardStats(get),
-    staleTime: 3 * 60 * 1000,
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ["admin-dashboard-kpis"],
+    queryFn: fetchDashboardKpis,
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const { data: reportData, isLoading: reportsLoading } = useQuery({
+    queryKey: ["admin-dashboard-recent-reports"],
+    queryFn: fetchDashboardRecentReports,
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const { data: healthWarnings = [], isLoading: healthLoading } = useQuery({
+    queryKey: ["admin-dashboard-health"],
+    queryFn: () => fetchDashboardHealth(get),
+    staleTime: 10 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 
@@ -225,13 +269,17 @@ export default function AdminDashboard() {
     gcTime: 10 * 60 * 1000,
   });
 
-  const stats = dashData?.stats ?? {
-    totalUsers: 0, totalPhotos: 0, totalTopics: 0, totalListings: 0,
-    pendingReports: 0, todayUsers: 0, todayPhotos: 0, todayTopics: 0,
-    todayListings: 0, todayViews: 0,
+  const stats = {
+    ...(statsData ?? {
+      totalUsers: 0, totalPhotos: 0, totalTopics: 0, totalListings: 0,
+      pendingReports: 0, todayUsers: 0, todayPhotos: 0, todayTopics: 0,
+      todayListings: 0, todayViews: 0,
+    }),
+    pendingReports: reportData?.pendingReports ?? statsData?.pendingReports ?? 0,
   };
-  const recentReports = dashData?.recentReports ?? [];
-  const healthWarnings = dashData?.healthWarnings ?? [];
+  const loading = statsLoading;
+  const recentReports = reportData?.recentReports ?? [];
+  const pendingReportsLoading = reportsLoading;
 
   const storageUsed = getNum("storage_used_mb", 0);
   const storageQuota = getNum("storage_quota_mb", 8192);
@@ -243,7 +291,7 @@ export default function AdminDashboard() {
       .update({ status: resolution, resolved_at: new Date().toISOString() })
       .eq("id", reportId);
     if (!error) {
-      queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard-recent-reports"] });
     }
   };
 
@@ -301,7 +349,15 @@ export default function AdminDashboard() {
       </div>
 
       {/* Health Warnings */}
-      {healthWarnings.length > 0 && (
+      {healthLoading ? (
+        <div className="mb-6 p-4 rounded-xl border border-border bg-card">
+          <div className="h-4 w-32 bg-muted animate-pulse rounded mb-3" />
+          <div className="space-y-2">
+            <div className="h-3 w-full bg-muted animate-pulse rounded" />
+            <div className="h-3 w-3/4 bg-muted animate-pulse rounded" />
+          </div>
+        </div>
+      ) : healthWarnings.length > 0 ? (
         <div className="mb-6 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
@@ -317,7 +373,7 @@ export default function AdminDashboard() {
             ))}
           </ul>
         </div>
-      )}
+      ) : null}
 
       {/* Trend Chart */}
       <div className="mb-6 rounded-xl border border-border bg-card p-5">
@@ -380,7 +436,16 @@ export default function AdminDashboard() {
             <h2 className="text-sm font-semibold">最新待處理檢舉</h2>
             <Link to="/admin/moderation/reports" className="text-xs text-primary hover:underline">查看全部</Link>
           </div>
-          {recentReports.length === 0 ? (
+          {pendingReportsLoading ? (
+            <div className="space-y-2 py-2">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <div key={idx} className="p-3 rounded-lg bg-muted/30">
+                  <div className="h-3 w-24 bg-muted animate-pulse rounded mb-2" />
+                  <div className="h-4 w-40 bg-muted animate-pulse rounded" />
+                </div>
+              ))}
+            </div>
+          ) : recentReports.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
               <CheckCircle className="h-4 w-4 text-green-500" />
               目前沒有待處理的檢舉

@@ -40,12 +40,16 @@ const roleLabels: Record<string, string> = { user: "一般會員", moderator: "�
 
 async function fetchAllUsers(): Promise<UserWithRole[]> {
   const [profilesRes, rolesRes, emailsRes] = await Promise.all([
-    supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("id, user_id, username, display_name, avatar_url, is_suspended, suspended_until, suspension_reason, is_vip, is_verified, warning_count, created_at")
+      .order("created_at", { ascending: false }),
     supabase.from("user_roles").select("user_id, role"),
     supabase.rpc("get_user_emails"),
   ]);
   if (profilesRes.error) throw profilesRes.error;
   if (rolesRes.error) throw rolesRes.error;
+  if (emailsRes.error) throw emailsRes.error;
 
   const roleMap = new Map(rolesRes.data?.map(r => [r.user_id, r.role]) || []);
   const emailMap = new Map((emailsRes.data as { user_id: string; email: string }[] || []).map(e => [e.user_id, e.email]));
