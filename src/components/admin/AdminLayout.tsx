@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { cn } from "@/lib/utils";
 import { AdminPageProvider, useAdminPageMeta } from "./AdminPageContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchAdminDestination, scheduleAdminWarmup } from "@/lib/adminPrefetch";
 
 interface NavGroup {
   label: string;
@@ -81,11 +83,13 @@ const Sidebar = memo(function Sidebar({
   siteLogo,
   isSidebarOpen,
   onClose,
+  onPrefetch,
 }: {
   pathname: string;
   siteLogo: string | null;
   isSidebarOpen: boolean;
   onClose: () => void;
+  onPrefetch: (href: string) => void;
 }) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => {
     const active = navGroups.find((g) => g.items.some((i) => i.href === pathname));
@@ -143,6 +147,8 @@ const Sidebar = memo(function Sidebar({
                 key={group.label}
                 to={item.href}
                 onClick={onClose}
+                onMouseEnter={() => onPrefetch(item.href)}
+                onFocus={() => onPrefetch(item.href)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -176,6 +182,8 @@ const Sidebar = memo(function Sidebar({
                         key={item.href}
                         to={item.href}
                         onClick={onClose}
+                        onMouseEnter={() => onPrefetch(item.href)}
+                        onFocus={() => onPrefetch(item.href)}
                         className={cn(
                           "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
                           isActive ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -255,12 +263,19 @@ function AdminLayoutInner() {
   const { loading, user, isAdmin, isModerator } = useAdmin();
   const { siteLogo } = useSystemSettings();
   const { title, subtitle } = useAdminPageMeta();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (loading) return;
     if (!user) { navigate("/auth"); return; }
     if (!isAdmin && !isModerator) { navigate("/"); }
   }, [loading, user, isAdmin, isModerator, navigate]);
+
+  useEffect(() => {
+    if (loading || !user || (!isAdmin && !isModerator)) return;
+    scheduleAdminWarmup(queryClient);
+    prefetchAdminDestination(queryClient, location.pathname);
+  }, [loading, user, isAdmin, isModerator, location.pathname, queryClient]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -294,6 +309,7 @@ function AdminLayoutInner() {
           siteLogo={siteLogo}
           isSidebarOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
+          onPrefetch={(href) => prefetchAdminDestination(queryClient, href)}
         />
 
         <main className="flex-1 min-h-screen min-w-0">
