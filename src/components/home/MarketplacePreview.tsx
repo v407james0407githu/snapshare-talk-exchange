@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ShieldCheck, ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight, MapPin, Clock, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -23,8 +22,6 @@ interface ListingItem {
   seller?: {
     username: string;
     display_name: string | null;
-    avatar_url: string | null;
-    is_verified: boolean;
   };
 }
 
@@ -36,10 +33,10 @@ const conditionLabels: Record<string, string> = {
 };
 
 const conditionColors: Record<string, string> = {
-  new: "bg-green-500/10 text-green-600 border-green-500/20",
-  like_new: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  good: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-  fair: "bg-muted text-muted-foreground border-border",
+  new: "bg-green-500/10 text-green-600",
+  like_new: "bg-blue-500/10 text-blue-600",
+  good: "bg-yellow-500/10 text-yellow-600",
+  fair: "bg-muted text-muted-foreground",
 };
 
 export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
@@ -57,7 +54,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
         .eq("is_hidden", false)
         .eq("is_sold", false)
         .order("created_at", { ascending: false })
-        .limit(4);
+        .limit(6);
 
       const items = (data || []) as ListingItem[];
 
@@ -65,7 +62,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
         const userIds = [...new Set(items.map((i) => i.user_id))];
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("user_id, username, display_name, avatar_url, is_verified")
+          .select("user_id, username, display_name")
           .in("user_id", userIds);
         if (profiles) {
           const map = new Map(profiles.map((p) => [p.user_id, p]));
@@ -75,8 +72,6 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
               item.seller = {
                 username: p.username,
                 display_name: p.display_name,
-                avatar_url: p.avatar_url,
-                is_verified: p.is_verified ?? false,
               };
             }
           });
@@ -88,6 +83,8 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
     };
     load();
   }, [isVisible]);
+
+  if (!isLoading && listings.length === 0) return null;
 
   return (
     <section ref={sectionRef} className="py-20 bg-muted/30">
@@ -109,104 +106,128 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
           </Link>
         </div>
 
-        <div className="flex items-center gap-3 p-4 mb-8 rounded-xl bg-primary/5 border border-primary/20">
-          <ShieldCheck className="h-6 w-6 text-primary flex-shrink-0" />
-          <p className="text-sm">
-            <span className="font-medium">防詐騙機制：</span>
-            賣家需手寫型號紙條並與實機一同拍照，確保為實物交易
-          </p>
-        </div>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          {/* Header */}
+          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b border-border text-sm font-medium text-muted-foreground">
+            <div className="col-span-6">商品</div>
+            <div className="col-span-2 text-center">品相</div>
+            <div className="col-span-2 text-center">價格</div>
+            <div className="col-span-2 text-right">刊登時間</div>
+          </div>
 
-        {!isVisible || isLoading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="aspect-square w-full bg-muted animate-pulse" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
-                  <div className="h-6 w-1/2 bg-muted animate-pulse rounded" />
-                  <div className="h-4 w-full bg-muted animate-pulse rounded" />
-                </div>
+          {/* Listings */}
+          <div className="divide-y divide-border min-h-[460px]">
+            {!isVisible || isLoading ? (
+              <div className="divide-y divide-border">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="px-6 py-4">
+                    <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
+                      <div className="col-span-6 flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-muted animate-pulse flex-shrink-0" />
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="h-4 w-3/4 bg-muted rounded animate-pulse" />
+                          <div className="h-3 w-24 bg-muted rounded animate-pulse" />
+                        </div>
+                      </div>
+                      <div className="col-span-2 hidden md:flex justify-center">
+                        <div className="h-5 w-14 bg-muted rounded animate-pulse" />
+                      </div>
+                      <div className="col-span-2 hidden md:flex justify-center">
+                        <div className="h-5 w-20 bg-muted rounded animate-pulse" />
+                      </div>
+                      <div className="col-span-2 hidden md:flex justify-end">
+                        <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {listings.map((item) => (
-              <Link
-                key={item.id}
-                to={`/marketplace/${item.id}`}
-                className="group bg-card rounded-xl border border-border overflow-hidden md:hover-lift"
-              >
-                {/* Fixed aspect-ratio — prevents CLS */}
-                <div className="aspect-square overflow-hidden relative bg-muted">
-                  <img
-                    src={item.verification_image_url}
-                    alt={item.title}
-                    width={400}
-                    height={400}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <Badge
-                    variant="outline"
-                    className={`absolute top-3 left-3 ${conditionColors[item.condition] || ""}`}
-                  >
-                    {conditionLabels[item.condition] || item.condition}
-                  </Badge>
-                </div>
-
-                <div className="p-4">
-                  <h3 className="font-medium line-clamp-2 mb-2 group-hover:text-primary transition-colors">
-                    {item.title}
-                  </h3>
-
-                  <div className="text-xl font-bold text-primary mb-3">
-                    NT$ {item.price.toLocaleString()}
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                    {item.location && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {item.location}
+            ) : (
+              listings.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/marketplace/${item.id}`}
+                  className="block px-6 py-4 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
+                    {/* Thumbnail + Title */}
+                    <div className="col-span-6 flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        <img
+                          src={item.verification_image_url}
+                          alt={item.title}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
                       </div>
-                    )}
-                    {item.is_verified && (
-                      <div className="flex items-center gap-1 text-primary">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        已認證
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          {item.is_verified && (
+                            <ShieldCheck className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                          )}
+                          <h3 className="font-medium text-foreground line-clamp-1">
+                            {item.title}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="truncate">
+                            {item.seller?.display_name || item.seller?.username || "賣家"}
+                          </span>
+                          {item.location && (
+                            <>
+                              <span>·</span>
+                              <span className="flex items-center gap-0.5">
+                                <MapPin className="h-3 w-3" />
+                                {item.location}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="flex items-center gap-2 pt-2 border-t border-border">
-                    <Avatar className="h-5 w-5">
-                      <AvatarImage src={item.seller?.avatar_url || undefined} />
-                      <AvatarFallback className="text-[10px]">
-                        {item.seller?.username?.[0] || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {item.seller?.display_name || item.seller?.username || "賣家"}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-auto">
-                      {formatDistanceToNow(new Date(item.created_at), {
-                        addSuffix: true,
-                        locale: zhTW,
-                      })}
-                    </span>
+                    {/* Condition - desktop */}
+                    <div className="col-span-2 hidden md:flex justify-center">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${conditionColors[item.condition] || ""}`}>
+                        {conditionLabels[item.condition] || item.condition}
+                      </span>
+                    </div>
+
+                    {/* Price - desktop */}
+                    <div className="col-span-2 hidden md:flex justify-center">
+                      <span className="font-bold text-primary">
+                        NT$ {item.price.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Time - desktop */}
+                    <div className="col-span-2 hidden md:flex items-center justify-end gap-1 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: zhTW })}
+                    </div>
+
+                    {/* Mobile meta row */}
+                    <div className="flex items-center gap-3 mt-2 md:hidden text-sm text-muted-foreground">
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${conditionColors[item.condition] || ""}`}>
+                        {conditionLabels[item.condition] || item.condition}
+                      </span>
+                      <span className="font-bold text-primary text-sm">
+                        NT$ {item.price.toLocaleString()}
+                      </span>
+                      <span className="flex items-center gap-1 ml-auto">
+                        <Clock className="h-3.5 w-3.5" />
+                        {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: zhTW })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))
+            )}
           </div>
-        )}
-
-        {!isLoading && listings.length === 0 && (
-          <p className="text-center text-muted-foreground py-8">目前沒有商品上架</p>
-        )}
+        </div>
 
         <div className="mt-8 text-center sm:hidden">
           <Link to="/marketplace">
