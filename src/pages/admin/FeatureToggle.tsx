@@ -60,7 +60,7 @@ export default function FeatureToggle() {
         .eq("setting_type", "boolean")
         .order("sort_order");
       if (error) throw error;
-      return data as FeatureSetting[];
+      return (data as FeatureSetting[]).filter(f => !EXCLUDED_FEATURE_KEYS.has(f.setting_key));
     },
   });
 
