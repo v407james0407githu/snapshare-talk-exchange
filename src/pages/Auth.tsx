@@ -15,6 +15,7 @@ import { lovable } from '@/integrations/lovable/index';
 import { Separator } from '@/components/ui/separator';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { preloadAdminRoute, scheduleAdminWarmup } from '@/lib/adminPrefetch';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的電子郵件'),
@@ -66,8 +67,10 @@ export default function Auth() {
 
   const preloadAdminShell = async () => {
     await Promise.allSettled([
-      import('@/components/admin/AdminLayout'),
-      import('@/pages/admin/AdminDashboard'),
+      Promise.resolve(preloadAdminRoute('/admin')),
+      Promise.resolve(preloadAdminRoute('/admin/community/photos')),
+      Promise.resolve(preloadAdminRoute('/admin/members')),
+      Promise.resolve(preloadAdminRoute('/admin/moderation/reports')),
     ]);
   };
 
@@ -95,6 +98,7 @@ export default function Auth() {
     const roles = await getAdminRoleState(userId);
     if (roles.isAdmin || roles.isModerator) {
       await preloadAdminShell();
+      scheduleAdminWarmup(queryClient);
       return '/admin';
     }
 
