@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -13,6 +13,8 @@ import VerificationPending from '@/components/auth/VerificationPending';
 import ForgotPasswordDialog from '@/components/auth/ForgotPasswordDialog';
 import { lovable } from '@/integrations/lovable/index';
 import { Separator } from '@/components/ui/separator';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的電子郵件'),
@@ -59,12 +61,74 @@ export default function Auth() {
   const { signIn, signUp, user } = useAuth();
   const { siteLogo } = useSystemSettings();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const handledRedirectRef = useRef(false);
+
+  const preloadAdminShell = async () => {
+    await Promise.allSettled([
+      import('@/components/admin/AdminLayout'),
+      import('@/pages/admin/AdminDashboard'),
+    ]);
+  };
+
+  const getAdminRoleState = async (userId: string) => {
+    const [adminRes, modRes] = await Promise.all([
+      supabase.rpc('has_role', { _user_id: userId, _role: 'admin' }),
+      supabase.rpc('has_role', { _user_id: userId, _role: 'moderator' }),
+    ]);
+
+    if (adminRes.error) throw adminRes.error;
+    if (modRes.error) throw modRes.error;
+
+    const roles = {
+      isAdmin: Boolean(adminRes.data),
+      isModerator: Boolean(modRes.data),
+    };
+
+    queryClient.setQueryData(['user-roles', userId], roles);
+    return roles;
+  };
+
+  const resolvePostLoginDestination = async (userId: string) => {
+    if (from && from !== '/') return from;
+
+    const roles = await getAdminRoleState(userId);
+    if (roles.isAdmin || roles.isModerator) {
+      await preloadAdminShell();
+      return '/admin';
+    }
+
+    return '/';
+  };
 
   useEffect(() => {
-    if (user) {
-      // 登入成功後，如果有來源頁面則導回該頁，否則導回首頁
-      navigate(from, { replace: true });
+    let cancelled = false;
+
+    const redirectIfNeeded = async () => {
+      if (!user || handledRedirectRef.current) return;
+
+      handledRedirectRef.current = true;
+      try {
+        const destination = await resolvePostLoginDestination(user.id);
+        if (!cancelled) {
+          navigate(destination, { replace: true });
+        }
+      } catch {
+        if (!cancelled) {
+          navigate(from || '/', { replace: true });
+        }
+      }
+    };
+
+    if (!user) {
+      handledRedirectRef.current = false;
+    } else {
+      redirectIfNeeded();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, navigate, from]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -98,7 +162,14 @@ export default function Auth() {
           setErrors({ form: error.message });
         }
       } else {
-        navigate('/');
+        const { data: { user: signedInUser } } = await supabase.auth.getUser();
+        if (!signedInUser) {
+          throw new Error('登入成功，但無法取得使用者資訊');
+        }
+
+        handledRedirectRef.current = true;
+        const destination = await resolvePostLoginDestination(signedInUser.id);
+        navigate(destination, { replace: true });
       }
     } catch (err) {
       setErrors({ form: '發生未知錯誤，請稍後再試' });
