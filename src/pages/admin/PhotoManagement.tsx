@@ -267,7 +267,7 @@ function PhotoCard({
 
 export default function PhotoManagement() {
   const queryClient = useQueryClient();
-  const [photos, setPhotos] = useState<PhotoRow[]>([]);
+  const [localPhotos, setLocalPhotos] = useState<PhotoRow[] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "featured" | "hidden">("all");
