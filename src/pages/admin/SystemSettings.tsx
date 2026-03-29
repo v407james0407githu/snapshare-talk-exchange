@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAdminPage } from "@/components/admin/AdminPageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,9 +31,17 @@ const groupConfig: Record<string, { label: string; icon: React.ReactNode; descri
   email: { label: "郵件模板", icon: <Mail className="h-4 w-4" />, description: "自訂郵件樣式與內容模板" },
 };
 
-// Filter out 'features' group — managed in FeatureToggle page
 const EXCLUDED_GROUPS = new Set(["features"]);
 const EXCLUDED_KEYS = new Set(["plan_bandwidth_gb", "plan_storage_gb"]);
+
+/** Detect footer section prefixes and group settings by section */
+const FOOTER_SECTION_PREFIXES = [
+  { prefix: "footer_community_", label: "社群區塊" },
+  { prefix: "footer_photo_", label: "攝影區塊" },
+  { prefix: "footer_section3_", label: "區塊 3" },
+  { prefix: "footer_section4_", label: "區塊 4" },
+  { prefix: "footer_section5_", label: "區塊 5" },
+];
 
 export default function SystemSettings() {
   const queryClient = useQueryClient();
@@ -63,7 +71,6 @@ export default function SystemSettings() {
             .from("system_settings")
             .update({ setting_value: value, updated_at: new Date().toISOString(), updated_by: user?.id })
             .eq("id", id);
-
           if (error) throw error;
         })
       );
@@ -92,6 +99,172 @@ export default function SystemSettings() {
 
   const hasChanges = Object.keys(editedValues).length > 0;
   const groupKeys = Object.keys(groupConfig).filter((k) => groups[k]);
+
+  // ---------- Render helpers ----------
+
+  const renderEditBadge = () => (
+    <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">已修改</span>
+  );
+
+  const renderSettingField = (setting: SystemSetting) => {
+    const val = getValue(setting);
+    if (setting.setting_type === "image") {
+      return (
+        <LogoUpload
+          value={val}
+          onChange={(url) => setValue(setting, url)}
+          {...(setting.setting_key === "site_favicon_url" ? {
+            placeholder: "尚未設定 Favicon，將顯示預設圖示",
+            uploadLabel: "上傳新 Favicon",
+            hint: "建議尺寸：32×32px 或 64×64px，PNG、ICO 或 SVG 格式，最大 2MB",
+          } : {})}
+        />
+      );
+    }
+    if (setting.setting_type === "boolean") {
+      return (
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={val === "true"}
+            onCheckedChange={(checked) => setValue(setting, checked ? "true" : "false")}
+          />
+          <span className="text-sm text-muted-foreground">
+            {val === "true" ? "啟用" : "停用"}
+          </span>
+        </div>
+      );
+    }
+    if (setting.setting_type === "textarea") {
+      return <Textarea value={val} onChange={(e) => setValue(setting, e.target.value)} rows={4} />;
+    }
+    if (setting.setting_type === "number") {
+      return <Input type="number" value={val} onChange={(e) => setValue(setting, e.target.value)} />;
+    }
+    return <Input value={val} onChange={(e) => setValue(setting, e.target.value)} />;
+  };
+
+  /** Default group: each field on its own row */
+  const renderDefaultGroup = (items: SystemSetting[]) => (
+    <div className="space-y-5">
+      {items.map((setting) => {
+        const isEdited = editedValues[setting.id] !== undefined;
+        return (
+          <div key={setting.id} className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label className={isEdited ? "text-primary" : ""}>{setting.setting_label}</Label>
+              {isEdited && renderEditBadge()}
+            </div>
+            {renderSettingField(setting)}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  /** Footer group: compact two-column layout per section */
+  const renderFooterGroup = (items: SystemSetting[]) => {
+    const byKey = new Map(items.map((s) => [s.setting_key, s]));
+
+    return (
+      <div className="space-y-6">
+        {FOOTER_SECTION_PREFIXES.map(({ prefix, label: sectionLabel }) => {
+          const enabledSetting = byKey.get(`${prefix}enabled`);
+          const titleSetting = byKey.get(`${prefix}title`);
+          if (!enabledSetting && !titleSetting) return null;
+
+          const links: { labelSetting?: SystemSetting; urlSetting?: SystemSetting }[] = [];
+          for (let i = 1; i <= 4; i++) {
+            const ls = byKey.get(`${prefix}label_${i}`);
+            const us = byKey.get(`${prefix}url_${i}`);
+            if (ls || us) links.push({ labelSetting: ls, urlSetting: us });
+          }
+
+          const enabledVal = enabledSetting ? getValue(enabledSetting) : "true";
+          const isCollapsed = enabledVal !== "true";
+
+          return (
+            <div key={prefix} className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              {/* Row 1: title + switch side by side */}
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-center">
+                <div className="space-y-1">
+                  {titleSetting && (
+                    <div className="flex items-center gap-2">
+                      <Label className={`text-sm font-semibold ${editedValues[titleSetting.id] !== undefined ? "text-primary" : ""}`}>
+                        {sectionLabel} 標題
+                      </Label>
+                      {editedValues[titleSetting.id] !== undefined && renderEditBadge()}
+                    </div>
+                  )}
+                  {titleSetting && (
+                    <Input
+                      value={getValue(titleSetting)}
+                      onChange={(e) => setValue(titleSetting, e.target.value)}
+                      placeholder={sectionLabel}
+                      className="max-w-sm"
+                    />
+                  )}
+                </div>
+                {enabledSetting && (
+                  <div className="flex items-center gap-2 md:justify-end">
+                    <Switch
+                      checked={enabledVal === "true"}
+                      onCheckedChange={(checked) => setValue(enabledSetting, checked ? "true" : "false")}
+                    />
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      {enabledVal === "true" ? "啟用" : "停用"}
+                    </span>
+                    {editedValues[enabledSetting.id] !== undefined && renderEditBadge()}
+                  </div>
+                )}
+              </div>
+
+              {/* Link rows: label + url side by side */}
+              {!isCollapsed && links.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  {links.map(({ labelSetting, urlSetting }, idx) => (
+                    <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {labelSetting && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <Label className={`text-xs ${editedValues[labelSetting.id] !== undefined ? "text-primary" : "text-muted-foreground"}`}>
+                              連結 {idx + 1} 名稱
+                            </Label>
+                            {editedValues[labelSetting.id] !== undefined && renderEditBadge()}
+                          </div>
+                          <Input
+                            value={getValue(labelSetting)}
+                            onChange={(e) => setValue(labelSetting, e.target.value)}
+                            placeholder="名稱"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+                      {urlSetting && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <Label className={`text-xs ${editedValues[urlSetting.id] !== undefined ? "text-primary" : "text-muted-foreground"}`}>
+                              連結 {idx + 1} 網址
+                            </Label>
+                            {editedValues[urlSetting.id] !== undefined && renderEditBadge()}
+                          </div>
+                          <Input
+                            value={getValue(urlSetting)}
+                            onChange={(e) => setValue(urlSetting, e.target.value)}
+                            placeholder="https://..."
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -141,54 +314,10 @@ export default function SystemSettings() {
                   </CardTitle>
                   <CardDescription>{groupConfig[groupKey]?.description}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {groups[groupKey]?.map((setting) => {
-                    const val = getValue(setting);
-                    const isEdited = editedValues[setting.id] !== undefined;
-
-                    return (
-                      <div key={setting.id} className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Label className={isEdited ? "text-primary" : ""}>
-                            {setting.setting_label}
-                          </Label>
-                          {isEdited && (
-                            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                              已修改
-                            </span>
-                          )}
-                        </div>
-
-                        {setting.setting_type === "image" ? (
-                          <LogoUpload
-                            value={val}
-                            onChange={(url) => setValue(setting, url)}
-                            {...(setting.setting_key === "site_favicon_url" ? {
-                              placeholder: "尚未設定 Favicon，將顯示預設圖示",
-                              uploadLabel: "上傳新 Favicon",
-                              hint: "建議尺寸：32×32px 或 64×64px，PNG、ICO 或 SVG 格式，最大 2MB",
-                            } : {})}
-                          />
-                        ) : setting.setting_type === "boolean" ? (
-                          <div className="flex items-center gap-3">
-                            <Switch
-                              checked={val === "true"}
-                              onCheckedChange={(checked) => setValue(setting, checked ? "true" : "false")}
-                            />
-                            <span className="text-sm text-muted-foreground">
-                              {val === "true" ? "啟用" : "停用"}
-                            </span>
-                          </div>
-                        ) : setting.setting_type === "textarea" ? (
-                          <Textarea value={val} onChange={(e) => setValue(setting, e.target.value)} rows={4} />
-                        ) : setting.setting_type === "number" ? (
-                          <Input type="number" value={val} onChange={(e) => setValue(setting, e.target.value)} />
-                        ) : (
-                          <Input value={val} onChange={(e) => setValue(setting, e.target.value)} />
-                        )}
-                      </div>
-                    );
-                  })}
+                <CardContent>
+                  {groupKey === "footer"
+                    ? renderFooterGroup(groups[groupKey] || [])
+                    : renderDefaultGroup(groups[groupKey] || [])}
                 </CardContent>
               </Card>
             </TabsContent>
