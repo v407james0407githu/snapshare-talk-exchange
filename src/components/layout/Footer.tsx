@@ -75,7 +75,8 @@ export function Footer() {
   // Filter to only enabled sections with at least one visible link
   const enabledSections = footerSections.filter((section) => {
     if (!getBool(section.enabledKey)) return false;
-    return section.links.some((l) => get(l.urlKey, l.defaultUrl));
+    // Show section if it has a title OR at least one link with a label
+    return section.links.some((l) => get(l.labelKey, l.defaultLabel));
   });
 
   // Determine grid columns based on enabled sections count (logo col + section cols)
@@ -131,9 +132,8 @@ export function Footer() {
           {/* Dynamic Nav Link Sections (up to 5) */}
           {enabledSections.map((section) => {
             const visibleLinks = section.links.filter((l) => {
-              const url = get(l.urlKey, l.defaultUrl);
               const label = get(l.labelKey, l.defaultLabel);
-              return url && label;
+              return !!label;
             });
             if (visibleLinks.length === 0) return null;
             return (
