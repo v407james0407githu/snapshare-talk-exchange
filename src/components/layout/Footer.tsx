@@ -142,16 +142,24 @@ export function Footer() {
                   {get(section.titleKey, section.defaultTitle)}
                 </h4>
                 <ul className="space-y-2.5">
-                  {visibleLinks.map((link) => (
-                    <li key={link.urlKey}>
-                      <Link
-                        to={get(link.urlKey, link.defaultUrl)}
-                        className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        {get(link.labelKey, link.defaultLabel)}
-                      </Link>
-                    </li>
-                  ))}
+                  {visibleLinks.map((link) => {
+                    const url = get(link.urlKey, link.defaultUrl);
+                    const label = get(link.labelKey, link.defaultLabel);
+                    return (
+                      <li key={link.urlKey}>
+                        {url ? (
+                          <Link
+                            to={url}
+                            className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            {label}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">{label}</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );
