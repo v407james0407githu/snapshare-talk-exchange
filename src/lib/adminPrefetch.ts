@@ -683,7 +683,7 @@ export function scheduleAdminWarmup(queryClient: QueryClient) {
 
   if (typeof window !== "undefined" && "requestIdleCallback" in window) {
     (window as any).requestIdleCallback(() => run());
-  } else {
+  } else if (typeof window !== "undefined") {
     window.setTimeout(run, 250);
   }
 }
