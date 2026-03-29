@@ -416,7 +416,7 @@ export function PhotoUpload() {
               <>
                 <div className="space-y-2">
                   <Label htmlFor="cameraBody">機身</Label>
-                  {brand !== 'other' && modelOptions && modelOptions.length > 0 ? (
+                  {brand !== 'other' && modelOptions && modelOptions.length > 0 && cameraBody !== '__other__' ? (
                     <Select value={cameraBody} onValueChange={setCameraBody}>
                       <SelectTrigger>
                         <SelectValue placeholder="選擇機身" />
@@ -428,20 +428,20 @@ export function PhotoUpload() {
                         <SelectItem value="__other__">其他（手動輸入）</SelectItem>
                       </SelectContent>
                     </Select>
+                  ) : cameraBody === '__other__' ? (
+                    <Input
+                      id="cameraBody"
+                      value=""
+                      onChange={(e) => { if (e.target.value) setCameraBody(e.target.value); }}
+                      placeholder="請輸入機身名稱"
+                      autoFocus
+                    />
                   ) : (
                     <Input
                       id="cameraBody"
                       value={cameraBody}
                       onChange={(e) => setCameraBody(e.target.value)}
                       placeholder="例如：Sony A7IV"
-                    />
-                  )}
-                  {cameraBody === '__other__' && (
-                    <Input
-                      className="mt-2"
-                      value=""
-                      onChange={(e) => setCameraBody(e.target.value)}
-                      placeholder="請輸入機身名稱"
                     />
                   )}
                 </div>
