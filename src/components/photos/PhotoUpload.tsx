@@ -76,6 +76,9 @@ interface UploadedFile {
 export function PhotoUpload() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { data: brandOptions } = useBrandOptions();
+  const phoneBrands = brandOptions?.phoneBrands ?? [];
+  const cameraBrands = brandOptions?.cameraBrands ?? [];
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
