@@ -20,6 +20,7 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 interface UploadedFile {
   file: File;
@@ -45,12 +46,46 @@ export default function CreateListing() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
+  const [customBrand, setCustomBrand] = useState('');
   const [model, setModel] = useState('');
+  const [customModel, setCustomModel] = useState('');
   const [condition, setCondition] = useState('');
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState('');
 
-  useEffect(() => {
+  // Fetch brands from brand_models for selected category
+  const { data: availableBrands } = useQuery({
+    queryKey: ["listing-brands", category],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brand_models")
+        .select("brand")
+        .eq("category", category)
+        .order("brand");
+      if (error) throw error;
+      return [...new Set((data || []).map(d => d.brand))];
+    },
+    enabled: category === "phone" || category === "camera",
+  });
+
+  // Fetch models for selected brand
+  const { data: availableModels } = useQuery({
+    queryKey: ["listing-models", category, brand],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brand_models")
+        .select("model_name")
+        .eq("category", category)
+        .eq("brand", brand)
+        .order("sort_order");
+      if (error) throw error;
+      return (data || []).map(d => d.model_name).filter(m => m !== "（預設型號）");
+    },
+    enabled: !!brand && brand !== "__other__",
+  });
+
+  const effectiveBrand = brand === "__other__" ? customBrand : brand;
+  const effectiveModel = model === "__other__" ? customModel : model;
     if (!loading && !user) {
       navigate('/auth');
     }
