@@ -1,63 +1,52 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Smartphone, Camera, Wrench, Coffee, ShoppingBag } from "lucide-react";
+import { Smartphone, Camera, ShoppingBag } from "lucide-react";
+
+export interface MarketplaceBrand {
+  category: string;
+  brand: string;
+}
 
 export interface MarketplaceCategory {
   id: string;
   name: string;
   slug: string;
-  description: string | null;
-  icon: string | null;
-  color: string | null;
-  parent_id: string | null;
-  sort_order: number;
-  is_active: boolean;
-  children?: MarketplaceCategory[];
+  icon: React.ReactNode;
+  brands: string[];
 }
 
-const iconMap: Record<string, React.ReactNode> = {
-  Smartphone: <Smartphone className="h-5 w-5" />,
-  Camera: <Camera className="h-5 w-5" />,
-  Wrench: <Wrench className="h-5 w-5" />,
-  Coffee: <Coffee className="h-5 w-5" />,
-  ShoppingBag: <ShoppingBag className="h-5 w-5" />,
-};
-
-const colorMap: Record<string, string> = {
-  green: "bg-green-500/10 text-green-600 border-green-500/20",
-  blue: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  purple: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-  orange: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-};
-
-export const getCategoryColor = (color: string | null) =>
-  colorMap[color || ""] || "bg-muted text-muted-foreground";
-
-export const getCategoryIcon = (icon: string | null) =>
-  iconMap[icon || ""] || <span className="text-lg">{icon || "📁"}</span>;
-
-export function useMarketplaceCategories() {
+export function useMarketplaceBrands() {
   return useQuery({
-    queryKey: ["marketplace-categories"],
+    queryKey: ["marketplace-brands"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("marketplace_categories" as any)
-        .select("*")
-        .eq("is_active", true)
-        .order("sort_order");
+        .from("brand_models")
+        .select("category, brand")
+        .order("brand");
       if (error) throw error;
-      const cats = data as unknown as MarketplaceCategory[];
-      const roots = cats.filter((c) => !c.parent_id);
-      const children = cats.filter((c) => c.parent_id);
-      return roots.map((root) => ({
-        ...root,
-        children: children
-          .filter((c) => c.parent_id === root.id)
-          .sort((a, b) => a.sort_order - b.sort_order),
-      }));
+
+      const phoneBrands = [...new Set((data || []).filter(d => d.category === "phone").map(d => d.brand))];
+      const cameraBrands = [...new Set((data || []).filter(d => d.category === "camera").map(d => d.brand))];
+
+      const categories: MarketplaceCategory[] = [
+        { id: "phone", name: "手機", slug: "phone", icon: <Smartphone className="h-5 w-5" />, brands: phoneBrands },
+        { id: "camera", name: "相機", slug: "camera", icon: <Camera className="h-5 w-5" />, brands: cameraBrands },
+      ];
+      return categories;
     },
   });
 }
+
+// Keep old hook name for compatibility but redirect
+export function useMarketplaceCategories() {
+  return useMarketplaceBrands();
+}
+
+export const getCategoryColor = (_color: string | null) => "bg-muted text-muted-foreground";
+export const getCategoryIcon = (icon: string | null) =>
+  icon === "Smartphone" ? <Smartphone className="h-5 w-5" /> :
+  icon === "Camera" ? <Camera className="h-5 w-5" /> :
+  <ShoppingBag className="h-5 w-5" />;
 
 interface MarketplaceCategorySidebarProps {
   categories: MarketplaceCategory[] | undefined;
@@ -98,32 +87,31 @@ export function MarketplaceCategorySidebar({
                   : "hover:bg-muted/50"
               }`}
             >
-              <div className={`p-2 rounded-lg border ${getCategoryColor(cat.color)}`}>
-                {getCategoryIcon(cat.icon)}
+              <div className="p-2 rounded-lg border bg-muted">
+                {cat.icon}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium group-hover:text-primary transition-colors">
                   {cat.name}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {listingCounts[cat.name] || 0} 件商品
+                  {listingCounts[cat.slug] || 0} 件商品
                 </div>
               </div>
             </button>
-            {selectedCategory === cat.id && cat.children && cat.children.length > 0 && (
+            {selectedCategory === cat.id && cat.brands.length > 0 && (
               <div className="ml-6 mt-1 space-y-1">
-                {cat.children.map((sub) => (
+                {cat.brands.map((brand) => (
                   <button
-                    key={sub.id}
-                    onClick={() => onSelectSubCategory(sub.id)}
+                    key={brand}
+                    onClick={() => onSelectSubCategory(brand)}
                     className={`flex items-center gap-2 p-2 rounded-lg text-sm w-full text-left transition-colors ${
-                      selectedSubCategory === sub.id
+                      selectedSubCategory === brand
                         ? "bg-primary/10 text-primary"
                         : "hover:bg-muted/50 text-muted-foreground"
                     }`}
                   >
-                    {sub.icon && <span>{sub.icon}</span>}
-                    <span>{sub.name}</span>
+                    <span>{brand}</span>
                   </button>
                 ))}
               </div>
