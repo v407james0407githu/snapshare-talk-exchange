@@ -70,7 +70,7 @@ const navGroups: NavGroup[] = [
       { label: "二手管理", href: "/admin/community/marketplace", icon: Store },
       
       { label: "討論分類", href: "/admin/community/categories", icon: Tag },
-      
+      { label: "市集分類", href: "/admin/community/marketplace-categories", icon: Tag },
     ],
   },
   {
