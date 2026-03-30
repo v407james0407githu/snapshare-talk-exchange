@@ -199,8 +199,30 @@ export default function Marketplace() {
             </div>
           </aside>
 
-          {/* Main Content */}
           <main className="lg:col-span-3">
+            {/* View mode toggle */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">{filteredListings.length} 件商品</p>
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setViewMode('list')}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -215,7 +237,76 @@ export default function Marketplace() {
                   </p>
                 </CardContent>
               </Card>
+            ) : viewMode === 'list' ? (
+              /* List view - discussion style */
+              <div className="bg-card rounded-xl border border-border overflow-hidden">
+                {/* Header row - desktop */}
+                <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 border-b border-border bg-muted/50 text-xs font-medium text-muted-foreground">
+                  <div className="col-span-5">商品</div>
+                  <div className="col-span-2">品相</div>
+                  <div className="col-span-2 text-right">價格</div>
+                  <div className="col-span-1 text-center">瀏覽</div>
+                  <div className="col-span-2 text-right">時間</div>
+                </div>
+                {filteredListings.map((listing, idx) => (
+                  <Link key={listing.id} to={`/marketplace/${listing.id}`}>
+                    <div className={`hover:bg-muted/30 transition-colors ${idx < filteredListings.length - 1 ? 'border-b border-border' : ''} ${listing.is_sold ? 'opacity-60' : ''}`}>
+                      {/* Desktop */}
+                      <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 items-center">
+                        <div className="col-span-5 flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-muted">
+                            <img src={listing.verification_image_url} alt={listing.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium text-sm line-clamp-1">{listing.title}</h3>
+                              {listing.is_sold && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">已售出</Badge>}
+                              {!listing.is_sold && listing.is_verified && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 text-primary gap-0.5"><ShieldCheck className="h-2.5 w-2.5" />已驗證</Badge>}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {listing.profiles?.username}{listing.brand ? ` · ${listing.brand}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <Badge variant="outline" className="text-xs">{conditionLabels[listing.condition]}</Badge>
+                        </div>
+                        <div className="col-span-2 text-right">
+                          <span className="font-bold text-primary">${listing.price.toLocaleString()}</span>
+                        </div>
+                        <div className="col-span-1 text-center text-xs text-muted-foreground">
+                          {listing.view_count}
+                        </div>
+                        <div className="col-span-2 text-right text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(listing.created_at), { addSuffix: true, locale: zhTW })}
+                        </div>
+                      </div>
+                      {/* Mobile */}
+                      <div className="md:hidden px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-muted">
+                            <img src={listing.verification_image_url} alt={listing.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium text-sm line-clamp-1">{listing.title}</h3>
+                              {listing.is_sold && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">已售出</Badge>}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <Badge variant="outline" className="text-[10px]">{conditionLabels[listing.condition]}</Badge>
+                              <span className="font-bold text-primary">${listing.price.toLocaleString()}</span>
+                              <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" />{listing.view_count}</span>
+                              <span>{formatDistanceToNow(new Date(listing.created_at), { addSuffix: true, locale: zhTW })}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             ) : (
+              /* Grid view - card style */
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredListings.map((listing) => (
                   <Link key={listing.id} to={`/marketplace/${listing.id}`}>
