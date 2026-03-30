@@ -60,7 +60,7 @@ const CommunityMarketplace = lazy(() => import("./pages/admin/CommunityMarketpla
 const MemberRoles = lazy(() => import("./pages/admin/MemberRoles"));
 const FeatureToggle = lazy(() => import("./pages/admin/FeatureToggle"));
 
-const MarketplaceCategoryManagement = lazy(() => import("./pages/admin/MarketplaceCategoryManagement"));
+
 
 function PageFallback() {
   return (
