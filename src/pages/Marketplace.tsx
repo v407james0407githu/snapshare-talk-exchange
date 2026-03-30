@@ -98,12 +98,9 @@ export default function Marketplace() {
       const cat = categories.find(c => c.id === selectedCategory);
       if (cat) {
         if (selectedSubCategory) {
-          const sub = cat.children?.find(s => s.id === selectedSubCategory);
-          if (sub) matchesCategory = listing.brand === sub.name;
+          matchesCategory = listing.brand === selectedSubCategory;
         } else {
-          // Match by category name → listing.category mapping
-          const catSlug = cat.slug;
-          matchesCategory = listing.category === catSlug || listing.category === cat.name;
+          matchesCategory = listing.category === cat.slug || listing.category === cat.name;
         }
       }
     }
@@ -111,12 +108,11 @@ export default function Marketplace() {
     return matchesSearch && matchesCondition && matchesCategory;
   });
 
-  // Count listings per category name
+  // Count listings per category slug
   const listingCounts: Record<string, number> = {};
   listings.forEach(l => {
-    // Map slug back to category name
     const cat = categories?.find(c => c.slug === l.category || c.name === l.category);
-    if (cat) listingCounts[cat.name] = (listingCounts[cat.name] || 0) + 1;
+    if (cat) listingCounts[cat.slug] = (listingCounts[cat.slug] || 0) + 1;
   });
 
   const handleCategoryChange = (catId: string | null) => {

@@ -20,6 +20,7 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 interface UploadedFile {
   file: File;
@@ -45,16 +46,60 @@ export default function CreateListing() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [brand, setBrand] = useState('');
+  const [customBrand, setCustomBrand] = useState('');
   const [model, setModel] = useState('');
+  const [customModel, setCustomModel] = useState('');
   const [condition, setCondition] = useState('');
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState('');
+
+  // Fetch brands from brand_models for selected category
+  const { data: availableBrands } = useQuery({
+    queryKey: ["listing-brands", category],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brand_models")
+        .select("brand")
+        .eq("category", category)
+        .order("brand");
+      if (error) throw error;
+      return [...new Set((data || []).map(d => d.brand))];
+    },
+    enabled: category === "phone" || category === "camera",
+  });
+
+  // Fetch models for selected brand
+  const { data: availableModels } = useQuery({
+    queryKey: ["listing-models", category, brand],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brand_models")
+        .select("model_name")
+        .eq("category", category)
+        .eq("brand", brand)
+        .order("sort_order");
+      if (error) throw error;
+      return (data || []).map(d => d.model_name).filter(m => m !== "（預設型號）");
+    },
+    enabled: !!brand && brand !== "__other__",
+  });
+
+  const effectiveBrand = brand === "__other__" ? customBrand : brand;
+  const effectiveModel = model === "__other__" ? customModel : model;
 
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  // Reset brand/model when category changes
+  useEffect(() => {
+    setBrand('');
+    setModel('');
+    setCustomBrand('');
+    setCustomModel('');
+  }, [category]);
 
   const handleVerificationUpload = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -192,8 +237,8 @@ export default function CreateListing() {
           title,
           description,
           category,
-          brand: brand || null,
-          model: model || null,
+          brand: effectiveBrand || null,
+          model: effectiveModel || null,
           condition,
           price: parseFloat(price),
           location: location || null,
@@ -393,27 +438,93 @@ export default function CreateListing() {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brand">品牌</Label>
-                  <Input
-                    id="brand"
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    placeholder="例如：Sony、Canon、Apple"
-                  />
-                </div>
+              {(category === "phone" || category === "camera") ? (
+                <>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>品牌</Label>
+                      <Select value={brand} onValueChange={(v) => { setBrand(v); setModel(''); setCustomModel(''); }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="選擇品牌" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableBrands?.map((b) => (
+                            <SelectItem key={b} value={b}>{b}</SelectItem>
+                          ))}
+                          <SelectItem value="__other__">其他</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {brand === "__other__" && (
+                        <Input
+                          value={customBrand}
+                          onChange={(e) => setCustomBrand(e.target.value)}
+                          placeholder="輸入品牌名稱"
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="model">型號</Label>
-                  <Input
-                    id="model"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="例如：A7IV、iPhone 15 Pro"
-                  />
+                    <div className="space-y-2">
+                      <Label>型號</Label>
+                      {brand && brand !== "__other__" ? (
+                        <Select value={model} onValueChange={setModel}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="選擇型號" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableModels?.map((m) => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
+                            <SelectItem value="__other__">其他</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : brand === "__other__" ? (
+                        <Input
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          placeholder="輸入型號名稱"
+                        />
+                      ) : (
+                        <Select disabled>
+                          <SelectTrigger>
+                            <SelectValue placeholder="請先選擇品牌" />
+                          </SelectTrigger>
+                          <SelectContent />
+                        </Select>
+                      )}
+                      {model === "__other__" && brand !== "__other__" && (
+                        <Input
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          placeholder="輸入型號名稱"
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="brand">品牌</Label>
+                    <Input
+                      id="brand"
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      placeholder="例如：Sony、Canon、Apple"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model">型號</Label>
+                    <Input
+                      id="model"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      placeholder="例如：A7IV、iPhone 15 Pro"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
