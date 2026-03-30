@@ -7,11 +7,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, ShoppingBag, CheckCircle, EyeOff, Eye, Package, ShieldCheck } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Loader2, ShoppingBag, CheckCircle, Eye, Package, ShieldCheck, Smartphone, Camera, Plus, X, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface ListingRow {
   id: string;
@@ -72,6 +75,184 @@ async function fetchListingsPage(debouncedSearch: string, filter: string, page: 
   }));
 }
 
+/* ─── Model Management (inline) ─── */
+
+interface BrandModel {
+  id: string;
+  category: string;
+  brand: string;
+  model_name: string;
+  sort_order: number;
+}
+
+function useBrandList() {
+  return useQuery({
+    queryKey: ["admin-brand-list"],
+    queryFn: async () => {
+      const { data: cats } = await supabase
+        .from("forum_categories")
+        .select("name, slug, parent_id, sort_order")
+        .not("parent_id", "is", null)
+        .order("sort_order");
+      const { data: parents } = await supabase
+        .from("forum_categories")
+        .select("id, slug")
+        .is("parent_id", null);
+      const mobileId = parents?.find((p) => p.slug === "mobile")?.id;
+      const cameraId = parents?.find((p) => p.slug === "camera")?.id;
+      const phoneBrands = (cats || [])
+        .filter((c) => c.parent_id === mobileId)
+        .map((c) => ({ value: c.slug.replace(/^mobile-/, ""), label: c.name }));
+      const cameraBrands = (cats || [])
+        .filter((c) => c.parent_id === cameraId)
+        .map((c) => ({ value: c.slug.replace(/^camera-/, ""), label: c.name }));
+      return { phoneBrands, cameraBrands };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+function ModelManagementTab() {
+  const { toast: toastHook } = useToast();
+  const queryClient = useQueryClient();
+  const { data: brandList } = useBrandList();
+  const [selectedCategory, setSelectedCategory] = useState<"phone" | "camera">("phone");
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [newModelName, setNewModelName] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const brands = selectedCategory === "phone" ? brandList?.phoneBrands : brandList?.cameraBrands;
+
+  const { data: models, isLoading } = useQuery({
+    queryKey: ["admin-brand-models", selectedCategory, selectedBrand],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brand_models")
+        .select("*")
+        .eq("category", selectedCategory)
+        .eq("brand", selectedBrand)
+        .order("sort_order");
+      if (error) throw error;
+      return (data as BrandModel[]) || [];
+    },
+    enabled: !!selectedBrand,
+    staleTime: 60 * 1000,
+  });
+
+  const handleAdd = async () => {
+    if (!newModelName.trim() || !selectedBrand) return;
+    setAdding(true);
+    try {
+      const maxSort = models?.length ? Math.max(...models.map((m) => m.sort_order)) : 0;
+      const { error } = await supabase.from("brand_models").insert({
+        category: selectedCategory,
+        brand: selectedBrand,
+        model_name: newModelName.trim(),
+        sort_order: maxSort + 1,
+      });
+      if (error) throw error;
+      setNewModelName("");
+      queryClient.invalidateQueries({ queryKey: ["admin-brand-models", selectedCategory, selectedBrand] });
+      queryClient.invalidateQueries({ queryKey: ["brand-models"] });
+      toastHook({ title: "新增成功" });
+    } catch (err: any) {
+      toastHook({ title: "新增失敗", description: err.message?.includes("unique") ? "此型號已存在" : err.message, variant: "destructive" });
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`確定要刪除「${name}」嗎？`)) return;
+    const { error } = await supabase.from("brand_models").delete().eq("id", id);
+    if (error) {
+      toastHook({ title: "刪除失敗", description: error.message, variant: "destructive" });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["admin-brand-models", selectedCategory, selectedBrand] });
+    queryClient.invalidateQueries({ queryKey: ["brand-models"] });
+    toastHook({ title: "已刪除" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">類型</label>
+              <div className="flex gap-2">
+                <Button type="button" variant={selectedCategory === "phone" ? "default" : "outline"} size="sm"
+                  onClick={() => { setSelectedCategory("phone"); setSelectedBrand(""); }}>
+                  <Smartphone className="mr-1.5 h-4 w-4" /> 手機
+                </Button>
+                <Button type="button" variant={selectedCategory === "camera" ? "default" : "outline"} size="sm"
+                  onClick={() => { setSelectedCategory("camera"); setSelectedBrand(""); }}>
+                  <Camera className="mr-1.5 h-4 w-4" /> 相機
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">品牌</label>
+              <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                <SelectTrigger><SelectValue placeholder="選擇品牌" /></SelectTrigger>
+                <SelectContent>
+                  {brands?.map((b) => (
+                    <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {selectedBrand && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {brands?.find((b) => b.value === selectedBrand)?.label || selectedBrand} 型號列表
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input value={newModelName} onChange={(e) => setNewModelName(e.target.value)}
+                placeholder="輸入新型號名稱"
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAdd())} />
+              <Button onClick={handleAdd} disabled={adding || !newModelName.trim()} size="sm" className="shrink-0">
+                {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+                新增
+              </Button>
+            </div>
+
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : models && models.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {models.map((model) => (
+                  <Badge key={model.id} variant="secondary" className="text-sm py-1.5 px-3 gap-1.5">
+                    {model.model_name}
+                    <button onClick={() => handleDelete(model.id, model.model_name)}
+                      className="ml-0.5 hover:text-destructive transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">尚無型號資料，請新增</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main Component ─── */
+
 export default function CommunityMarketplace() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -82,7 +263,7 @@ export default function CommunityMarketplace() {
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  useAdminPage("二手交易管理", "管理市集商品與審核");
+  useAdminPage("市集管理", "管理市集商品、審核與型號");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -154,7 +335,13 @@ export default function CommunityMarketplace() {
   };
 
   return (
-    <>
+    <Tabs defaultValue="listings" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="listings" className="gap-1.5"><ShoppingBag className="h-4 w-4" />商品管理</TabsTrigger>
+        <TabsTrigger value="models" className="gap-1.5"><Tag className="h-4 w-4" />型號管理</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="listings" className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
           { label: "全部商品", value: stats.total, icon: ShoppingBag },
@@ -308,6 +495,11 @@ export default function CommunityMarketplace() {
           {previewImage && <img src={previewImage} alt="驗證圖片" className="w-full rounded-lg" />}
         </DialogContent>
       </Dialog>
-    </>
+      </TabsContent>
+
+      <TabsContent value="models">
+        <ModelManagementTab />
+      </TabsContent>
+    </Tabs>
   );
 }
