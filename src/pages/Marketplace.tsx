@@ -9,20 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Search,
-  Plus,
-  MapPin,
-  Clock,
-  Shield,
-  ShieldCheck,
-  Camera,
-  Smartphone,
-  Eye,
-  Loader2,
-  AlertTriangle
+  Search, Plus, Shield, ShieldCheck, Camera, Smartphone, Eye, Loader2, AlertTriangle, Clock
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
+import { useMarketplaceCategories, MarketplaceCategorySidebar } from '@/components/marketplace/MarketplaceCategorySelector';
 
 interface Listing {
   id: string;
@@ -51,93 +42,85 @@ interface Listing {
 }
 
 const conditionLabels: Record<string, string> = {
-  new: '全新',
-  like_new: '幾乎全新',
-  good: '良好',
-  fair: '普通',
-};
-
-const categoryLabels: Record<string, string> = {
-  phone: '手機',
-  camera: '相機',
-  lens: '鏡頭',
-  accessory: '配件',
+  new: '全新', like_new: '幾乎全新', good: '良好', fair: '普通',
 };
 
 export default function Marketplace() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [conditionFilter, setConditionFilter] = useState<string>('all');
   const [showSold, setShowSold] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadListings();
-  }, [showSold]);
+  const { data: categories } = useMarketplaceCategories();
+
+  useEffect(() => { loadListings(); }, [showSold]);
 
   const loadListings = async () => {
     setIsLoading(true);
-
-    let query = supabase
-      .from('marketplace_listings')
-      .select('*')
-      .eq('is_hidden', false);
-
-    if (!showSold) {
-      query = query.eq('is_sold', false);
-    }
-
+    let query = supabase.from('marketplace_listings').select('*').eq('is_hidden', false);
+    if (!showSold) query = query.eq('is_sold', false);
     const { data, error } = await query.order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error loading listings:', error);
-      setIsLoading(false);
-      return;
-    }
-
+    if (error) { console.error('Error loading listings:', error); setIsLoading(false); return; }
     const items = (data || []) as Listing[];
-
-    // Fetch only needed seller profiles (not ALL profiles)
     const userIds = [...new Set(items.map(l => l.user_id))];
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, username, display_name, avatar_url, is_verified')
+        .from('profiles').select('user_id, username, display_name, avatar_url, is_verified')
         .in('user_id', userIds);
-
       if (profiles) {
         const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
         items.forEach(item => {
           const p = profileMap.get(item.user_id);
-          if (p) {
-            item.profiles = {
-              username: p.username,
-              display_name: p.display_name,
-              avatar_url: p.avatar_url,
-              is_verified: p.is_verified ?? false,
-            };
-          }
+          if (p) item.profiles = { username: p.username, display_name: p.display_name, avatar_url: p.avatar_url, is_verified: p.is_verified ?? false };
         });
       }
     }
-
     setListings(items);
     setIsLoading(false);
   };
 
   const filteredListings = listings.filter((listing) => {
-    const matchesSearch = 
+    const matchesSearch =
       listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       listing.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       listing.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       listing.model?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesCategory = categoryFilter === 'all' || listing.category === categoryFilter;
     const matchesCondition = conditionFilter === 'all' || listing.condition === conditionFilter;
 
-    return matchesSearch && matchesCategory && matchesCondition;
+    // Category filtering
+    let matchesCategory = true;
+    if (selectedCategory && categories) {
+      const cat = categories.find(c => c.id === selectedCategory);
+      if (cat) {
+        if (selectedSubCategory) {
+          const sub = cat.children?.find(s => s.id === selectedSubCategory);
+          if (sub) matchesCategory = listing.brand === sub.name;
+        } else {
+          // Match by category name → listing.category mapping
+          const catSlug = cat.slug;
+          matchesCategory = listing.category === catSlug || listing.category === cat.name;
+        }
+      }
+    }
+
+    return matchesSearch && matchesCondition && matchesCategory;
   });
+
+  // Count listings per category name
+  const listingCounts: Record<string, number> = {};
+  listings.forEach(l => {
+    // Map slug back to category name
+    const cat = categories?.find(c => c.slug === l.category || c.name === l.category);
+    if (cat) listingCounts[cat.name] = (listingCounts[cat.name] || 0) + 1;
+  });
+
+  const handleCategoryChange = (catId: string | null) => {
+    setSelectedCategory(catId);
+    setSelectedSubCategory(null);
+  };
 
   return (
     <MainLayout>
@@ -146,15 +129,10 @@ export default function Marketplace() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">二手交易</h1>
-            <p className="text-muted-foreground">
-              安全交易攝影裝備，所有商品需實物驗證
-            </p>
+            <p className="text-muted-foreground">安全交易攝影裝備，所有商品需實物驗證</p>
           </div>
           <Link to="/marketplace/create">
-            <Button variant="gold" className="gap-2">
-              <Plus className="h-4 w-4" />
-              刊登商品
-            </Button>
+            <Button variant="gold" className="gap-2"><Plus className="h-4 w-4" />刊登商品</Button>
           </Link>
         </div>
 
@@ -173,154 +151,127 @@ export default function Marketplace() {
           </CardContent>
         </Card>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="搜尋商品..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="分類" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部分類</SelectItem>
-              <SelectItem value="phone">手機</SelectItem>
-              <SelectItem value="camera">相機</SelectItem>
-              <SelectItem value="lens">鏡頭</SelectItem>
-              <SelectItem value="accessory">配件</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={conditionFilter} onValueChange={setConditionFilter}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="狀態" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部狀態</SelectItem>
-              <SelectItem value="new">全新</SelectItem>
-              <SelectItem value="like_new">幾乎全新</SelectItem>
-              <SelectItem value="good">良好</SelectItem>
-              <SelectItem value="fair">普通</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant={showSold ? "default" : "outline"}
-            onClick={() => setShowSold(!showSold)}
-            className="whitespace-nowrap"
-          >
-            {showSold ? "顯示全部" : "含已售出"}
-          </Button>
-        </div>
+        <div className="grid lg:grid-cols-4 gap-8">
+          {/* Left Sidebar */}
+          <aside className="lg:col-span-1">
+            <div className="sticky top-24 space-y-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="搜尋商品..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+              </div>
 
-        {/* Listings Grid */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : filteredListings.length === 0 ? (
-          <Card className="py-12 text-center">
-            <CardContent>
-              <AlertTriangle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">沒有找到商品</h3>
-              <p className="text-muted-foreground">
-                {searchQuery ? '嘗試調整搜尋條件' : '目前還沒有商品上架'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredListings.map((listing) => (
-              <Link key={listing.id} to={`/marketplace/${listing.id}`}>
-                <Card className={`overflow-hidden hover-lift h-full ${listing.is_sold ? 'opacity-70' : ''}`}>
-                  <div className="aspect-[4/3] relative overflow-hidden">
-                    <img
-                      src={listing.verification_image_url}
-                      alt={listing.title}
-                      className="w-full h-full object-cover transition-transform hover:scale-105"
-                    />
-                    <div className="absolute top-2 left-2 flex gap-1">
-                      <Badge variant="secondary" className="gap-1">
-                        {listing.category === 'phone' ? (
-                          <Smartphone className="h-3 w-3" />
-                        ) : (
-                          <Camera className="h-3 w-3" />
+              <MarketplaceCategorySidebar
+                categories={categories}
+                selectedCategory={selectedCategory}
+                selectedSubCategory={selectedSubCategory}
+                onSelectCategory={handleCategoryChange}
+                onSelectSubCategory={setSelectedSubCategory}
+                listingCounts={listingCounts}
+              />
+
+              {/* Filters */}
+              <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+                <h3 className="font-semibold">篩選條件</h3>
+                <div>
+                  <label className="text-sm text-muted-foreground mb-1 block">商品狀態</label>
+                  <Select value={conditionFilter} onValueChange={setConditionFilter}>
+                    <SelectTrigger><SelectValue placeholder="狀態" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部狀態</SelectItem>
+                      <SelectItem value="new">全新</SelectItem>
+                      <SelectItem value="like_new">幾乎全新</SelectItem>
+                      <SelectItem value="good">良好</SelectItem>
+                      <SelectItem value="fair">普通</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  variant={showSold ? "default" : "outline"}
+                  onClick={() => setShowSold(!showSold)}
+                  className="w-full"
+                  size="sm"
+                >
+                  {showSold ? "隱藏已售出" : "顯示已售出"}
+                </Button>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <main className="lg:col-span-3">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : filteredListings.length === 0 ? (
+              <Card className="py-12 text-center">
+                <CardContent>
+                  <AlertTriangle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">沒有找到商品</h3>
+                  <p className="text-muted-foreground">
+                    {searchQuery ? '嘗試調整搜尋條件' : '目前還沒有商品上架'}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredListings.map((listing) => (
+                  <Link key={listing.id} to={`/marketplace/${listing.id}`}>
+                    <Card className={`overflow-hidden hover-lift h-full ${listing.is_sold ? 'opacity-70' : ''}`}>
+                      <div className="aspect-[4/3] relative overflow-hidden">
+                        <img src={listing.verification_image_url} alt={listing.title} className="w-full h-full object-cover transition-transform hover:scale-105" />
+                        <div className="absolute top-2 left-2 flex gap-1">
+                          <Badge variant="secondary" className="gap-1">
+                            {listing.category === 'phone' ? <Smartphone className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
+                            {listing.category}
+                          </Badge>
+                        </div>
+                        {listing.is_sold && <Badge variant="destructive" className="absolute top-2 right-2">已售出</Badge>}
+                        {!listing.is_sold && listing.is_verified && (
+                          <Badge className="absolute top-2 right-2 gap-1 bg-green-500"><ShieldCheck className="h-3 w-3" />已驗證</Badge>
                         )}
-                        {categoryLabels[listing.category]}
-                      </Badge>
-                    </div>
-                    {listing.is_sold && (
-                      <Badge variant="destructive" className="absolute top-2 right-2">
-                        已售出
-                      </Badge>
-                    )}
-                    {!listing.is_sold && listing.is_verified && (
-                      <Badge className="absolute top-2 right-2 gap-1 bg-green-500">
-                        <ShieldCheck className="h-3 w-3" />
-                        已驗證
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <CardHeader className="pb-2">
-                    <h3 className="font-semibold line-clamp-2">{listing.title}</h3>
-                    <p className="text-2xl font-bold text-primary">
-                      ${listing.price.toLocaleString()}
-                      <span className="text-sm font-normal text-muted-foreground ml-1">
-                        {listing.currency}
-                      </span>
-                    </p>
-                  </CardHeader>
-
-                  <CardContent className="pb-2">
-                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      <Badge variant="outline">{conditionLabels[listing.condition]}</Badge>
-                      {listing.brand && (
-                        <Badge variant="outline">{listing.brand}</Badge>
-                      )}
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="pt-0">
-                    <div className="flex items-center justify-between w-full text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage src={listing.profiles?.avatar_url || undefined} />
-                          <AvatarFallback>
-                            {listing.profiles?.username?.[0] || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="flex items-center gap-1">
-                          {listing.profiles?.username}
-                          {listing.profiles?.is_verified && (
-                            <ShieldCheck className="h-3 w-3 text-primary" />
-                          )}
-                        </span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          {listing.view_count}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(listing.created_at), {
-                            addSuffix: true,
-                            locale: zhTW,
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
+                      <CardHeader className="pb-2">
+                        <h3 className="font-semibold line-clamp-2">{listing.title}</h3>
+                        <p className="text-2xl font-bold text-primary">
+                          ${listing.price.toLocaleString()}
+                          <span className="text-sm font-normal text-muted-foreground ml-1">{listing.currency}</span>
+                        </p>
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          <Badge variant="outline">{conditionLabels[listing.condition]}</Badge>
+                          {listing.brand && <Badge variant="outline">{listing.brand}</Badge>}
+                        </div>
+                      </CardContent>
+                      <CardFooter className="pt-0">
+                        <div className="flex items-center justify-between w-full text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={listing.profiles?.avatar_url || undefined} />
+                              <AvatarFallback>{listing.profiles?.username?.[0] || 'U'}</AvatarFallback>
+                            </Avatar>
+                            <span className="flex items-center gap-1">
+                              {listing.profiles?.username}
+                              {listing.profiles?.is_verified && <ShieldCheck className="h-3 w-3 text-primary" />}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{listing.view_count}</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDistanceToNow(new Date(listing.created_at), { addSuffix: true, locale: zhTW })}
+                            </span>
+                          </div>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </MainLayout>
   );
