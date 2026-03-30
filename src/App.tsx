@@ -145,7 +145,7 @@ const App = () => (
                 <Route path="community/forums" element={<CommunityForums />} />
                 <Route path="community/marketplace" element={<CommunityMarketplace />} />
                 <Route path="community/categories" element={<CategoryManagement />} />
-                <Route path="community/marketplace-categories" element={<MarketplaceCategoryManagement />} />
+                
                 
                 <Route path="members" element={<UserManagement />} />
                 <Route path="members/roles" element={<MemberRoles />} />
