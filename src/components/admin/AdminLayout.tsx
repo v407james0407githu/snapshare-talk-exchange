@@ -68,7 +68,7 @@ const navGroups: NavGroup[] = [
       { label: "作品管理", href: "/admin/community/photos", icon: Image },
       { label: "討論管理", href: "/admin/community/forums", icon: MessageSquare },
       { label: "二手管理", href: "/admin/community/marketplace", icon: Store },
-      { label: "型號管理", href: "/admin/community/models", icon: Tag },
+      
       { label: "討論分類", href: "/admin/community/categories", icon: Tag },
       { label: "市集分類", href: "/admin/community/marketplace-categories", icon: Tag },
     ],
