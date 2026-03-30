@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Search, Plus, Shield, ShieldCheck, Camera, Smartphone, Eye, Loader2, AlertTriangle, Clock
+  Search, Plus, Shield, ShieldCheck, Camera, Smartphone, Eye, Loader2, AlertTriangle, Clock,
+  LayoutGrid, List
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
