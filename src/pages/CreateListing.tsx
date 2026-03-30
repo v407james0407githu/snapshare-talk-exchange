@@ -86,10 +86,20 @@ export default function CreateListing() {
 
   const effectiveBrand = brand === "__other__" ? customBrand : brand;
   const effectiveModel = model === "__other__" ? customModel : model;
+
+  useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  // Reset brand/model when category changes
+  useEffect(() => {
+    setBrand('');
+    setModel('');
+    setCustomBrand('');
+    setCustomModel('');
+  }, [category]);
 
   const handleVerificationUpload = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
