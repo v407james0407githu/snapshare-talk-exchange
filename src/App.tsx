@@ -59,7 +59,7 @@ const CommunityForums = lazy(() => import("./pages/admin/CommunityForums"));
 const CommunityMarketplace = lazy(() => import("./pages/admin/CommunityMarketplace"));
 const MemberRoles = lazy(() => import("./pages/admin/MemberRoles"));
 const FeatureToggle = lazy(() => import("./pages/admin/FeatureToggle"));
-const ModelManagement = lazy(() => import("./pages/admin/ModelManagement"));
+
 const MarketplaceCategoryManagement = lazy(() => import("./pages/admin/MarketplaceCategoryManagement"));
 
 function PageFallback() {
@@ -146,7 +146,7 @@ const App = () => (
                 <Route path="community/marketplace" element={<CommunityMarketplace />} />
                 <Route path="community/categories" element={<CategoryManagement />} />
                 <Route path="community/marketplace-categories" element={<MarketplaceCategoryManagement />} />
-                <Route path="community/models" element={<ModelManagement />} />
+                
                 <Route path="members" element={<UserManagement />} />
                 <Route path="members/roles" element={<MemberRoles />} />
                 <Route path="moderation/reports" element={<ReportManagement />} />
