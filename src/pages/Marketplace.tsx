@@ -54,6 +54,7 @@ export default function Marketplace() {
   const [showSold, setShowSold] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const { data: categories } = useMarketplaceCategories();
 
