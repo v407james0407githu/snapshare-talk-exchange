@@ -146,13 +146,13 @@ const App = () => (
                 <Route path="community/marketplace" element={<CommunityMarketplace />} />
                 <Route path="community/categories" element={<CategoryManagement />} />
                 <Route path="community/marketplace-categories" element={<MarketplaceCategoryManagement />} />
+                <Route path="community/models" element={<ModelManagement />} />
                 <Route path="members" element={<UserManagement />} />
                 <Route path="members/roles" element={<MemberRoles />} />
                 <Route path="moderation/reports" element={<ReportManagement />} />
                 <Route path="analytics" element={<AnalyticsDashboard />} />
                 <Route path="settings" element={<SystemSettings />} />
                 <Route path="settings/features" element={<FeatureToggle />} />
-                <Route path="settings/models" element={<ModelManagement />} />
             </Route>
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
