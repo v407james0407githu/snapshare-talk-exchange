@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Loader2, ShoppingBag, CheckCircle, Eye, Package, ShieldCheck, Smartphone, Camera, Plus, X, Tag } from "lucide-react";
+import { Search, Loader2, ShoppingBag, CheckCircle, Eye, Package, ShieldCheck, Smartphone, Camera, Plus, X, Tag, Pencil, Trash2, ChevronRight, FolderTree, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 interface ListingRow {
   id: string;
@@ -499,6 +500,10 @@ export default function CommunityMarketplace() {
 
       <TabsContent value="models">
         <ModelManagementTab />
+      </TabsContent>
+
+      <TabsContent value="categories">
+        <MarketplaceCategoryTab />
       </TabsContent>
     </Tabs>
   );
