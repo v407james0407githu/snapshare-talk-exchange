@@ -438,27 +438,93 @@ export default function CreateListing() {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="brand">品牌</Label>
-                  <Input
-                    id="brand"
-                    value={brand}
-                    onChange={(e) => setBrand(e.target.value)}
-                    placeholder="例如：Sony、Canon、Apple"
-                  />
-                </div>
+              {(category === "phone" || category === "camera") ? (
+                <>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>品牌</Label>
+                      <Select value={brand} onValueChange={(v) => { setBrand(v); setModel(''); setCustomModel(''); }}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="選擇品牌" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableBrands?.map((b) => (
+                            <SelectItem key={b} value={b}>{b}</SelectItem>
+                          ))}
+                          <SelectItem value="__other__">其他</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {brand === "__other__" && (
+                        <Input
+                          value={customBrand}
+                          onChange={(e) => setCustomBrand(e.target.value)}
+                          placeholder="輸入品牌名稱"
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="model">型號</Label>
-                  <Input
-                    id="model"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    placeholder="例如：A7IV、iPhone 15 Pro"
-                  />
+                    <div className="space-y-2">
+                      <Label>型號</Label>
+                      {brand && brand !== "__other__" ? (
+                        <Select value={model} onValueChange={setModel}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="選擇型號" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableModels?.map((m) => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
+                            <SelectItem value="__other__">其他</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : brand === "__other__" ? (
+                        <Input
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          placeholder="輸入型號名稱"
+                        />
+                      ) : (
+                        <Select disabled>
+                          <SelectTrigger>
+                            <SelectValue placeholder="請先選擇品牌" />
+                          </SelectTrigger>
+                          <SelectContent />
+                        </Select>
+                      )}
+                      {model === "__other__" && brand !== "__other__" && (
+                        <Input
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          placeholder="輸入型號名稱"
+                          className="mt-2"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="brand">品牌</Label>
+                    <Input
+                      id="brand"
+                      value={brand}
+                      onChange={(e) => setBrand(e.target.value)}
+                      placeholder="例如：Sony、Canon、Apple"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="model">型號</Label>
+                    <Input
+                      id="model"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      placeholder="例如：A7IV、iPhone 15 Pro"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
