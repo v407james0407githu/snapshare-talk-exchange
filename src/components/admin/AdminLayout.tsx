@@ -2,13 +2,35 @@ import { memo, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  LayoutDashboard, Users, Image, MessageSquare, Flag, Settings,
-  BarChart3, Menu, X, Bell, ChevronDown, ChevronRight, FileText,
-  Home, Shield, Store, Layers, Globe, Tag, UserCog, AlertTriangle,
-  ScrollText, LogOut,
+  LayoutDashboard,
+  Users,
+  Image,
+  MessageSquare,
+  Flag,
+  Settings,
+  BarChart3,
+  Menu,
+  X,
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Home,
+  Shield,
+  Store,
+  Layers,
+  Globe,
+  Tag,
+  UserCog,
+  AlertTriangle,
+  ScrollText,
+  LogOut,
 } from "lucide-react";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,7 +67,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "作品管理", href: "/admin/community/photos", icon: Image },
       { label: "討論管理", href: "/admin/community/forums", icon: MessageSquare },
-      { label: "市集管理", href: "/admin/community/marketplace", icon: Store },
+      { label: "二手管理", href: "/admin/community/marketplace", icon: Store },
       { label: "型號管理", href: "/admin/community/models", icon: Tag },
       { label: "討論分類", href: "/admin/community/categories", icon: Tag },
       { label: "市集分類", href: "/admin/community/marketplace-categories", icon: Tag },
@@ -119,7 +141,7 @@ const Sidebar = memo(function Sidebar({
     <aside
       className={cn(
         "fixed inset-y-0 left-0 z-50 w-[260px] bg-card border-r border-border transform transition-transform lg:translate-x-0 lg:static flex flex-col",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full",
       )}
     >
       <div className="p-5 border-b border-border flex items-center justify-between shrink-0">
@@ -153,7 +175,9 @@ const Sidebar = memo(function Sidebar({
                 onFocus={() => onPrefetch(item.href)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <group.icon className="h-4 w-4 shrink-0" />
@@ -168,7 +192,7 @@ const Sidebar = memo(function Sidebar({
                 onClick={() => toggleGroup(group.label)}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  isActiveGroup ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  isActiveGroup ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <group.icon className="h-4 w-4 shrink-0" />
@@ -188,7 +212,9 @@ const Sidebar = memo(function Sidebar({
                         onFocus={() => onPrefetch(item.href)}
                         className={cn(
                           "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
-                          isActive ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          isActive
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
                         )}
                       >
                         <item.icon className="h-3.5 w-3.5 shrink-0" />
@@ -240,7 +266,9 @@ const TopBar = memo(function TopBar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 h-9 px-3">
-              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-xs">A</div>
+              <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-xs">
+                A
+              </div>
               <span className="text-sm">管理員</span>
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>
@@ -269,8 +297,13 @@ function AdminLayoutInner() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) { navigate("/auth"); return; }
-    if (!isAdmin && !isModerator) { navigate("/"); }
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!isAdmin && !isModerator) {
+      navigate("/");
+    }
   }, [loading, user, isAdmin, isModerator, navigate]);
 
   useEffect(() => {
