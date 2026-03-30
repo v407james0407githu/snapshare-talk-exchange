@@ -63,17 +63,19 @@ const typeLabels: Record<string, string> = {
 
 function groupContents(contents: SiteContent[]) {
   const groups: Record<string, SiteContent[]> = {};
+  const groupName: Record<string, string> = {
+    cta: "CTA 行動呼籲",
+    gallery: "作品分享區",
+    forum: "討論區",
+    featured: "精選作品",
+    footer: "頁尾",
+    site: "全站設定",
+  };
+  // Exclude hero (managed in Banner管理) and page_ prefixed items (managed in their own pages)
+  const excludedPrefixes = ["hero", "page"];
   contents.forEach((c) => {
     const prefix = c.section_key.split("_")[0];
-    const groupName: Record<string, string> = {
-      hero: "首頁橫幅",
-      cta: "CTA 行動呼籲",
-      gallery: "作品分享區",
-      forum: "討論區",
-      featured: "精選作品",
-      footer: "頁尾",
-      site: "全站設定",
-    };
+    if (excludedPrefixes.includes(prefix)) return;
     const name = groupName[prefix] || "其他";
     if (!groups[name]) groups[name] = [];
     groups[name].push(c);
