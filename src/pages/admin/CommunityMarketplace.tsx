@@ -340,6 +340,7 @@ export default function CommunityMarketplace() {
       <TabsList>
         <TabsTrigger value="listings" className="gap-1.5"><ShoppingBag className="h-4 w-4" />商品管理</TabsTrigger>
         <TabsTrigger value="models" className="gap-1.5"><Tag className="h-4 w-4" />型號管理</TabsTrigger>
+        <TabsTrigger value="categories" className="gap-1.5"><FolderTree className="h-4 w-4" />分類管理</TabsTrigger>
       </TabsList>
 
       <TabsContent value="listings" className="space-y-6">
