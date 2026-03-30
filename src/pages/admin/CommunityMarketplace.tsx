@@ -88,7 +88,7 @@ async function fetchListingsPage(debouncedSearch: string, filter: string, page: 
   }));
 }
 
-/* ─── Model Management (inline) ─── */
+/* ─── Model & Brand Management (inline) ─── */
 
 interface BrandModel {
   id: string;
@@ -98,7 +98,217 @@ interface BrandModel {
   sort_order: number;
 }
 
-function useBrandList() {
+function ModelManagementTab() {
+  const { toast: toastHook } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedCategory, setSelectedCategory] = useState<"phone" | "camera">("phone");
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [newModelName, setNewModelName] = useState("");
+  const [newBrandName, setNewBrandName] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [addingBrand, setAddingBrand] = useState(false);
+
+  const { data: brands, isLoading: brandsLoading } = useQuery({
+    queryKey: ["admin-brand-list-models", selectedCategory],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brand_models")
+        .select("brand")
+        .eq("category", selectedCategory)
+        .order("brand");
+      if (error) throw error;
+      return [...new Set((data || []).map(d => d.brand))];
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const { data: models, isLoading } = useQuery({
+    queryKey: ["admin-brand-models", selectedCategory, selectedBrand],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brand_models")
+        .select("*")
+        .eq("category", selectedCategory)
+        .eq("brand", selectedBrand)
+        .order("sort_order");
+      if (error) throw error;
+      return (data as BrandModel[]) || [];
+    },
+    enabled: !!selectedBrand,
+    staleTime: 60 * 1000,
+  });
+
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-brand-list-models"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-brand-models"] });
+    queryClient.invalidateQueries({ queryKey: ["brand-models"] });
+    queryClient.invalidateQueries({ queryKey: ["marketplace-brands"] });
+  };
+
+  const handleAddBrand = async () => {
+    if (!newBrandName.trim()) return;
+    setAddingBrand(true);
+    try {
+      const { error } = await supabase.from("brand_models").insert({
+        category: selectedCategory,
+        brand: newBrandName.trim(),
+        model_name: "（預設型號）",
+        sort_order: 0,
+      });
+      if (error) throw error;
+      setNewBrandName("");
+      setSelectedBrand(newBrandName.trim());
+      invalidateAll();
+      toastHook({ title: "品牌已新增" });
+    } catch (err: any) {
+      toastHook({ title: "新增失敗", description: err.message, variant: "destructive" });
+    } finally {
+      setAddingBrand(false);
+    }
+  };
+
+  const handleDeleteBrand = async (brandName: string) => {
+    if (!confirm(`確定要刪除品牌「${brandName}」及其所有型號嗎？`)) return;
+    const { error } = await supabase
+      .from("brand_models")
+      .delete()
+      .eq("category", selectedCategory)
+      .eq("brand", brandName);
+    if (error) {
+      toastHook({ title: "刪除失敗", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (selectedBrand === brandName) setSelectedBrand("");
+    invalidateAll();
+    toastHook({ title: "品牌已刪除" });
+  };
+
+  const handleAddModel = async () => {
+    if (!newModelName.trim() || !selectedBrand) return;
+    setAdding(true);
+    try {
+      const maxSort = models?.length ? Math.max(...models.map((m) => m.sort_order)) : 0;
+      const { error } = await supabase.from("brand_models").insert({
+        category: selectedCategory,
+        brand: selectedBrand,
+        model_name: newModelName.trim(),
+        sort_order: maxSort + 1,
+      });
+      if (error) throw error;
+      setNewModelName("");
+      invalidateAll();
+      toastHook({ title: "型號已新增" });
+    } catch (err: any) {
+      toastHook({
+        title: "新增失敗",
+        description: err.message?.includes("unique") ? "此型號已存在" : err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDeleteModel = async (id: string, name: string) => {
+    if (!confirm(`確定要刪除「${name}」嗎？`)) return;
+    const { error } = await supabase.from("brand_models").delete().eq("id", id);
+    if (error) {
+      toastHook({ title: "刪除失敗", description: error.message, variant: "destructive" });
+      return;
+    }
+    invalidateAll();
+    toastHook({ title: "已刪除" });
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">類型</label>
+            <div className="flex gap-2">
+              <Button type="button" variant={selectedCategory === "phone" ? "default" : "outline"} size="sm"
+                onClick={() => { setSelectedCategory("phone"); setSelectedBrand(""); }}>
+                <Smartphone className="mr-1.5 h-4 w-4" /> 手機
+              </Button>
+              <Button type="button" variant={selectedCategory === "camera" ? "default" : "outline"} size="sm"
+                onClick={() => { setSelectedCategory("camera"); setSelectedBrand(""); }}>
+                <Camera className="mr-1.5 h-4 w-4" /> 相機
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-lg">品牌管理</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input value={newBrandName} onChange={(e) => setNewBrandName(e.target.value)}
+              placeholder="輸入新品牌名稱"
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddBrand())} />
+            <Button onClick={handleAddBrand} disabled={addingBrand || !newBrandName.trim()} size="sm" className="shrink-0">
+              {addingBrand ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+              新增品牌
+            </Button>
+          </div>
+          {brandsLoading ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : brands && brands.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {brands.map((b) => (
+                <Badge key={b} variant={selectedBrand === b ? "default" : "secondary"}
+                  className="text-sm py-1.5 px-3 gap-1.5 cursor-pointer" onClick={() => setSelectedBrand(b)}>
+                  {b}
+                  <button onClick={(e) => { e.stopPropagation(); handleDeleteBrand(b); }}
+                    className="ml-0.5 hover:text-destructive transition-colors">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-4">尚無品牌，請新增</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {selectedBrand && (
+        <Card>
+          <CardHeader><CardTitle className="text-lg">{selectedBrand} 型號列表</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input value={newModelName} onChange={(e) => setNewModelName(e.target.value)}
+                placeholder="輸入新型號名稱"
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddModel())} />
+              <Button onClick={handleAddModel} disabled={adding || !newModelName.trim()} size="sm" className="shrink-0">
+                {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+                新增
+              </Button>
+            </div>
+            {isLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            ) : models && models.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {models.map((model) => (
+                  <Badge key={model.id} variant="secondary" className="text-sm py-1.5 px-3 gap-1.5">
+                    {model.model_name}
+                    <button onClick={() => handleDeleteModel(model.id, model.model_name)}
+                      className="ml-0.5 hover:text-destructive transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">尚無型號資料，請新增</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
   return useQuery({
     queryKey: ["admin-brand-list"],
     queryFn: async () => {
