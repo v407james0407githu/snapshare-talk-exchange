@@ -361,26 +361,22 @@ export function FeaturedCarousel({
           <>
             <ClassicCarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
 
-            {/* Row 2 — lazy loaded via IntersectionObserver */}
-            <div ref={row2Ref}>
-              {row2Visible ? (
-                l2 ? (
-                  <div className="mt-4">
-                    <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
-                    <div className="flex gap-4 overflow-hidden">
-                      {Array.from({ length: 2 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl"
-                        />
-                      ))}
-                    </div>
+            {/* Row 2 */}
+            <div>
+              {l2 ? (
+                <div className="mt-4">
+                  <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+                  <div className="flex gap-4 overflow-hidden">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl"
+                      />
+                    ))}
                   </div>
-                ) : (
-                  <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
-                )
+                </div>
               ) : (
-                <div className="mt-4 h-[280px] md:h-[320px]" />
+                <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
               )}
             </div>
 
