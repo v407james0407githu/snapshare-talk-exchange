@@ -21,21 +21,18 @@ interface FeatureSetting {
 }
 
 // 由首頁區塊排序控制的功能，不在此處顯示
-const EXCLUDED_FEATURE_KEYS = new Set(["forum_enabled", "marketplace_enabled"]);
+const EXCLUDED_FEATURE_KEYS = new Set(["forum_enabled", "marketplace_enabled", "gallery_enabled"]);
 
 const featureIcons: Record<string, typeof Image> = {
-  gallery_enabled: Image,
   featured_enabled: Star,
 };
 
 const featureDescriptions: Record<string, string> = {
-  gallery_enabled: "啟用後，使用者可上傳與瀏覽攝影作品。停用會隱藏導覽列「作品」入口與首頁相關區塊。",
   featured_enabled: "啟用後，首頁將顯示精選作品輪播區塊。",
   registration_enabled: "啟用後，新使用者可以註冊帳號。停用後註冊頁面會顯示暫停註冊訊息。",
 };
 
 const featureWarnings: Record<string, string> = {
-  gallery_enabled: "停用後，已上傳的作品仍會保留，但前台將無法存取。",
   registration_enabled: "停用後，新使用者將無法註冊。現有使用者不受影響。",
 };
 
