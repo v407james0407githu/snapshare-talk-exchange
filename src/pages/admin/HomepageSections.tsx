@@ -226,16 +226,14 @@ function SortableRow({
 export default function HomepageSections() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { galleryEnabled, forumEnabled, marketplaceEnabled } = useSystemSettings();
+  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
 
   const featureFlags: Record<string, boolean> = {
-    gallery_enabled: galleryEnabled,
     forum_enabled: forumEnabled,
     marketplace_enabled: marketplaceEnabled,
   };
 
   const featureLabels: Record<string, string> = {
-    gallery_enabled: "作品分享功能已關閉，此區塊不會在前台顯示",
     forum_enabled: "討論區功能已關閉，此區塊不會在前台顯示",
     marketplace_enabled: "市集功能已關閉，此區塊不會在前台顯示",
   };
