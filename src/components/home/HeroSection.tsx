@@ -23,50 +23,21 @@ interface Banner {
   gradient_opacity: number;
 }
 
-const fallbackBanners: Banner[] = [
-  {
-    id: "1",
-    title: "用光影說故事，與同好共鳴",
-    subtitle: "全台最活躍的攝影創作者社群，分享作品、交流心得。",
-    image_url: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=640&auto=format&q=75",
-    link_url: null,
-    cta_primary_text: "開始創作之旅",
-    cta_primary_link: "/auth?tab=register",
-    cta_secondary_text: "瀏覽精選作品",
-    cta_secondary_link: "/gallery",
-    text_align: "left",
-    gradient_type: "left-to-right",
-    gradient_opacity: 0.6,
-  },
-  {
-    id: "2",
-    title: "捕捉每一刻的美好",
-    subtitle: "用鏡頭記錄生活中的感動瞬間，與攝影愛好者一起成長。",
-    image_url: "https://images.unsplash.com/photo-1493863641943-9b68992a8d07?w=640&auto=format&q=75",
-    link_url: null,
-    cta_primary_text: "上傳作品",
-    cta_primary_link: "/upload",
-    cta_secondary_text: "探索社群",
-    cta_secondary_link: "/forums",
-    text_align: "left",
-    gradient_type: "left-to-right",
-    gradient_opacity: 0.6,
-  },
-  {
-    id: "3",
-    title: "攝影交流，找到你的最佳夥伴",
-    subtitle: "二手買賣、攝影評測分享，讓每一分投資都值得。",
-    image_url: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=640&auto=format&q=75",
-    link_url: null,
-    cta_primary_text: "逛逛市集",
-    cta_primary_link: "/marketplace",
-    cta_secondary_text: "攝影討論",
-    cta_secondary_link: "/forums",
-    text_align: "left",
-    gradient_type: "left-to-right",
-    gradient_opacity: 0.6,
-  },
-];
+/** Single safe fallback with no feature-specific content */
+const safeFallback: Banner = {
+  id: "default",
+  title: null,
+  subtitle: null,
+  image_url: "https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=640&auto=format&q=75",
+  link_url: null,
+  cta_primary_text: null,
+  cta_primary_link: null,
+  cta_secondary_text: null,
+  cta_secondary_link: null,
+  text_align: "left",
+  gradient_type: "none",
+  gradient_opacity: 0,
+};
 
 /** Optimize Unsplash URLs: ensure auto=format and reasonable width */
 function optimizeUnsplashUrl(url: string): string {
@@ -136,9 +107,6 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     staleTime: 5 * 60 * 1000,
   });
 
-  // Only use fallback while loading (no DB data yet); once loaded, respect DB state
-  const slides = isLoading ? fallbackBanners : (banners && banners.length > 0 ? banners : fallbackBanners);
-
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
     setSelectedIndex(emblaApi.selectedScrollSnap());
@@ -150,6 +118,18 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     emblaApi.on("select", onSelect);
     return () => { emblaApi.off("select", onSelect); };
   }, [emblaApi, onSelect]);
+
+  // Show skeleton while loading to prevent flash of stale content
+  if (isLoading) {
+    return (
+      <>
+        <section className="relative aspect-[16/9] md:aspect-auto md:h-[50vh] md:max-h-[60vh] overflow-hidden bg-muted animate-pulse" />
+        <div className="hero-scroll-target" />
+      </>
+    );
+  }
+
+  const slides = banners && banners.length > 0 ? banners : [safeFallback];
 
   const hasTextContent = (banner: Banner) =>
     banner.title || banner.subtitle || (banner.cta_primary_text && banner.cta_primary_link);
