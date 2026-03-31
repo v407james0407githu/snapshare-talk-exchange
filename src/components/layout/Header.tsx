@@ -21,11 +21,11 @@ export function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const { galleryEnabled, forumEnabled, marketplaceEnabled, siteLogo, siteName } = useSystemSettings();
+  const { forumEnabled, marketplaceEnabled, siteLogo, siteName } = useSystemSettings();
 
   const navItems = [
     { label: "首頁", href: "/" },
-    ...(galleryEnabled ? [{ label: "作品分享", href: "/gallery" }] : []),
+    { label: "作品分享", href: "/gallery" },
     ...(forumEnabled ? [{ label: "討論區", href: "/forums" }] : []),
     ...(marketplaceEnabled ? [{ label: "二手交易", href: "/marketplace" }] : []),
   ];
