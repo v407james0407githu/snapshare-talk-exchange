@@ -107,8 +107,17 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     staleTime: 5 * 60 * 1000,
   });
 
-  // Only use fallback while loading (no DB data yet); once loaded, respect DB state
-  const slides = isLoading ? fallbackBanners : (banners && banners.length > 0 ? banners : fallbackBanners);
+  // Show nothing while loading; use safe fallback only if DB returned empty
+  if (isLoading) {
+    return (
+      <>
+        <section className="relative aspect-[16/9] md:aspect-auto md:h-[50vh] md:max-h-[60vh] overflow-hidden bg-muted animate-pulse" />
+        <div className="hero-scroll-target" />
+      </>
+    );
+  }
+
+  const slides = banners && banners.length > 0 ? banners : [safeFallback];
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
