@@ -12,7 +12,7 @@ export function CTASection({ sectionTitle: _sectionTitle, sectionSubtitle: _sect
   const primaryText = get("cta_primary_text", "立即加入");
   const primaryLink = get("cta_primary_link", "/auth");
   const secondaryText = get("cta_secondary_text", "了解更多");
-  const secondaryLink = get("cta_secondary_link", "/gallery");
+  const secondaryLink = get("cta_secondary_link", "/about");
 
   const titleParts = title.split(/(?=攝影)/);
   const hasGradientPart = titleParts.length > 1;
