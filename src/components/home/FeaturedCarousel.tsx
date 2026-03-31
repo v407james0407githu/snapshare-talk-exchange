@@ -10,7 +10,7 @@ import { Heart, Eye, Star, ArrowRight, Award } from "lucide-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
-import { useLazySection } from "@/hooks/useLazySection";
+
 
 interface FeaturedPhoto {
   id: string;
@@ -256,7 +256,7 @@ export function FeaturedCarousel({
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const { get } = useSiteContent();
-  const [row2Ref, row2Visible] = useLazySection("300px 0px");
+  const row2Visible = true;
 
   const row1Label = get("featured_carousel_row1_label", "最新精選");
   const row2Label = get("featured_carousel_row2_label", "高評分精選");
@@ -295,7 +295,7 @@ export function FeaturedCarousel({
       if (error) throw error;
       return data;
     },
-    enabled: row2Visible, // Only fetch when user scrolls near
+    enabled: true,
   });
 
   const allPhotos = [...(latestPhotos || []), ...(topRatedPhotos || [])];
@@ -361,26 +361,22 @@ export function FeaturedCarousel({
           <>
             <ClassicCarouselRow photos={latestFeatured} label={row1Label} autoplayDelay={5000} />
 
-            {/* Row 2 — lazy loaded via IntersectionObserver */}
-            <div ref={row2Ref}>
-              {row2Visible ? (
-                l2 ? (
-                  <div className="mt-4">
-                    <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
-                    <div className="flex gap-4 overflow-hidden">
-                      {Array.from({ length: 2 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl"
-                        />
-                      ))}
-                    </div>
+            {/* Row 2 */}
+            <div>
+              {l2 ? (
+                <div className="mt-4">
+                  <div className="h-6 w-24 bg-muted animate-pulse rounded mb-3" />
+                  <div className="flex gap-4 overflow-hidden">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex-shrink-0 w-[85%] md:w-[45%] aspect-[4/3] bg-muted animate-pulse rounded-xl"
+                      />
+                    ))}
                   </div>
-                ) : (
-                  <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
-                )
+                </div>
               ) : (
-                <div className="mt-4 h-[280px] md:h-[320px]" />
+                <FreeScrollCarouselRow photos={topRatedFeatured} label={row2Label} autoplayDelay={6000} />
               )}
             </div>
 
