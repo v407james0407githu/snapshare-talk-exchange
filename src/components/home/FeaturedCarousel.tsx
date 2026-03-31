@@ -295,7 +295,7 @@ export function FeaturedCarousel({
       if (error) throw error;
       return data;
     },
-    enabled: row2Visible, // Only fetch when user scrolls near
+    enabled: true,
   });
 
   const allPhotos = [...(latestPhotos || []), ...(topRatedPhotos || [])];
