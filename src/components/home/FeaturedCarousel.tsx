@@ -10,7 +10,7 @@ import { Heart, Eye, Star, ArrowRight, Award } from "lucide-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
-import { useLazySection } from "@/hooks/useLazySection";
+
 
 interface FeaturedPhoto {
   id: string;
