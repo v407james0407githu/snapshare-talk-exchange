@@ -41,7 +41,7 @@ export default function FeatureToggle() {
   const { user } = useAuth();
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
 
-  useAdminPage("功能開關", "控制作品、討論、市集與註冊等前台功能");
+  useAdminPage("功能開關", "控制討論、市集與註冊等前台功能");
 
   const { data: features = [], isLoading } = useQuery({
     queryKey: ["admin-feature-settings"],

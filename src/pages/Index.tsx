@@ -33,8 +33,6 @@ const defaultOrder = [
 ];
 
 const sectionFeatureMap: Record<string, string> = {
-  featured_gallery: "gallery_enabled",
-  featured_carousel: "gallery_enabled",
   forum_preview: "forum_enabled",
   equipment_categories: "forum_enabled",
   marketplace_preview: "marketplace_enabled",
