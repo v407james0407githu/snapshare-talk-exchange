@@ -256,7 +256,7 @@ export function FeaturedCarousel({
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const { get } = useSiteContent();
-  const [row2Ref, row2Visible] = useLazySection("300px 0px");
+  const row2Visible = true;
 
   const row1Label = get("featured_carousel_row1_label", "最新精選");
   const row2Label = get("featured_carousel_row2_label", "高評分精選");
