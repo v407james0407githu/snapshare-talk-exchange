@@ -84,13 +84,11 @@ export function Header() {
 
           {user ? (
             <>
-              {galleryEnabled && (
-                <Link to="/upload" className="hidden sm:block">
-                  <Button variant="gold" size="sm" className="gap-2">
-                    上傳作品
-                  </Button>
-                </Link>
-              )}
+              <Link to="/upload" className="hidden sm:block">
+                <Button variant="gold" size="sm" className="gap-2">
+                  上傳作品
+                </Button>
+              </Link>
 
               <Button variant="ghost" size="icon" className="relative" asChild>
                 <Link to="/notifications">
