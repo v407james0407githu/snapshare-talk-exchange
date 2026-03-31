@@ -80,10 +80,9 @@ function LazyWrapper({
 }
 
 const Index = () => {
-  const { galleryEnabled, forumEnabled, marketplaceEnabled } = useSystemSettings();
+  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
 
   const featureFlags: Record<string, boolean> = {
-    gallery_enabled: galleryEnabled,
     forum_enabled: forumEnabled,
     marketplace_enabled: marketplaceEnabled,
   };
