@@ -107,18 +107,6 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     staleTime: 5 * 60 * 1000,
   });
 
-  // Show nothing while loading; use safe fallback only if DB returned empty
-  if (isLoading) {
-    return (
-      <>
-        <section className="relative aspect-[16/9] md:aspect-auto md:h-[50vh] md:max-h-[60vh] overflow-hidden bg-muted animate-pulse" />
-        <div className="hero-scroll-target" />
-      </>
-    );
-  }
-
-  const slides = banners && banners.length > 0 ? banners : [safeFallback];
-
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
     setSelectedIndex(emblaApi.selectedScrollSnap());
@@ -130,6 +118,18 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     emblaApi.on("select", onSelect);
     return () => { emblaApi.off("select", onSelect); };
   }, [emblaApi, onSelect]);
+
+  // Show skeleton while loading to prevent flash of stale content
+  if (isLoading) {
+    return (
+      <>
+        <section className="relative aspect-[16/9] md:aspect-auto md:h-[50vh] md:max-h-[60vh] overflow-hidden bg-muted animate-pulse" />
+        <div className="hero-scroll-target" />
+      </>
+    );
+  }
+
+  const slides = banners && banners.length > 0 ? banners : [safeFallback];
 
   const hasTextContent = (banner: Banner) =>
     banner.title || banner.subtitle || (banner.cta_primary_text && banner.cta_primary_link);
