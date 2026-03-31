@@ -33,8 +33,6 @@ const defaultOrder = [
 ];
 
 const sectionFeatureMap: Record<string, string> = {
-  featured_gallery: "gallery_enabled",
-  featured_carousel: "gallery_enabled",
   forum_preview: "forum_enabled",
   equipment_categories: "forum_enabled",
   marketplace_preview: "marketplace_enabled",
@@ -82,10 +80,9 @@ function LazyWrapper({
 }
 
 const Index = () => {
-  const { galleryEnabled, forumEnabled, marketplaceEnabled } = useSystemSettings();
+  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
 
   const featureFlags: Record<string, boolean> = {
-    gallery_enabled: galleryEnabled,
     forum_enabled: forumEnabled,
     marketplace_enabled: marketplaceEnabled,
   };

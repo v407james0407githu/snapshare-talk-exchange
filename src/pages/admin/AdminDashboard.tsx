@@ -190,14 +190,10 @@ async function fetchDashboardHealth(get: (key: string, fallback?: string) => str
 
   if (!bannerCountRes.count) warnings.push({ text: "首頁 Banner 尚未設定", link: "/admin/homepage/banners" });
 
-  const galleryEnabled = get("gallery_enabled", "true") === "true";
   const forumEnabled = get("forum_enabled", "true") === "true";
   const marketplaceEnabled = get("marketplace_enabled", "true") === "true";
   if (homeSectionsRes.data) {
     const visibleKeys = homeSectionsRes.data.filter((s) => s.is_visible).map((s) => s.section_key);
-    if (!galleryEnabled && visibleKeys.includes("featured_gallery")) {
-      warnings.push({ text: "作品功能已關閉，但首頁仍顯示「精選作品」區塊", link: "/admin/settings/features" });
-    }
     if (!forumEnabled && visibleKeys.includes("forum_preview")) {
       warnings.push({ text: "討論功能已關閉，但首頁仍顯示「熱門討論」區塊", link: "/admin/settings/features" });
     }

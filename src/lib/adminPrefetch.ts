@@ -177,11 +177,9 @@ async function fetchDashboardHealth() {
 
   if (!bannerCountRes.count) warnings.push({ text: "首頁 Banner 尚未設定", link: "/admin/homepage/banners" });
 
-  const galleryEnabled = (settingMap.get("gallery_enabled") || "true") === "true";
   const forumEnabled = (settingMap.get("forum_enabled") || "true") === "true";
   const marketplaceEnabled = (settingMap.get("marketplace_enabled") || "true") === "true";
   const visibleKeys = (homeSectionsRes.data || []).filter((section) => section.is_visible).map((section) => section.section_key);
-  if (!galleryEnabled && visibleKeys.includes("featured_gallery")) warnings.push({ text: "作品功能已關閉，但首頁仍顯示「精選作品」區塊", link: "/admin/settings/features" });
   if (!forumEnabled && visibleKeys.includes("forum_preview")) warnings.push({ text: "討論功能已關閉，但首頁仍顯示「熱門討論」區塊", link: "/admin/settings/features" });
   if (!marketplaceEnabled && visibleKeys.includes("marketplace_preview")) warnings.push({ text: "市集功能已關閉，但首頁仍顯示「二手市集」區塊", link: "/admin/settings/features" });
 
