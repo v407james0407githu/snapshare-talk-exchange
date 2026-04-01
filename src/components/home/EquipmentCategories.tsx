@@ -245,12 +245,14 @@ export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { section
             title="手機攝影"
             parentSlug="mobile"
             linkPrefix="/forums?category=phone"
+            categoryName="手機攝影"
           />
           <CategoryColumn
             icon={<Camera className="h-6 w-6" />}
             title="相機攝影"
             parentSlug="camera"
             linkPrefix="/forums?category=camera"
+            categoryName="相機攝影"
           />
         </div>
       </div>
