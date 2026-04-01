@@ -57,7 +57,7 @@ function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title:
   );
 }
 
-function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnProps) {
+function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: CategoryColumnProps) {
   const [topics, setTopics] = useState<TopicRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,14 +84,41 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix }: CategoryColumnP
 
       const categoryIds = [parentId, ...(children?.map((c) => c.id) || [])];
 
-      const { data: topicsData } = await supabase
-        .from("forum_topics")
-        .select("id, title, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
-        .eq("is_hidden", false)
-        .in("category_id", categoryIds)
-        .order("is_pinned", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(9);
+      // Fetch topics by category_id OR by category text field (for legacy topics without category_id)
+      const [byId, byName] = await Promise.all([
+        supabase
+          .from("forum_topics")
+          .select("id, title, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
+          .eq("is_hidden", false)
+          .in("category_id", categoryIds)
+          .order("is_pinned", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(9),
+        supabase
+          .from("forum_topics")
+          .select("id, title, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
+          .eq("is_hidden", false)
+          .is("category_id", null)
+          .eq("category", categoryName)
+          .order("is_pinned", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(9),
+      ]);
+
+      const seenIds = new Set<string>();
+      const merged: typeof byId.data = [];
+      for (const t of [...(byId.data || []), ...(byName.data || [])]) {
+        if (!seenIds.has(t.id)) {
+          seenIds.add(t.id);
+          merged.push(t);
+        }
+      }
+      // Sort merged: pinned first, then by created_at desc
+      merged.sort((a, b) => {
+        if ((b.is_pinned ? 1 : 0) !== (a.is_pinned ? 1 : 0)) return (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      const topicsData = merged.slice(0, 9);
 
       if (!topicsData || topicsData.length === 0) {
         setTopics([]);
