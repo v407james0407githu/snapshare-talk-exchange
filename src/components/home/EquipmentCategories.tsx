@@ -22,6 +22,7 @@ interface CategoryColumnProps {
   title: string;
   parentSlug: string;
   linkPrefix: string;
+  categoryName: string;
 }
 
 function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title: string }) {
