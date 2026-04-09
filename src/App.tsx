@@ -1,11 +1,8 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import { usePageTracking } from "@/hooks/usePageTracking";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
-import { Loader2 } from "lucide-react";
 
 // Eagerly loaded (critical path)
 import Index from "./pages/Index";
@@ -17,6 +14,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Toaster = lazy(() => import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })));
 const Sonner = lazy(() => import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })));
 const DynamicMeta = lazy(() => import("@/components/layout/DynamicMeta").then((m) => ({ default: m.DynamicMeta })));
+const PageTracking = lazy(() => import("@/components/layout/PageTracking").then((m) => ({ default: m.PageTracking })));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const PhotoDetail = lazy(() => import("./pages/PhotoDetail"));
 const Forums = lazy(() => import("./pages/Forums"));
@@ -64,8 +62,20 @@ const FeatureToggle = lazy(() => import("./pages/admin/FeatureToggle"));
 
 function PageFallback() {
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <div className="min-h-[60vh] page-enter">
+      <div className="container py-12">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <div className="h-10 w-48 rounded-xl bg-muted/80 animate-pulse" />
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="h-48 rounded-2xl bg-muted/70 animate-pulse" />
+            <div className="h-48 rounded-2xl bg-muted/60 animate-pulse md:col-span-2" />
+          </div>
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <span className="inline-block h-5 w-5 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            <span>載入頁面中…</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -81,11 +91,6 @@ const queryClient = new QueryClient({
   },
 });
 
-function PageTracker() {
-  usePageTracking();
-  return null;
-}
-
 function DeferredNonCritical() {
   const [enabled, setEnabled] = useState(false);
 
@@ -98,6 +103,7 @@ function DeferredNonCritical() {
 
   return (
     <Suspense fallback={null}>
+      <PageTracking />
       <DynamicMeta />
       <Toaster />
       <Sonner />
@@ -108,13 +114,11 @@ function DeferredNonCritical() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <PageTracker />
-          <DeferredNonCritical />
-          <Suspense fallback={<PageFallback />}>
-            <Routes>
+      <BrowserRouter>
+        <ScrollToTop />
+        <DeferredNonCritical />
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/gallery" element={<Gallery />} />
               <Route path="/gallery/:photoId" element={<PhotoDetail />} />
@@ -159,10 +163,9 @@ const App = () => (
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
     </AuthProvider>
   </QueryClientProvider>
 );

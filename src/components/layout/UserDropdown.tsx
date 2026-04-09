@@ -80,7 +80,7 @@ export default function UserDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full relative">
+        <Button variant="ghost" size="icon" className="motion-interactive motion-press rounded-full relative">
           <Avatar className="h-8 w-8">
             <AvatarImage src={profile?.avatar_url || undefined} />
             <AvatarFallback className="bg-gradient-gold text-charcoal">

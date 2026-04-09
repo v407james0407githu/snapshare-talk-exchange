@@ -264,19 +264,19 @@ export default function Profile() {
           {/* Profile Content */}
           <Tabs defaultValue="info" className="space-y-6">
             <TabsList>
-              <TabsTrigger value="info" className="gap-2">
+              <TabsTrigger value="info" className="gap-2 motion-tab">
                 <User className="h-4 w-4" />
                 個人資料
               </TabsTrigger>
-              <TabsTrigger value="photos" className="gap-2">
+              <TabsTrigger value="photos" className="gap-2 motion-tab">
                 <ImageIcon className="h-4 w-4" />
                 我的作品
               </TabsTrigger>
-              <TabsTrigger value="listings" className="gap-2">
+              <TabsTrigger value="listings" className="gap-2 motion-tab">
                 <ShoppingBag className="h-4 w-4" />
                 我的交易
               </TabsTrigger>
-              <TabsTrigger value="activity" className="gap-2">
+              <TabsTrigger value="activity" className="gap-2 motion-tab">
                 <MessageSquare className="h-4 w-4" />
                 活動紀錄
               </TabsTrigger>
@@ -474,15 +474,15 @@ function MyListingsTab({ userId }: { userId: string }) {
       </div>
       {listings.map((listing) => (
         <Link key={listing.id} to={`/marketplace/${listing.id}`}>
-          <Card className={`hover-lift ${listing.is_sold ? 'opacity-60' : ''}`}>
+          <Card className={`motion-card-surface motion-press ${listing.is_sold ? 'opacity-60' : ''}`}>
             <CardContent className="flex items-center gap-4 p-4">
               <img
                 src={listing.verification_image_url}
                 alt={listing.title}
-                className="h-16 w-24 rounded-lg object-cover shrink-0"
+                className="h-16 w-24 rounded-lg object-cover shrink-0 motion-media"
               />
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium truncate">{listing.title}</h3>
+                <h3 className="font-medium truncate motion-list-title">{listing.title}</h3>
                 <p className="text-lg font-bold text-primary">
                   NT$ {listing.price?.toLocaleString()}
                 </p>
@@ -721,7 +721,7 @@ function MyPhotosTab({ userId }: { userId: string }) {
         <div key={photo.id} className="relative">
           {isSelecting ? (
             <div className="cursor-pointer" onClick={() => toggleSelect(photo.id)}>
-              <Card className={`hover-lift mb-2 ${selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''}`}>
+              <Card className={`motion-card-surface motion-press mb-2 ${selectedIds.has(photo.id) ? 'ring-2 ring-primary' : ''}`}>
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -734,12 +734,12 @@ function MyPhotosTab({ userId }: { userId: string }) {
               </Card>
             </div>
           ) : (
-            <Card className="hover-lift mb-2 group">
+            <Card className="motion-card-surface motion-press mb-2 group">
               <CardContent className="flex items-center gap-4 p-4">
                 <Link to={`/gallery/${photo.id}`} className="flex items-center gap-4 flex-1 min-w-0">
                   <PhotoCardContent photo={photo} />
                 </Link>
-                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 motion-interactive">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -858,10 +858,10 @@ function PhotoCardContent({ photo }: { photo: any }) {
       <img
         src={photo.thumbnail_url || photo.image_url}
         alt={photo.title}
-        className="h-20 w-20 rounded-lg object-cover shrink-0"
+        className="h-20 w-20 rounded-lg object-cover shrink-0 motion-media"
       />
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium truncate">{photo.title}</h3>
+        <h3 className="font-medium truncate motion-list-title">{photo.title}</h3>
         {photo.description && (
           <p className="text-sm text-muted-foreground truncate mt-0.5">{photo.description}</p>
         )}

@@ -123,6 +123,60 @@
 }
 
 @layer utilities {
+  :root {
+    --motion-snap: cubic-bezier(0.22, 1, 0.36, 1);
+    --motion-soft: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-fast: 180ms;
+    --motion-base: 260ms;
+    --motion-slow: 420ms;
+  }
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes media-reveal {
+    from {
+      opacity: 0;
+      transform: scale(1.015);
+      filter: saturate(0.92) blur(2px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+      filter: saturate(1) blur(0);
+    }
+  }
+
+  .page-enter {
+    animation: page-enter 360ms var(--motion-snap);
+    will-change: opacity, transform;
+  }
+
+  .media-reveal {
+    animation: media-reveal var(--motion-slow) var(--motion-snap);
+    will-change: opacity, transform, filter;
+  }
+
+  .content-fade {
+    transition: opacity var(--motion-base) var(--motion-soft);
+  }
+
+  .content-fade[data-loaded="false"] {
+    opacity: 0.7;
+  }
+
+  .content-fade[data-loaded="true"] {
+    opacity: 1;
+  }
+
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-gold);
@@ -146,13 +200,168 @@
 
   /* hover-lift: desktop only — no transform/shadow on mobile */
   .hover-lift {
-    @apply transition-all duration-300 ease-out;
+    transition:
+      transform var(--motion-base) var(--motion-snap),
+      box-shadow var(--motion-base) var(--motion-soft),
+      background-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      opacity var(--motion-fast) ease;
   }
 
   @media (min-width: 768px) {
     .hover-lift:hover {
       @apply -translate-y-1;
       box-shadow: var(--shadow-card);
+    }
+  }
+
+  .motion-interactive {
+    transition:
+      background-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      opacity var(--motion-fast) ease,
+      transform var(--motion-base) var(--motion-snap),
+      box-shadow var(--motion-base) var(--motion-soft);
+  }
+
+  .motion-interactive:hover {
+    transform: translateY(-1px);
+  }
+
+  .motion-press {
+    transition: transform var(--motion-fast) var(--motion-snap);
+  }
+
+  .motion-press:active {
+    transform: scale(0.985);
+  }
+
+  .motion-panel {
+    transform-origin: top center;
+    transition:
+      opacity var(--motion-fast) ease,
+      transform var(--motion-base) var(--motion-snap),
+      box-shadow var(--motion-base) var(--motion-soft);
+  }
+
+  .motion-tab {
+    transition:
+      background-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      box-shadow var(--motion-base) var(--motion-soft),
+      transform var(--motion-base) var(--motion-snap);
+  }
+
+  .motion-tab[data-state="active"] {
+    transform: translateY(-1px);
+  }
+
+  .motion-field {
+    transition:
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-base) var(--motion-soft),
+      background-color var(--motion-fast) ease,
+      transform var(--motion-base) var(--motion-snap);
+  }
+
+  .motion-field:hover {
+    border-color: hsl(var(--ring) / 0.45);
+    box-shadow: 0 8px 24px -18px hsl(220 25% 10% / 0.25);
+  }
+
+  .motion-field:focus-visible,
+  .motion-field[data-state="open"] {
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 0 2px hsl(var(--ring) / 0.18),
+      0 12px 30px -18px hsl(220 25% 10% / 0.35);
+  }
+
+  .motion-button-group {
+    transition:
+      background-color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      box-shadow var(--motion-base) var(--motion-soft);
+  }
+
+  .motion-dialog-overlay {
+    backdrop-filter: blur(8px);
+    transition:
+      opacity var(--motion-base) ease,
+      backdrop-filter var(--motion-base) var(--motion-soft);
+  }
+
+  .motion-dialog-content {
+    transform-origin: center;
+    transition:
+      opacity var(--motion-base) ease,
+      transform var(--motion-base) var(--motion-snap),
+      box-shadow var(--motion-base) var(--motion-soft);
+  }
+
+  .motion-fade-up {
+    animation: page-enter 280ms var(--motion-snap);
+  }
+
+  .motion-list-item {
+    transition:
+      background-color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      box-shadow var(--motion-base) var(--motion-soft),
+      transform var(--motion-base) var(--motion-snap);
+    will-change: background-color, transform, box-shadow;
+  }
+
+  @media (min-width: 768px) {
+    .motion-list-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px -18px hsl(220 25% 10% / 0.28);
+    }
+  }
+
+  .motion-list-title {
+    transition:
+      color var(--motion-fast) ease,
+      opacity var(--motion-fast) ease,
+      transform var(--motion-base) var(--motion-snap);
+  }
+
+  .group:hover .motion-list-title {
+    color: hsl(var(--primary));
+  }
+
+  .motion-card-surface {
+    transition:
+      transform var(--motion-base) var(--motion-snap),
+      box-shadow var(--motion-base) var(--motion-soft),
+      border-color var(--motion-fast) ease,
+      background-color var(--motion-fast) ease,
+      opacity var(--motion-fast) ease;
+    will-change: transform, box-shadow;
+  }
+
+  @media (min-width: 768px) {
+    .motion-card-surface:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-card);
+    }
+  }
+
+  .motion-media {
+    transition:
+      transform var(--motion-slow) var(--motion-snap),
+      filter var(--motion-base) var(--motion-soft),
+      opacity var(--motion-base) ease;
+    will-change: transform, filter;
+  }
+
+  @media (min-width: 768px) {
+    .group:hover .motion-media {
+      transform: scale(1.03);
+      filter: saturate(1.04);
     }
   }
 
@@ -165,6 +374,29 @@
   @media (min-width: 768px) {
     .md\:animate-float {
       animation: float 6s ease-in-out infinite;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-enter,
+    .media-reveal,
+    .md\:animate-float {
+      animation: none !important;
+    }
+
+    .content-fade,
+    .motion-interactive,
+    .motion-press,
+    .motion-panel,
+    .motion-tab,
+    .motion-field,
+    .motion-button-group,
+    .motion-dialog-overlay,
+    .motion-dialog-content,
+    .hover-lift,
+    .hover-lift:hover {
+      transition: none !important;
+      transform: none !important;
     }
   }
 }

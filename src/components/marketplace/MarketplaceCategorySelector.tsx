@@ -34,6 +34,8 @@ export function useMarketplaceBrands() {
       ];
       return categories;
     },
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
   });
 }
 
@@ -66,32 +68,32 @@ export function MarketplaceCategorySidebar({
   listingCounts,
 }: MarketplaceCategorySidebarProps) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4">
+    <div className="bg-card rounded-xl border border-border p-4 motion-panel">
       <h3 className="font-semibold mb-4">商品分類</h3>
       <div className="space-y-1">
         <button
           onClick={() => { onSelectCategory(null); onSelectSubCategory(null); }}
-          className={`flex items-center gap-3 p-3 rounded-lg transition-colors w-full text-left ${
+          className={`flex items-center gap-3 p-3 rounded-lg motion-list-item w-full text-left ${
             !selectedCategory ? "bg-primary/10 text-primary" : "hover:bg-muted/50"
           }`}
         >
-          <span className="font-medium">全部</span>
+          <span className="font-medium motion-list-title">全部</span>
         </button>
         {categories?.map((cat) => (
           <div key={cat.id}>
             <button
               onClick={() => { onSelectCategory(cat.id); onSelectSubCategory(null); }}
-              className={`flex items-center gap-3 p-3 rounded-lg transition-colors group w-full text-left ${
+              className={`flex items-center gap-3 p-3 rounded-lg motion-list-item group w-full text-left ${
                 selectedCategory === cat.id && !selectedSubCategory
                   ? "bg-primary/10 text-primary"
                   : "hover:bg-muted/50"
               }`}
             >
-              <div className="p-2 rounded-lg border bg-muted">
+              <div className="p-2 rounded-lg border bg-muted motion-interactive">
                 {cat.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium group-hover:text-primary transition-colors">
+                <div className="font-medium motion-list-title">
                   {cat.name}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -105,7 +107,7 @@ export function MarketplaceCategorySidebar({
                   <button
                     key={brand}
                     onClick={() => onSelectSubCategory(brand)}
-                    className={`flex items-center gap-2 p-2 rounded-lg text-sm w-full text-left transition-colors ${
+                    className={`flex items-center gap-2 p-2 rounded-lg text-sm w-full text-left motion-list-item ${
                       selectedSubCategory === brand
                         ? "bg-primary/10 text-primary"
                         : "hover:bg-muted/50 text-muted-foreground"

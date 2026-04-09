@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface SiteContent {
   id: string;
@@ -14,16 +16,23 @@ interface SiteContent {
 }
 
 export function useSiteContent() {
-  const { data: contents } = useQuery({
+  const initialContents = readBootstrapCache<SiteContent[]>("site-content") ?? [];
+  const enabled = useDeferredPublicQuery(350);
+  const { data: contents, isLoading } = useQuery({
     queryKey: ["site-content"],
     queryFn: async () => {
+      const supabase = await getPublicSupabase();
       const { data, error } = await supabase
         .from("site_content" as any)
-        .select("*")
+        .select("id, section_key, section_label, content_type, content_value, content_meta, sort_order, is_active, updated_at")
         .eq("is_active", true);
       if (error) throw error;
-      return data as unknown as SiteContent[];
+      const result = (data ?? []) as unknown as SiteContent[];
+      writeBootstrapCache("site-content", result);
+      return result;
     },
+    initialData: initialContents,
+    enabled,
     staleTime: 5 * 60 * 1000, // cache 5 min
   });
 
@@ -35,5 +44,5 @@ export function useSiteContent() {
     return contents?.find((c) => c.section_key === key)?.content_meta || {};
   };
 
-  return { contents, get, getMeta };
+  return { contents, isLoading, get, getMeta };
 }

@@ -1,73 +1,146 @@
-# Welcome to your Lovable project
+# IP543 攝影論壇
 
-## Project info
+IP543 是以 React + Vite 建置的前端網站，資料庫、登入驗證、Storage 與後端能力使用 Supabase。  
+此專案建議後續以：
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+- GitHub 管理原始碼
+- Supabase 管理資料、Auth、Storage、Functions
+- Cloudflare Pages 部署前端
 
-## How can I edit this code?
+為主要維運方式。
 
-There are several ways of editing your application.
+## 技術堆疊
 
-**Use Lovable**
+- Vite
+- React 18
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- TanStack Query
+- Supabase
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## 本機開發
 
-Changes made via Lovable will be committed automatically to this repo.
+需求：
 
-**Use your preferred IDE**
+- Node.js 18+ 或更新版本
+- npm
+- Git
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+安裝依賴：
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+npm install
+```
 
-Follow these steps:
+啟動開發環境：
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+本機預覽正式 build：
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm run build
+npm run preview
+```
 
-**Use GitHub Codespaces**
+## 環境變數
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+請建立 `.env.local` 或 `.env`，可參考 `.env.example`：
 
-## What technologies are used for this project?
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-anon-key
+VITE_SUPABASE_PROJECT_ID=your-project-ref
+```
 
-This project is built with:
+## Cloudflare Pages 部署
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+這是標準 SPA 專案，建議部署到 Cloudflare Pages。
 
-## How can I deploy this project?
+### Build 設定
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Root directory: `/`
 
-## Can I connect a custom domain to my Lovable project?
+### 必填環境變數
 
-Yes, you can!
+在 Cloudflare Pages 專案中新增：
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_PROJECT_ID`
+- `NODE_VERSION=22`
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### SPA 路由設定
+
+本專案已包含 `public/_redirects`，可讓以下前端路由在 Cloudflare 正常工作：
+
+- `/auth`
+- `/admin`
+- `/about`
+- `/contact`
+- `/privacy`
+- `/terms`
+
+### Headers 與快取
+
+本專案已包含 `public/_headers`：
+
+- `/assets/*` 使用長快取
+- HTML 路由加上基本安全標頭
+
+## Supabase 搬遷 / 維運注意事項
+
+請在 Supabase Dashboard 中確認：
+
+1. `Authentication > URL Configuration`
+2. `Site URL`
+3. `Redirect URLs`
+
+至少包含：
+
+- `https://ip543.com`
+- `https://www.ip543.com`
+- Cloudflare Pages 提供的 preview domain
+
+若登入流程或 magic link / OAuth 要正常運作，這些設定不能漏。
+
+## Supabase Edge Functions 寄信設定
+
+本專案的郵件佇列處理使用 Resend API。請在 Supabase Edge Functions secrets 中設定：
+
+- `RESEND_API_KEY`
+- `RESEND_API_URL`（可選，預設為 `https://api.resend.com/emails`）
+
+這些 secret 不需要放到 Cloudflare Pages 前端環境變數。
+
+## 專案目錄說明
+
+- `src/`：前端主程式
+- `public/`：靜態檔案
+- `supabase/migrations/`：資料庫 migration
+- `supabase/config.toml`：Supabase 本地設定
+
+## 搬遷前建議
+
+1. 先確認 `npm run build` 成功
+2. 確認 `.env` 內容正確
+3. 確認 GitHub 上實際更新的是 `src/...` 內正式檔案，而不是額外暫存資料夾
+4. 確認 Supabase Auth redirect URL 已設定好
+5. 再將 GitHub repo 連到 Cloudflare Pages
+
+## 根目錄注意事項
+
+若根目錄有這類暫存檔案，建議不要作為正式部署來源：
+
+- `Auth.tsx`
+- `ReportManagement.tsx`
+- `SystemSettings.tsx`
+- `UserManagement.tsx`
+
+正式原始碼應以 `src/` 內對應檔案為準。

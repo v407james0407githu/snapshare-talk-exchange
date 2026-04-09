@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import {
   Upload,
   X,
@@ -119,6 +120,8 @@ export function PhotoUpload() {
   const [phoneModel, setPhoneModel] = useState('');
   const [cameraBody, setCameraBody] = useState('');
   const [lens, setLens] = useState('');
+  const [publishAsSeries, setPublishAsSeries] = useState(true);
+  const [seriesTitle, setSeriesTitle] = useState('');
 
   const { data: modelOptions } = useBrandModels(category, brand);
 
@@ -214,7 +217,24 @@ export function PhotoUpload() {
     setIsUploading(true);
 
     try {
-      for (const uploadedFile of uploadedFiles) {
+      let createdSeriesId: string | null = null;
+
+      if (uploadedFiles.length > 1 && publishAsSeries) {
+        const { data: createdSeries, error: seriesError } = await supabase
+          .from('photo_series')
+          .insert({
+            user_id: user.id,
+            title: (seriesTitle || title).trim(),
+            description: description?.trim() || null,
+          })
+          .select('id')
+          .single();
+
+        if (seriesError) throw seriesError;
+        createdSeriesId = createdSeries.id;
+      }
+
+      for (const [index, uploadedFile] of uploadedFiles.entries()) {
         const resizedImage = await resizeImage(uploadedFile.file);
         const thumbnail = await createThumbnail(uploadedFile.file);
         
@@ -241,7 +261,10 @@ export function PhotoUpload() {
           .from('photos')
           .insert({
             user_id: user.id,
-            title: uploadedFiles.length > 1 ? `${title} - ${uploadedFile.id}` : title,
+            title:
+              uploadedFiles.length > 1
+                ? `${(seriesTitle || title).trim()} #${index + 1}`
+                : title,
             description,
             image_url: publicUrl,
             thumbnail_url: thumbError ? null : thumbUrl,
@@ -250,6 +273,8 @@ export function PhotoUpload() {
             phone_model: category === 'phone' ? phoneModel : null,
             camera_body: category === 'camera' ? cameraBody : null,
             lens: category === 'camera' ? lens : null,
+            photo_series_id: createdSeriesId,
+            series_order: createdSeriesId ? index + 1 : null,
           })
           .select()
           .single();
@@ -333,6 +358,41 @@ export function PhotoUpload() {
             </div>
           </CardContent>
         </Card>
+
+        {uploadedFiles.length > 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>系列發布</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+                <div className="space-y-1">
+                  <p className="font-medium">將這 {uploadedFiles.length} 張照片作為同系列發布</p>
+                  <p className="text-sm text-muted-foreground">
+                    單張作品頁會顯示「同系列作品」，方便讀者連續瀏覽。
+                  </p>
+                </div>
+                <Switch checked={publishAsSeries} onCheckedChange={setPublishAsSeries} />
+              </div>
+
+              {publishAsSeries && (
+                <div className="space-y-2">
+                  <Label htmlFor="seriesTitle">系列名稱</Label>
+                  <Input
+                    id="seriesTitle"
+                    value={seriesTitle}
+                    onChange={(e) => setSeriesTitle(e.target.value)}
+                    placeholder="例如：台北街頭黑白系列"
+                    maxLength={100}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    若留空，會直接使用作品標題作為系列名稱。
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Smartphone, Camera, ChevronRight, MessageSquare, Eye, Clock, Pin, TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
+import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface TopicRow {
   id: string;
@@ -23,6 +25,19 @@ interface CategoryColumnProps {
   parentSlug: string;
   linkPrefix: string;
   categoryName: string;
+}
+
+function normalizeAuthorName(
+  profile?: { display_name?: string | null; username?: string | null },
+  userId?: string,
+) {
+  const displayName = profile?.display_name?.trim();
+  if (displayName) return displayName;
+
+  const username = profile?.username?.trim();
+  if (username) return username;
+
+  return userId ? `會員 ${userId.slice(0, 8)}` : "愛屁543會員";
 }
 
 function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title: string }) {
@@ -58,33 +73,34 @@ function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title:
 }
 
 function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: CategoryColumnProps) {
-  const [topics, setTopics] = useState<TopicRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchTopics() {
-      const { data: parentCat } = await supabase
+  const initialTopics = readBootstrapCache<TopicRow[]>(`equipment-category-topics:${parentSlug}:${categoryName}`) ?? [];
+  const enabled = useDeferredPublicQuery(550);
+  const { data: topics = [], isLoading: loading } = useQuery({
+    queryKey: ["equipment-category-topics", parentSlug, categoryName],
+    queryFn: async () => {
+      const supabase = await getPublicSupabase();
+      const { data: parentCat, error: parentError } = await supabase
         .from("forum_categories")
         .select("id")
         .eq("slug", parentSlug)
         .eq("is_active", true)
         .limit(1);
+      if (parentError) throw parentError;
 
       if (!parentCat || parentCat.length === 0) {
-        setLoading(false);
-        return;
+        return [];
       }
 
       const parentId = parentCat[0].id;
-      const { data: children } = await supabase
+      const { data: children, error: childrenError } = await supabase
         .from("forum_categories")
         .select("id")
         .eq("parent_id", parentId)
         .eq("is_active", true);
+      if (childrenError) throw childrenError;
 
       const categoryIds = [parentId, ...(children?.map((c) => c.id) || [])];
 
-      // Fetch topics by category_id OR by category text field (for legacy topics without category_id)
       const [byId, byName] = await Promise.all([
         supabase
           .from("forum_topics")
@@ -104,6 +120,8 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: C
           .order("created_at", { ascending: false })
           .limit(9),
       ]);
+      if (byId.error) throw byId.error;
+      if (byName.error) throw byName.error;
 
       const seenIds = new Set<string>();
       const merged: typeof byId.data = [];
@@ -113,7 +131,6 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: C
           merged.push(t);
         }
       }
-      // Sort merged: pinned first, then by created_at desc
       merged.sort((a, b) => {
         if ((b.is_pinned ? 1 : 0) !== (a.is_pinned ? 1 : 0)) return (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -121,37 +138,41 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: C
       const topicsData = merged.slice(0, 9);
 
       if (!topicsData || topicsData.length === 0) {
-        setTopics([]);
-        setLoading(false);
-        return;
+        return [];
       }
 
       const userIds = [...new Set(topicsData.map((t) => t.user_id))];
       const profileMap = new Map<string, string>();
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, username, display_name")
-          .in("user_id", userIds);
-        profiles?.forEach((p) => {
-          profileMap.set(p.user_id, p.display_name || p.username);
+        const { data: profiles, error: profilesError } = await supabase.rpc("get_public_profiles");
+        if (profilesError) throw profilesError;
+        profiles
+          ?.filter((p: any) => userIds.includes(p.user_id))
+          .forEach((p: any) => {
+          profileMap.set(
+            p.user_id,
+            normalizeAuthorName(
+              { display_name: p.display_name, username: p.username },
+              p.user_id,
+            ),
+          );
         });
       }
 
-      setTopics(
-        topicsData.map((t) => ({
+      const result = topicsData.map((t) => ({
           ...t,
           reply_count: t.reply_count ?? 0,
           view_count: t.view_count ?? 0,
           is_pinned: t.is_pinned ?? false,
-          author_name: profileMap.get(t.user_id) || "匿名",
-        }))
-      );
-      setLoading(false);
-    }
-
-    fetchTopics();
-  }, [parentSlug]);
+          author_name: profileMap.get(t.user_id) || normalizeAuthorName(undefined, t.user_id),
+        })) as TopicRow[];
+      writeBootstrapCache(`equipment-category-topics:${parentSlug}:${categoryName}`, result);
+      return result;
+    },
+    initialData: initialTopics,
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (loading) {
     return <CategoryColumnSkeleton icon={icon} title={title} />;

@@ -834,8 +834,10 @@ export type Database = {
           is_hidden: boolean | null
           lens: string | null
           like_count: number | null
+          photo_series_id: string | null
           phone_model: string | null
           rating_count: number | null
+          series_order: number | null
           thumbnail_url: string | null
           title: string
           updated_at: string
@@ -858,8 +860,10 @@ export type Database = {
           is_hidden?: boolean | null
           lens?: string | null
           like_count?: number | null
+          photo_series_id?: string | null
           phone_model?: string | null
           rating_count?: number | null
+          series_order?: number | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
@@ -882,13 +886,42 @@ export type Database = {
           is_hidden?: boolean | null
           lens?: string | null
           like_count?: number | null
+          photo_series_id?: string | null
           phone_model?: string | null
           rating_count?: number | null
+          series_order?: number | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
           user_id?: string
           view_count?: number | null
+        }
+        Relationships: []
+      }
+      photo_series: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1138,6 +1171,27 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
         }
         Relationships: []
       }

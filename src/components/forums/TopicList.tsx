@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { MessageSquare, Users, Clock, Pin, TrendingUp, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { getCategoryColor } from "./ForumCategorySelector";
+import { prefetchForumTopicBundle } from "@/lib/forumTopicPrefetch";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ForumTopic {
   id: string;
@@ -25,6 +28,80 @@ export interface ForumTopic {
     avatar_url: string | null;
   };
   tags?: string[];
+  reply_previews?: TopicReplyPreview[];
+}
+
+export interface TopicReplyPreview {
+  id: string;
+  topic_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author_name: string;
+}
+
+function normalizeAuthorName(
+  profile?: { display_name?: string | null; username?: string | null },
+  userId?: string,
+) {
+  const displayName = profile?.display_name?.trim();
+  if (displayName) return displayName;
+
+  const username = profile?.username?.trim();
+  if (username) return username;
+
+  return userId ? `會員 ${userId.slice(0, 8)}` : "愛屁543會員";
+}
+
+function compactReplyText(content: string) {
+  return content.replace(/\s+/g, " ").trim();
+}
+
+export async function fetchTopicReplyPreviews(topicIds: string[]) {
+  if (!topicIds.length) return new Map<string, TopicReplyPreview[]>();
+
+  const { data: replies, error: repliesError } = await supabase
+    .from("forum_replies")
+    .select("id, topic_id, user_id, content, created_at")
+    .in("topic_id", topicIds)
+    .order("created_at", { ascending: false })
+    .limit(Math.max(topicIds.length * 4, 16));
+
+  if (repliesError) throw repliesError;
+
+  const replyRows = (replies || []).filter((reply) => topicIds.includes(reply.topic_id));
+  if (!replyRows.length) return new Map<string, TopicReplyPreview[]>();
+
+  const userIds = [...new Set(replyRows.map((reply) => reply.user_id))];
+  const { data: profilesData, error: profilesError } = userIds.length
+    ? await supabase.rpc("get_public_profiles")
+    : { data: [], error: null };
+
+  if (profilesError) throw profilesError;
+
+  const profileMap = new Map(
+    (((profilesData as Array<{ user_id: string; username: string | null; display_name: string | null }> | null) || [])
+      .filter((profile) => userIds.includes(profile.user_id))
+      .map((profile) => [profile.user_id, profile])),
+  );
+
+  const previewsByTopic = new Map<string, TopicReplyPreview[]>();
+
+  for (const reply of replyRows) {
+    const existing = previewsByTopic.get(reply.topic_id) || [];
+    if (existing.length >= 2) continue;
+    existing.push({
+      id: reply.id,
+      topic_id: reply.topic_id,
+      user_id: reply.user_id,
+      content: compactReplyText(reply.content),
+      created_at: reply.created_at,
+      author_name: normalizeAuthorName(profileMap.get(reply.user_id), reply.user_id),
+    });
+    previewsByTopic.set(reply.topic_id, existing);
+  }
+
+  return previewsByTopic;
 }
 
 const categoryColors: Record<string, string> = {
@@ -45,6 +122,14 @@ interface TopicListProps {
 }
 
 export function TopicList({ topics, onTagClick }: TopicListProps) {
+  const topicIds = topics?.map((topic) => topic.id) || [];
+  const { data: replyPreviewMap } = useQuery({
+    queryKey: ["forum-topic-reply-previews", topicIds],
+    enabled: topicIds.length > 0,
+    staleTime: 1000 * 60 * 3,
+    queryFn: () => fetchTopicReplyPreviews(topicIds),
+  });
+
   if (!topics?.length) {
     return (
       <div className="text-center py-12 text-muted-foreground">目前沒有主題</div>
@@ -60,18 +145,32 @@ export function TopicList({ topics, onTagClick }: TopicListProps) {
       </div>
 
       <div className="divide-y divide-border">
-        {topics.map((topic) => (
+        {topics.map((topic) => {
+          const replyPreviews = topic.reply_previews || replyPreviewMap?.get(topic.id) || [];
+          return (
           <Link
             key={topic.id}
             to={`/forums/topic/${topic.id}`}
-            className="block px-6 py-4 hover:bg-muted/30 transition-colors"
+            state={{ topicPreview: topic }}
+            className="group block px-6 py-4 motion-list-item hover:bg-muted/40"
+            onMouseEnter={() => void prefetchForumTopicBundle(topic.id, topic)}
+            onFocus={() => void prefetchForumTopicBundle(topic.id, topic)}
+            onTouchStart={() => void prefetchForumTopicBundle(topic.id, topic)}
+            onMouseDown={() => void prefetchForumTopicBundle(topic.id, topic)}
+            onPointerDown={() => void prefetchForumTopicBundle(topic.id, topic)}
           >
             <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
               <div className="col-span-7">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg shrink-0">
                     {topic.profiles?.avatar_url ? (
-                      <img src={topic.profiles.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                      <img
+                        src={topic.profiles.avatar_url}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full rounded-full object-cover motion-media"
+                      />
                     ) : "👤"}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -87,7 +186,7 @@ export function TopicList({ topics, onTagClick }: TopicListProps) {
                         </span>
                       )}
                     </div>
-                    <h3 className="font-medium text-foreground line-clamp-1 hover:text-primary transition-colors">
+                    <h3 className="font-medium text-foreground line-clamp-1 motion-list-title">
                       {topic.title}
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -100,7 +199,7 @@ export function TopicList({ topics, onTagClick }: TopicListProps) {
                             <Badge
                               key={tag}
                               variant="outline"
-                              className="text-xs cursor-pointer hover:bg-primary/10"
+                              className="text-xs cursor-pointer motion-interactive hover:bg-primary/10"
                               onClick={(e) => {
                                 e.preventDefault();
                                 onTagClick?.(tag);
@@ -113,6 +212,17 @@ export function TopicList({ topics, onTagClick }: TopicListProps) {
                         </div>
                       )}
                     </div>
+                    {replyPreviews.length > 0 && (
+                      <div className="mt-3 space-y-1.5 rounded-lg border border-border/60 bg-background/70 px-3 py-2">
+                        {replyPreviews.map((reply) => (
+                          <div key={reply.id} className="text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground/80">{reply.author_name}</span>
+                            <span className="mx-1 text-muted-foreground/60">：</span>
+                            <span className="line-clamp-1">{reply.content}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -141,7 +251,7 @@ export function TopicList({ topics, onTagClick }: TopicListProps) {
               </div>
             </div>
           </Link>
-        ))}
+        )})}
       </div>
     </div>
   );

@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Eye, Star, ArrowRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
+import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface FeaturedPhoto {
   id: string;
@@ -19,6 +22,19 @@ interface FeaturedPhoto {
   equipment: string;
 }
 
+type PublicProfile = {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+function getAuthorDisplayName(profile?: PublicProfile) {
+  const displayName = profile?.display_name?.trim();
+  const username = profile?.username?.trim();
+  return displayName || username || "愛屁543會員";
+}
+
 function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const imgSrc = pickImageSrc(photo.imageUrl, photo.thumbnailUrl);
@@ -26,7 +42,7 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
   return (
     <Link
       to={`/gallery/${photo.id}`}
-      className="group relative block overflow-hidden rounded-xl bg-card border border-border md:hover-lift"
+      className="group relative block overflow-hidden rounded-xl bg-card border border-border motion-card-surface motion-press"
     >
       {/* Fixed aspect-ratio — prevents CLS */}
       <div className="aspect-[4/3] overflow-hidden relative bg-muted">
@@ -37,7 +53,7 @@ function PhotoCard({ photo }: { photo: FeaturedPhoto }) {
           alt={photo.title}
           width={400}
           height={300}
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 w-full h-full object-cover motion-media ${imgLoaded ? "opacity-100" : "opacity-0"}`}
           loading="lazy"
           decoding="async"
           onLoad={() => setImgLoaded(true)}
@@ -106,11 +122,12 @@ export function FeaturedGallery({
   sectionTitle,
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const [photos, setPhotos] = useState<FeaturedPhoto[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchLatest() {
+  const initialPhotos = readBootstrapCache<FeaturedPhoto[]>("homepage-featured-gallery") ?? [];
+  const enabled = useDeferredPublicQuery(450);
+  const { data: photos = [], isLoading: loading } = useQuery({
+    queryKey: ["homepage-featured-gallery"],
+    queryFn: async () => {
+      const supabase = await getPublicSupabase();
       const { data, error } = await supabase
         .from("photos")
         .select(
@@ -120,16 +137,9 @@ export function FeaturedGallery({
         .order("created_at", { ascending: false })
         .limit(20);
 
-      if (error) {
-        console.error("載入最新作品失敗:", error);
-        setLoading(false);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        setPhotos([]);
-        setLoading(false);
-        return;
+      if (error || !data || data.length === 0) {
+        if (error) console.error("載入最新作品失敗:", error);
+        return [];
       }
 
       const seenUsers = new Set<string>();
@@ -142,42 +152,47 @@ export function FeaturedGallery({
         .slice(0, 13);
 
       const userIds = [...new Set(unique.map((p) => p.user_id))];
-      const profileMap: Record<string, { username: string; display_name: string | null; avatar_url: string | null }> =
-        {};
+      const profileMap: Record<string, PublicProfile> = {};
 
       if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("user_id, username, display_name, avatar_url")
-          .in("user_id", userIds);
-        profilesData?.forEach((p) => {
-          profileMap[p.user_id] = p;
-        });
+        const { data: profilesData, error: profilesError } = await supabase.rpc("get_public_profiles");
+
+        if (profilesError) throw profilesError;
+        (profilesData || [])
+          .filter((p: any) => userIds.includes(p.user_id))
+          .forEach((p: any) => {
+            profileMap[p.user_id] = {
+              user_id: p.user_id,
+              username: p.username?.trim() || null,
+              display_name: p.display_name?.trim() || null,
+              avatar_url: p.avatar_url || null,
+            };
+          });
       }
 
-      const mapped: FeaturedPhoto[] = unique.map((p: any) => {
+      const result = unique.map((p: any) => {
         const profile = profileMap[p.user_id];
         return {
           id: p.id,
           title: p.title,
           imageUrl: p.image_url,
           thumbnailUrl: p.thumbnail_url,
-          author: profile?.display_name || profile?.username || "匿名",
+          author: getAuthorDisplayName(profile),
           avatarUrl: profile?.avatar_url || null,
           likes: p.like_count || 0,
           comments: p.comment_count || 0,
           views: p.view_count || 0,
           rating: Number(p.average_rating) || 0,
           equipment: p.phone_model || p.camera_body || p.brand || "未知設備",
-        };
+        } as FeaturedPhoto;
       });
-
-      setPhotos(mapped);
-      setLoading(false);
-    }
-
-    fetchLatest();
-  }, []);
+      writeBootstrapCache("homepage-featured-gallery", result);
+      return result;
+    },
+    initialData: initialPhotos,
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (!loading && photos.length === 0) return null;
 

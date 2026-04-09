@@ -147,12 +147,12 @@ export default function Favorites() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="photos" className="gap-2">
+            <TabsList className="mb-6">
+            <TabsTrigger value="photos" className="gap-2 motion-tab">
               <Camera className="h-4 w-4" />
               作品 ({photoIds.length})
             </TabsTrigger>
-            <TabsTrigger value="listings" className="gap-2">
+            <TabsTrigger value="listings" className="gap-2 motion-tab">
               <ShoppingBag className="h-4 w-4" />
               商品 ({listingIds.length})
             </TabsTrigger>
@@ -184,13 +184,13 @@ export default function Favorites() {
                   <div key={photo.id} className="group relative">
                     <Link
                       to={`/gallery/${photo.id}`}
-                      className="block overflow-hidden rounded-xl bg-card border border-border hover-lift"
+                      className="block overflow-hidden rounded-xl bg-card border border-border motion-card-surface motion-press"
                     >
                       <div className="aspect-[4/3] overflow-hidden">
                         <img
                           src={photo.image_url}
                           alt={photo.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          className="w-full h-full object-cover motion-media"
                         />
                       </div>
                       <div className="p-4">
@@ -214,7 +214,7 @@ export default function Favorites() {
                     <Button
                       variant="destructive"
                       size="icon"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 motion-interactive"
                       onClick={(e) => {
                         e.preventDefault();
                         removeFavorite.mutate({ type: 'photo', id: photo.id });
@@ -267,13 +267,13 @@ export default function Favorites() {
                   <div key={listing.id} className="group relative">
                     <Link
                       to={`/marketplace/${listing.id}`}
-                      className="block overflow-hidden rounded-xl bg-card border border-border hover-lift"
+                      className="block overflow-hidden rounded-xl bg-card border border-border motion-card-surface motion-press"
                     >
                       <div className="aspect-[4/3] overflow-hidden relative">
                         <img
                           src={listing.verification_image_url}
                           alt={listing.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          className="w-full h-full object-cover motion-media"
                         />
                         {listing.is_sold && (
                           <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
@@ -297,7 +297,7 @@ export default function Favorites() {
                     <Button
                       variant="destructive"
                       size="icon"
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 motion-interactive"
                       onClick={(e) => {
                         e.preventDefault();
                         removeFavorite.mutate({ type: 'listing', id: listing.id });

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ import { zhTW } from "date-fns/locale";
 import { ReportDialog } from "@/components/reports/ReportDialog";
 import { ForumImageUpload, useTextareaDrop, filesToItems, urlsToItems, uploadPendingItems, type ImageItem } from "@/components/forums/ForumImageUpload";
 import { ImageLightbox } from "@/components/forums/ImageLightbox";
+import { prefetchForumTopicBundle, readPrefetchedForumTopic } from "@/lib/forumTopicPrefetch";
 
 interface ForumTopicData {
   id: string;
@@ -78,10 +79,29 @@ interface ForumReply {
   };
 }
 
+type PublicProfile = {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+function normalizeProfile(profile: PublicProfile | null | undefined, userId: string) {
+  const displayName = profile?.display_name?.trim();
+  const username = profile?.username?.trim();
+
+  return {
+    username: username || displayName || `會員 ${userId.slice(0, 8)}`,
+    display_name: displayName || null,
+    avatar_url: profile?.avatar_url || null,
+  };
+}
+
 export default function ForumTopic() {
   const { topicId } = useParams<{ topicId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState("");
   const [replyImages, setReplyImages] = useState<ImageItem[]>([]);
@@ -97,6 +117,18 @@ export default function ForumTopic() {
   const [editingTopicContent, setEditingTopicContent] = useState("");
   const [editingTopicImages, setEditingTopicImages] = useState<ImageItem[]>([]);
   const { canModerate, checkAdminStatus, toggleTopicPinned, toggleTopicLocked, loading: adminLoading } = useAdminActions();
+  const topicViewIncrementedRef = useRef<string | null>(null);
+
+  const topicPreview = useMemo(() => {
+    const candidate = (location.state as { topicPreview?: Partial<ForumTopicData> } | null)?.topicPreview;
+    if (!candidate || candidate.id !== topicId) return null;
+    return candidate as ForumTopicData;
+  }, [location.state, topicId]);
+
+  const prefetchedBundle = useMemo(
+    () => (topicId ? readPrefetchedForumTopic(topicId) : null),
+    [topicId],
+  );
 
   const handleReplyDragFiles = (files: File[]) => {
     const isEditing = editingReplyId !== null;
@@ -126,65 +158,38 @@ export default function ForumTopic() {
   const { data: topic, isLoading: topicLoading } = useQuery({
     queryKey: ["forum-topic", topicId],
     queryFn: async () => {
-      const { data: topicData, error: topicError } = await supabase
-        .from("forum_topics")
-        .select("*")
-        .eq("id", topicId)
-        .single();
-
-      if (topicError) throw topicError;
-
-      // Fetch profile for topic author
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .eq("user_id", topicData.user_id)
-        .single();
-
-      // Increment view count
-      await supabase
-        .from("forum_topics")
-        .update({ view_count: (topicData.view_count || 0) + 1 })
-        .eq("id", topicId);
-
-      return {
-        ...topicData,
-        profiles: profileData,
-      } as ForumTopicData;
+      const bundle = await prefetchForumTopicBundle(topicId!, topicPreview ?? prefetchedBundle?.topic ?? undefined);
+      if (!bundle.topic) throw new Error("找不到主題");
+      return bundle.topic as ForumTopicData;
     },
     enabled: !!topicId,
+    initialData: topicPreview ?? prefetchedBundle?.topic ?? undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 
   // Fetch replies
   const { data: replies, isLoading: repliesLoading } = useQuery({
     queryKey: ["forum-replies", topicId],
     queryFn: async () => {
-      const { data: repliesData, error: repliesError } = await supabase
-        .from("forum_replies")
-        .select("*")
-        .eq("topic_id", topicId)
-        .order("created_at", { ascending: true });
-
-      if (repliesError) throw repliesError;
-
-      // Fetch profiles for all reply authors
-      const userIds = [...new Set(repliesData.map((r) => r.user_id))];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", userIds);
-
-      const profilesMap = new Map(
-        profilesData?.map((p) => [p.user_id, p]) || []
-      );
-
-      return repliesData.map((reply) => ({
-        ...reply,
-        profiles: profilesMap.get(reply.user_id),
-      })) as ForumReply[];
+      const bundle = await prefetchForumTopicBundle(topicId!, topicPreview ?? prefetchedBundle?.topic ?? undefined);
+      return (bundle.replies || []) as ForumReply[];
     },
     enabled: !!topicId,
+    initialData: prefetchedBundle?.replies ?? undefined,
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 10,
   });
+
+  useEffect(() => {
+    if (!topicId || !topic || topicViewIncrementedRef.current === topicId) return;
+
+    topicViewIncrementedRef.current = topicId;
+    void supabase
+      .from("forum_topics")
+      .update({ view_count: (topic.view_count || 0) + 1 })
+      .eq("id", topicId);
+  }, [topic, topicId]);
 
   // Realtime subscription for forum replies
   useEffect(() => {

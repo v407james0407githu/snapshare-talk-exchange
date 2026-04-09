@@ -1,27 +1,43 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { usePublicSystemSettings } from "@/hooks/usePublicSystemSettings";
+import { preloadPublicRoute, prefetchForumsData, prefetchMarketplaceData } from "@/lib/publicRoutePrefetch";
 import { 
   Camera, 
   Menu, 
   X, 
   Search,
-  Bell
 } from "lucide-react";
 
-// Lazy-load the user dropdown (includes admin check, heavy icons, radix dropdown)
-const UserDropdown = lazy(() => import("./UserDropdown"));
+const HeaderAuthControls = lazy(() =>
+  import("./HeaderAuthControls").then((m) => ({ default: m.HeaderAuthControls })),
+);
+
+function hasLikelySession() {
+  if (typeof window === "undefined" || typeof localStorage === "undefined") return false;
+
+  try {
+    return Object.keys(localStorage).some((key) => {
+      if (!key.startsWith("sb-") || !key.endsWith("-auth-token")) return false;
+      const value = localStorage.getItem(key);
+      return Boolean(value && value !== "null");
+    });
+  } catch {
+    return false;
+  }
+}
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [enableAuthControls, setEnableAuthControls] = useState(() => hasLikelySession());
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
-  const { forumEnabled, marketplaceEnabled, siteLogo, siteName } = useSystemSettings();
+  const queryClient = useQueryClient();
+  const { forumEnabled, marketplaceEnabled, siteFavicon, siteLogo, siteName } = usePublicSystemSettings();
+  const brandImage = siteFavicon || siteLogo;
 
   const navItems = [
     { label: "首頁", href: "/" },
@@ -30,17 +46,94 @@ export function Header() {
     ...(marketplaceEnabled ? [{ label: "二手交易", href: "/marketplace" }] : []),
   ];
 
+  useEffect(() => {
+    if (location.pathname !== "/") return;
+
+    const schedule =
+      typeof window !== "undefined" && "requestIdleCallback" in window
+        ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 1500 })
+        : (cb: () => void) => window.setTimeout(cb, 900);
+
+    const handle = schedule(() => {
+      preloadPublicRoute("/gallery");
+      if (forumEnabled) {
+        preloadPublicRoute("/forums");
+        prefetchForumsData(queryClient);
+      }
+      if (marketplaceEnabled) {
+        preloadPublicRoute("/marketplace");
+        prefetchMarketplaceData(queryClient, false);
+      }
+    });
+
+    return () => {
+      if (typeof handle === "number") {
+        window.clearTimeout(handle);
+      }
+    };
+  }, [forumEnabled, marketplaceEnabled, location.pathname, queryClient]);
+
+  useEffect(() => {
+    if (enableAuthControls) return;
+    if (location.pathname.startsWith("/auth")) {
+      setEnableAuthControls(true);
+      return;
+    }
+
+    const schedule =
+      typeof window !== "undefined" && "requestIdleCallback" in window
+        ? (cb: () => void) =>
+            (window as Window & {
+              requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+            }).requestIdleCallback?.(cb, { timeout: 2500 }) ?? window.setTimeout(cb, 1500)
+        : (cb: () => void) => window.setTimeout(cb, 1500);
+
+    const handle = schedule(() => setEnableAuthControls(true));
+    return () => {
+      if (typeof handle === "number") {
+        window.clearTimeout(handle);
+      }
+    };
+  }, [enableAuthControls, location.pathname]);
+
+  const handleNavPrefetch = (href: string) => {
+    if (href === "/forums") {
+      preloadPublicRoute(href);
+      prefetchForumsData(queryClient);
+      return;
+    }
+    if (href === "/marketplace") {
+      preloadPublicRoute(href);
+      prefetchMarketplaceData(queryClient, false);
+      return;
+    }
+    preloadPublicRoute(href);
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full h-16 glass border-b border-border/50">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group h-8 min-w-[120px]">
-          {siteLogo ? (
-            <img src={siteLogo} alt={siteName} className="h-8 max-w-[160px] object-contain" width={160} height={32} />
+        <Link to="/" className="flex items-center gap-3 group h-12 min-w-[140px]">
+          {brandImage ? (
+            <>
+              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full">
+                <img
+                  src={brandImage}
+                  alt={siteName}
+                  className="h-full w-full scale-[1.18] object-cover"
+                  width={48}
+                  height={48}
+                />
+              </div>
+              <span className="font-serif text-xl font-bold tracking-tight">
+                {siteName}
+              </span>
+            </>
           ) : (
             <>
               <div className="relative">
-                <Camera className="h-8 w-8 text-primary" />
+                <Camera className="h-12 w-12 text-primary" />
               </div>
               <span className="font-serif text-xl font-bold tracking-tight">
                 {siteName}
@@ -55,7 +148,12 @@ export function Header() {
             <Link
               key={item.href}
               to={item.href}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+              onMouseEnter={() => handleNavPrefetch(item.href)}
+              onMouseDown={() => handleNavPrefetch(item.href)}
+              onPointerDown={() => handleNavPrefetch(item.href)}
+              onFocus={() => handleNavPrefetch(item.href)}
+              onTouchStart={() => handleNavPrefetch(item.href)}
+              className={`motion-interactive motion-press px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent hover:text-accent-foreground ${
                 location.pathname === item.href
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground"
@@ -73,7 +171,7 @@ export function Header() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="搜尋..."
-              className="pl-9 w-44 h-9 text-sm"
+              className="motion-interactive pl-9 w-44 h-9 text-sm"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.target as HTMLInputElement).value) {
                   navigate(`/gallery?q=${encodeURIComponent((e.target as HTMLInputElement).value)}`);
@@ -82,30 +180,25 @@ export function Header() {
             />
           </div>
 
-          {user ? (
-            <>
-              <Link to="/upload" className="hidden sm:block">
-                <Button variant="gold" size="sm" className="gap-2">
-                  上傳作品
-                </Button>
-              </Link>
-
-              <Button variant="ghost" size="icon" className="relative" asChild>
-                <Link to="/notifications">
-                  <Bell className="h-5 w-5" />
-                </Link>
-              </Button>
-
-              <Suspense fallback={
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-gradient-gold text-charcoal">
-                    {profile?.display_name?.[0] || profile?.username?.[0] || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              }>
-                <UserDropdown />
-              </Suspense>
-            </>
+          {enableAuthControls ? (
+            <Suspense
+              fallback={
+                <>
+                  <Link to="/auth">
+                    <Button variant="ghost" size="sm">
+                      登入
+                    </Button>
+                  </Link>
+                  <Link to="/auth?tab=register">
+                    <Button variant="gold" size="sm">
+                      註冊
+                    </Button>
+                  </Link>
+                </>
+              }
+            >
+              <HeaderAuthControls />
+            </Suspense>
           ) : (
             <>
               <Link to="/auth">
@@ -141,8 +234,13 @@ export function Header() {
               <Link
                 key={item.href}
                 to={item.href}
+                onMouseEnter={() => handleNavPrefetch(item.href)}
+                onMouseDown={() => handleNavPrefetch(item.href)}
+                onPointerDown={() => handleNavPrefetch(item.href)}
+                onFocus={() => handleNavPrefetch(item.href)}
+                onTouchStart={() => handleNavPrefetch(item.href)}
                 onClick={() => setIsMenuOpen(false)}
-                className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                className={`motion-interactive motion-press px-4 py-3 rounded-lg text-sm font-medium ${
                   location.pathname === item.href
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:bg-accent"
@@ -151,15 +249,6 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            {user && (
-              <Link
-                to="/upload"
-                onClick={() => setIsMenuOpen(false)}
-                className="px-4 py-3 rounded-lg text-sm font-medium text-primary bg-primary/10"
-              >
-                上傳作品
-              </Link>
-            )}
           </nav>
         </div>
       )}

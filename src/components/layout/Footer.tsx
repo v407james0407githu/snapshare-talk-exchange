@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Camera, Facebook, Instagram, Twitter, Youtube } from "lucide-react";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { usePublicSystemSettings } from "@/hooks/usePublicSystemSettings";
 
 const footerSections = [
   {
@@ -8,10 +8,10 @@ const footerSections = [
     titleKey: "footer_community_title",
     defaultTitle: "社群",
     links: [
-      { labelKey: "footer_community_label_1", urlKey: "footer_community_url_1", defaultLabel: "討論區", defaultUrl: "/forums" },
-      { labelKey: "footer_community_label_2", urlKey: "footer_community_url_2", defaultLabel: "作品分享", defaultUrl: "/gallery" },
-      { labelKey: "footer_community_label_3", urlKey: "footer_community_url_3", defaultLabel: "二手交易", defaultUrl: "/marketplace" },
-      { labelKey: "footer_community_label_4", urlKey: "footer_community_url_4", defaultLabel: "哈拉打屁", defaultUrl: "/lounge" },
+      { labelKey: "footer_community_label_1", urlKey: "footer_community_url_1", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_community_label_2", urlKey: "footer_community_url_2", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_community_label_3", urlKey: "footer_community_url_3", defaultLabel: "", defaultUrl: "" },
+      { labelKey: "footer_community_label_4", urlKey: "footer_community_url_4", defaultLabel: "", defaultUrl: "" },
     ],
   },
   {
@@ -61,7 +61,7 @@ const footerSections = [
 ];
 
 export function Footer() {
-  const { siteLogo, siteName, get, getBool } = useSystemSettings();
+  const { siteLogo, siteName, get, getBool, isLoading } = usePublicSystemSettings();
 
   const socialLinks = [
     { icon: Facebook, key: "social_facebook", label: "Facebook" },
@@ -70,12 +70,11 @@ export function Footer() {
     { icon: Youtube, key: "social_youtube", label: "YouTube" },
   ];
 
-  const visibleSocials = socialLinks.filter((s) => get(s.key));
+  const visibleSocials = isLoading ? [] : socialLinks.filter((s) => get(s.key));
 
   // Filter to only enabled sections with at least one visible link
-  const enabledSections = footerSections.filter((section) => {
+  const enabledSections = isLoading ? [] : footerSections.filter((section) => {
     if (!getBool(section.enabledKey)) return false;
-    // Show section if it has a title OR at least one link with a label
     return section.links.some((l) => get(l.labelKey, l.defaultLabel));
   });
 

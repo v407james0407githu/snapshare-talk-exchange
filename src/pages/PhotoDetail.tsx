@@ -1,13 +1,21 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { getSafeErrorMessage } from "@/lib/errorSanitizer";
 import { LinkifyText } from "@/lib/linkifyText";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminActions } from "@/hooks/useAdminActions";
 import { useFavorites } from "@/hooks/useFavorites";
+import { usePhotographerFollow } from "@/hooks/usePhotographerFollow";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import {
+  prefetchPhotoDetailBundle,
+  readPrefetchedAuthorWorks,
+  readPrefetchedPhotoDetail,
+  readPrefetchedRecommendedWorks,
+} from "@/lib/photoDetailPrefetch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,7 +60,11 @@ import {
   Pencil,
   ChevronLeft,
   ChevronRight,
+  UserPlus,
+  UserCheck,
+  Users,
 } from "lucide-react";
+import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +85,7 @@ interface Photo {
   title: string;
   description: string | null;
   image_url: string;
+  thumbnail_url: string | null;
   category: string;
   brand: string | null;
   camera_body: string | null;
@@ -80,9 +93,11 @@ interface Photo {
   phone_model: string | null;
   view_count: number;
   like_count: number;
+  photo_series_id: string | null;
   comment_count: number;
   average_rating: number;
   rating_count: number;
+  series_order: number | null;
   is_featured: boolean;
   is_hidden: boolean;
   exif_data: any;
@@ -106,17 +121,35 @@ interface Comment {
   replies?: Comment[];
 }
 
+function preloadAdjacentImage(url?: string | null) {
+  if (!url) return;
+  const img = new Image();
+  img.decoding = "async";
+  img.src = url;
+}
+
 export default function PhotoDetailPage() {
   const { photoId } = useParams<{ photoId: string }>();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { canModerate, checkAdminStatus, togglePhotoFeatured, loading: adminLoading } = useAdminActions();
   const { isFavorited, toggleFavorite, isToggling } = useFavorites("photo", photoId);
-  const [photo, setPhoto] = useState<Photo | null>(null);
+  const photoPreview = useMemo(() => {
+    const candidate = (location.state as { photoPreview?: Partial<Photo> } | null)?.photoPreview;
+    if (!candidate || candidate.id !== photoId) return null;
+    return candidate as Photo;
+  }, [location.state, photoId]);
+
+  const prefetchedBundle = useMemo(() => (photoId ? readPrefetchedPhotoDetail(photoId) : null), [photoId]);
+
+  const [photo, setPhoto] = useState<Photo | null>(photoPreview ?? prefetchedBundle?.photo ?? null);
+  const followState = usePhotographerFollow(photo?.user_id);
   const [photographer, setPhotographer] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!(photoPreview ?? prefetchedBundle?.photo));
   const [error, setError] = useState<string | null>(null);
+  const [mainImageLoaded, setMainImageLoaded] = useState(false);
 
   const [userRating, setUserRating] = useState<number>(0);
   const [hoverRating, setHoverRating] = useState<number>(0);
@@ -147,11 +180,27 @@ export default function PhotoDetailPage() {
   const [prevPhotoId, setPrevPhotoId] = useState<string | null>(null);
   const [nextPhotoId, setNextPhotoId] = useState<string | null>(null);
 
+  const handleFollowPhotographer = async () => {
+    if (!photographer?.user_id) return;
+    if (!user) {
+      navigate("/auth?tab=register");
+      return;
+    }
+
+    if (followState.isSelf || followState.isMutating) return;
+
+    if (followState.isFollowing) {
+      await followState.unfollow();
+    } else {
+      await followState.follow();
+    }
+  };
+
   // Dynamic OG meta tags
   useEffect(() => {
     if (!photo) return;
     const originalTitle = document.title;
-    document.title = `${photo.title} - IP543攝影論壇`;
+    document.title = `${photo.title} - 愛屁543論壇`;
 
     const setMeta = (selector: string, attr: string, value: string) => {
       const el = document.querySelector(selector);
@@ -176,11 +225,35 @@ export default function PhotoDetailPage() {
 
   useEffect(() => {
     if (photoId) {
+      setError(null);
+      const cached = readPrefetchedPhotoDetail(photoId);
+      if (cached?.photo) {
+        setPhoto(cached.photo as Photo);
+        setPhotographer((cached.photographer as Profile | null) ?? null);
+        setPrevPhotoId(cached.prevPhotoId);
+        setNextPhotoId(cached.nextPhotoId);
+        setLoading(false);
+      }
       loadPhoto();
       loadComments();
-      loadAdjacentPhotos();
+      if (!cached?.prevPhotoId && !cached?.nextPhotoId) {
+        loadAdjacentPhotos();
+      }
     }
   }, [photoId]);
+
+  useEffect(() => {
+    setMainImageLoaded(false);
+  }, [photoId]);
+
+  useEffect(() => {
+    if (prevPhotoId) {
+      void prefetchPhotoDetailBundle(prevPhotoId);
+    }
+    if (nextPhotoId) {
+      void prefetchPhotoDetailBundle(nextPhotoId);
+    }
+  }, [prevPhotoId, nextPhotoId]);
 
   const loadAdjacentPhotos = useCallback(async () => {
     if (!photoId) return;
@@ -191,7 +264,7 @@ export default function PhotoDetailPage() {
     // Previous photo (newer by created_at)
     const { data: prev } = await supabase
       .from("photos")
-      .select("id")
+      .select("id, image_url, thumbnail_url")
       .eq("is_hidden", false)
       .gt("created_at", current.created_at)
       .order("created_at", { ascending: true })
@@ -200,29 +273,61 @@ export default function PhotoDetailPage() {
     // Next photo (older by created_at)
     const { data: next } = await supabase
       .from("photos")
-      .select("id")
+      .select("id, image_url, thumbnail_url")
       .eq("is_hidden", false)
       .lt("created_at", current.created_at)
       .order("created_at", { ascending: false })
       .limit(1);
 
-    setPrevPhotoId(prev?.[0]?.id || null);
-    setNextPhotoId(next?.[0]?.id || null);
+    const prevItem = prev?.[0];
+    const nextItem = next?.[0];
+
+    preloadAdjacentImage(prevItem?.thumbnail_url || prevItem?.image_url || null);
+    preloadAdjacentImage(prevItem?.image_url || null);
+    preloadAdjacentImage(nextItem?.thumbnail_url || nextItem?.image_url || null);
+    preloadAdjacentImage(nextItem?.image_url || null);
+
+    setPrevPhotoId(prevItem?.id || null);
+    setNextPhotoId(nextItem?.id || null);
   }, [photoId]);
+
+  const navigateToAdjacentPhoto = useCallback(
+    async (targetPhotoId: string | null) => {
+      if (!targetPhotoId || targetPhotoId === photoId) return;
+
+      const cached = readPrefetchedPhotoDetail(targetPhotoId);
+      if (cached?.photo) {
+        navigate(`/gallery/${targetPhotoId}`, {
+          state: { photoPreview: cached.photo },
+        });
+        return;
+      }
+
+      try {
+        const bundle = await prefetchPhotoDetailBundle(targetPhotoId);
+        navigate(`/gallery/${targetPhotoId}`, {
+          state: bundle.photo ? { photoPreview: bundle.photo } : undefined,
+        });
+      } catch {
+        navigate(`/gallery/${targetPhotoId}`);
+      }
+    },
+    [navigate, photoId],
+  );
 
   // Keyboard arrow navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "ArrowLeft" && prevPhotoId) {
-        navigate(`/gallery/${prevPhotoId}`);
+        void navigateToAdjacentPhoto(prevPhotoId);
       } else if (e.key === "ArrowRight" && nextPhotoId) {
-        navigate(`/gallery/${nextPhotoId}`);
+        void navigateToAdjacentPhoto(nextPhotoId);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [prevPhotoId, nextPhotoId, navigate]);
+  }, [prevPhotoId, nextPhotoId, navigateToAdjacentPhoto]);
 
   // Realtime subscription for comments
   useEffect(() => {
@@ -262,33 +367,26 @@ export default function PhotoDetailPage() {
     if (!photoId) return;
 
     try {
-      const { data, error: photoError } = await supabase
+      if (!photoPreview && !prefetchedBundle?.photo) setLoading(true);
+
+      const bundle = await prefetchPhotoDetailBundle(photoId, photoPreview ?? prefetchedBundle?.photo ?? undefined);
+      if (!bundle.photo) throw new Error("照片不存在");
+
+      setPhoto(bundle.photo as Photo);
+      setPhotographer((bundle.photographer as Profile | null) ?? null);
+      setPrevPhotoId(bundle.prevPhotoId);
+      setNextPhotoId(bundle.nextPhotoId);
+      setLoading(false);
+
+      // Increment view count in background; don't block first render.
+      void supabase
         .from("photos")
-        .select("*")
-        .eq("id", photoId)
-        .eq("is_hidden", false)
-        .single();
-
-      if (photoError) throw photoError;
-
-      setPhoto(data);
-
-      // Increment view count
-      await supabase
-        .from("photos")
-        .update({ view_count: (data.view_count || 0) + 1 })
+        .update({ view_count: ((bundle.photo.view_count as number) || 0) + 1 })
         .eq("id", photoId);
-
-      // Fetch photographer profile using security definer function
-      const { data: profileData } = await supabase.rpc("get_public_profile", { target_user_id: data.user_id });
-
-      if (profileData && profileData.length > 0) {
-        setPhotographer(profileData[0] as unknown as Profile);
-      }
     } catch (err: any) {
       setError(err.message || "無法載入照片");
     } finally {
-      setLoading(false);
+      if (!photo) setLoading(false);
     }
   };
 
@@ -659,7 +757,18 @@ export default function PhotoDetailPage() {
               {/* Previous Photo Arrow */}
               {prevPhotoId && (
                 <button
-                  onClick={() => navigate(`/gallery/${prevPhotoId}`)}
+                  onMouseEnter={() => {
+                    void prefetchPhotoDetailBundle(prevPhotoId);
+                  }}
+                  onFocus={() => {
+                    void prefetchPhotoDetailBundle(prevPhotoId);
+                  }}
+                  onTouchStart={() => {
+                    void prefetchPhotoDetailBundle(prevPhotoId);
+                  }}
+                  onClick={() => {
+                    void navigateToAdjacentPhoto(prevPhotoId);
+                  }}
                   className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
                   aria-label="上一張照片"
                 >
@@ -669,18 +778,45 @@ export default function PhotoDetailPage() {
               {/* Next Photo Arrow */}
               {nextPhotoId && (
                 <button
-                  onClick={() => navigate(`/gallery/${nextPhotoId}`)}
+                  onMouseEnter={() => {
+                    void prefetchPhotoDetailBundle(nextPhotoId);
+                  }}
+                  onFocus={() => {
+                    void prefetchPhotoDetailBundle(nextPhotoId);
+                  }}
+                  onTouchStart={() => {
+                    void prefetchPhotoDetailBundle(nextPhotoId);
+                  }}
+                  onClick={() => {
+                    void navigateToAdjacentPhoto(nextPhotoId);
+                  }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
                   aria-label="下一張照片"
                 >
                   <ChevronRight className="h-6 w-6" />
                 </button>
               )}
-              <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="bg-card rounded-xl border border-border overflow-hidden relative">
+                {photo.thumbnail_url && !mainImageLoaded && (
+                  <img
+                    src={photo.thumbnail_url}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-contain bg-black scale-[1.02] blur-xl opacity-80"
+                  />
+                )}
+                {!mainImageLoaded && <div className="absolute inset-0 bg-black/30 animate-pulse" />}
                 <img
                   src={photo.image_url}
                   alt={photo.title}
-                  className="w-full h-auto max-h-[90vh] object-contain bg-black"
+                  className={`relative w-full h-auto max-h-[90vh] object-contain bg-black content-fade ${mainImageLoaded ? "media-reveal" : ""} transition-opacity duration-500 ${
+                    mainImageLoaded ? "opacity-100" : "opacity-0"
+                  }`}
+                  data-loaded={mainImageLoaded ? "true" : "false"}
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="sync"
+                  onLoad={() => setMainImageLoaded(true)}
                 />
               </div>
             </div>
@@ -688,21 +824,44 @@ export default function PhotoDetailPage() {
             {/* Mobile Stats */}
             <div className="lg:hidden bg-card rounded-xl border border-border p-4 space-y-4">
               {/* Photographer */}
-              <Link
-                to={`/user/${photographer?.user_id}`}
-                className="flex items-center gap-3 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors"
-              >
-                <Avatar>
-                  <AvatarImage src={photographer?.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {photographer?.display_name?.[0] || photographer?.username?.[0] || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{photographer?.display_name || photographer?.username}</p>
-                  <p className="text-sm text-muted-foreground">@{photographer?.username}</p>
-                </div>
-              </Link>
+              <div className="space-y-3">
+                <Link
+                  to={`/user/${photographer?.user_id}`}
+                  className="flex items-center gap-3 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors"
+                >
+                  <Avatar>
+                    <AvatarImage src={photographer?.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {photographer?.display_name?.[0] || photographer?.username?.[0] || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-medium">{photographer?.display_name || photographer?.username}</p>
+                    <p className="text-sm text-muted-foreground">@{photographer?.username}</p>
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="h-3.5 w-3.5" />
+                      {followState.followerCount} 位追蹤者
+                    </p>
+                  </div>
+                </Link>
+                {!followState.isSelf && photographer?.user_id ? (
+                  <Button
+                    variant={followState.isFollowing ? "outline" : "default"}
+                    className="w-full gap-2 motion-interactive motion-press"
+                    disabled={followState.isMutating}
+                    onClick={handleFollowPhotographer}
+                  >
+                    {followState.isMutating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : followState.isFollowing ? (
+                      <UserCheck className="h-4 w-4" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {followState.isFollowing ? "已追蹤" : "追蹤攝影師"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -713,21 +872,44 @@ export default function PhotoDetailPage() {
               <h1 className="font-serif text-2xl font-bold mb-4">{photo.title}</h1>
 
               {/* Photographer - Desktop */}
-              <Link
-                to={`/user/${photographer?.user_id}`}
-                className="hidden lg:flex items-center gap-3 mb-4 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors"
-              >
-                <Avatar>
-                  <AvatarImage src={photographer?.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {photographer?.display_name?.[0] || photographer?.username?.[0] || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{photographer?.display_name || photographer?.username}</p>
-                  <p className="text-sm text-muted-foreground">@{photographer?.username}</p>
-                </div>
-              </Link>
+              <div className="mb-4 hidden lg:flex items-center justify-between gap-4">
+                <Link
+                  to={`/user/${photographer?.user_id}`}
+                  className="flex min-w-0 items-center gap-3 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors"
+                >
+                  <Avatar>
+                    <AvatarImage src={photographer?.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {photographer?.display_name?.[0] || photographer?.username?.[0] || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-medium">{photographer?.display_name || photographer?.username}</p>
+                    <p className="text-sm text-muted-foreground">@{photographer?.username}</p>
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="h-3.5 w-3.5" />
+                      {followState.followerCount} 位追蹤者
+                    </p>
+                  </div>
+                </Link>
+                {!followState.isSelf && photographer?.user_id ? (
+                  <Button
+                    variant={followState.isFollowing ? "outline" : "default"}
+                    className="gap-2 motion-interactive motion-press"
+                    disabled={followState.isMutating}
+                    onClick={handleFollowPhotographer}
+                  >
+                    {followState.isMutating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : followState.isFollowing ? (
+                      <UserCheck className="h-4 w-4" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {followState.isFollowing ? "已追蹤" : "追蹤攝影師"}
+                  </Button>
+                ) : null}
+              </div>
 
               {photo.description && (
                 <p className="text-muted-foreground mb-4 whitespace-pre-wrap">
@@ -1360,6 +1542,9 @@ export default function PhotoDetailPage() {
           </div>
         </div>
 
+        {/* Same Series Works */}
+        <SameSeriesWorks photo={photo} />
+
         {/* Author's Other Works */}
         <AuthorWorks photo={photo} photographer={photographer} />
 
@@ -1488,16 +1673,21 @@ export default function PhotoDetailPage() {
 function PhotoCard({
   p,
 }: {
-  p: { id: string; title: string; image_url: string; average_rating: number; view_count: number };
+  p: { id: string; title: string; image_url: string; thumbnail_url?: string | null; average_rating: number; view_count: number };
 }) {
+  const imageSrc = pickImageSrc(p.image_url, p.thumbnail_url || null);
   return (
     <Link to={`/gallery/${p.id}`} className="group block">
       <div className="relative rounded-lg overflow-hidden border border-border bg-card">
         <img
-          src={p.image_url}
+          src={imageSrc}
           alt={p.title}
+          width={640}
+          height={480}
+          sizes={SIZES.card}
           className="w-full aspect-[4/3] object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform">
@@ -1519,20 +1709,26 @@ function PhotoCard({
 }
 
 function AuthorWorks({ photo, photographer }: { photo: Photo; photographer: Profile | null }) {
-  const [works, setWorks] = useState<any[]>([]);
+  const prefetchedWorks = readPrefetchedAuthorWorks(photo.user_id, photo.id);
+  const { data: works = [] } = useQuery({
+    queryKey: ["photo-author-works", photo.user_id, photo.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("photos")
+        .select("id, title, image_url, thumbnail_url, average_rating, view_count")
+        .eq("user_id", photo.user_id)
+        .neq("id", photo.id)
+        .eq("is_hidden", false)
+        .order("created_at", { ascending: false })
+        .limit(8);
 
-  useEffect(() => {
-    if (!photo) return;
-    supabase
-      .from("photos")
-      .select("id, title, image_url, average_rating, view_count")
-      .eq("user_id", photo.user_id)
-      .neq("id", photo.id)
-      .eq("is_hidden", false)
-      .order("created_at", { ascending: false })
-      .limit(8)
-      .then(({ data }) => setWorks(data || []));
-  }, [photo.id, photo.user_id]);
+      if (error) throw error;
+      return data || [];
+    },
+    initialData: prefetchedWorks ?? undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
+  });
 
   if (works.length === 0) return null;
 
@@ -1555,50 +1751,108 @@ function AuthorWorks({ photo, photographer }: { photo: Photo; photographer: Prof
   );
 }
 
-function RecommendedWorks({ photo }: { photo: Photo }) {
-  const [works, setWorks] = useState<any[]>([]);
+function SameSeriesWorks({ photo }: { photo: Photo }) {
+  const { data: works = [] } = useQuery({
+    queryKey: ["photo-same-series-works", photo.photo_series_id, photo.id],
+    queryFn: async () => {
+      if (!photo.photo_series_id) return [];
 
-  useEffect(() => {
-    if (!photo) return;
-
-    const fetchRecommendations = async () => {
-      // 1. First try: same brand or category, excluding current photo & author
-      const { data: smartData } = await supabase
+      const { data, error } = await supabase
         .from("photos")
-        .select("id, title, image_url, average_rating, view_count, brand, category")
+        .select("id, title, image_url, thumbnail_url, average_rating, view_count, series_order")
+        .eq("photo_series_id", photo.photo_series_id)
+        .eq("is_hidden", false)
+        .order("series_order", { ascending: true })
+        .limit(12);
+
+      if (error) {
+        const message = getSafeErrorMessage(error);
+        if (message.includes("photo_series_id") || message.includes("series_order")) {
+          return [];
+        }
+        throw error;
+      }
+      return data || [];
+    },
+    enabled: !!photo.photo_series_id,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
+  });
+
+  if (!photo.photo_series_id || works.length === 0) return null;
+
+  const currentIndex = Math.max(
+    works.findIndex((p) => p.id === photo.id),
+    photo.series_order != null ? photo.series_order - 1 : -1,
+  );
+  const currentPosition = currentIndex >= 0 ? currentIndex + 1 : 1;
+  const totalCount = works.length;
+  const relatedWorks = works.filter((p) => p.id !== photo.id);
+
+  if (relatedWorks.length === 0) return null;
+
+  return (
+    <div className="mt-12">
+      <div className="flex items-center gap-3 mb-6">
+        <Separator className="flex-1" />
+        <h2 className="text-lg font-semibold whitespace-nowrap flex items-center gap-2">
+          <Camera className="h-5 w-5 text-primary" />
+          <span>同系列作品</span>
+          <span className="text-sm font-medium text-muted-foreground">
+            第 {currentPosition} 張 / 共 {totalCount} 張
+          </span>
+        </h2>
+        <Separator className="flex-1" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {relatedWorks.map((p) => (
+          <PhotoCard key={p.id} p={p} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecommendedWorks({ photo }: { photo: Photo }) {
+  const prefetchedWorks = readPrefetchedRecommendedWorks(photo.id);
+  const { data: works = [] } = useQuery({
+    queryKey: ["photo-recommended-works", photo.id, photo.brand, photo.category],
+    queryFn: async () => {
+      const { data: smartData, error: smartError } = await supabase
+        .from("photos")
+        .select("id, title, image_url, thumbnail_url, average_rating, view_count, brand, category")
         .neq("id", photo.id)
         .eq("is_hidden", false)
         .or(`brand.eq.${photo.brand},category.eq.${photo.category}`)
         .order("average_rating", { ascending: false })
         .limit(12);
 
+      if (smartError) throw smartError;
+
       if (smartData && smartData.length > 0) {
-        // Sort: same brand+category first, then same brand, then same category
-        const sorted = smartData.sort((a, b) => {
+        const sorted = [...smartData].sort((a, b) => {
           const scoreA = (a.brand === photo.brand ? 2 : 0) + (a.category === photo.category ? 1 : 0);
           const scoreB = (b.brand === photo.brand ? 2 : 0) + (b.category === photo.category ? 1 : 0);
           return scoreB - scoreA;
         });
-        // Filter out current author's photos that are already in AuthorWorks
-        const filtered = sorted.filter((p) => p.id !== photo.id);
-        setWorks(filtered.slice(0, 12));
-        return;
+        return sorted.filter((p) => p.id !== photo.id).slice(0, 12);
       }
 
-      // 2. Fallback: just get highest rated photos
-      const { data: fallbackData } = await supabase
+      const { data: fallbackData, error: fallbackError } = await supabase
         .from("photos")
-        .select("id, title, image_url, average_rating, view_count")
+        .select("id, title, image_url, thumbnail_url, average_rating, view_count")
         .neq("id", photo.id)
         .eq("is_hidden", false)
         .order("average_rating", { ascending: false })
         .limit(12);
 
-      setWorks(fallbackData || []);
-    };
-
-    fetchRecommendations();
-  }, [photo.id, photo.brand, photo.category]);
+      if (fallbackError) throw fallbackError;
+      return fallbackData || [];
+    },
+    initialData: prefetchedWorks ?? undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
+  });
 
   if (works.length === 0) return null;
 

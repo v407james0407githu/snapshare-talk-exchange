@@ -18,7 +18,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 page-enter">{children}</main>
       <div ref={footerRef}>
         <Suspense fallback={<FooterPlaceholder />}>
           {showFooter ? <Footer /> : <FooterPlaceholder />}

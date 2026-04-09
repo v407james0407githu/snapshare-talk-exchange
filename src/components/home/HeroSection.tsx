@@ -5,8 +5,10 @@ import { Link } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { unsplashSrcSet } from '@/lib/responsiveImage';
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface Banner {
   id: string;
@@ -88,22 +90,29 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   ]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const heroEnabled = useDeferredPublicQuery(150);
+  const initialBanners = readBootstrapCache<Banner[]>("hero-banners") ?? [];
 
   const { data: banners, isLoading } = useQuery({
     queryKey: ["hero-banners"],
     queryFn: async () => {
+      const supabase = await getPublicSupabase();
       const { data, error } = await supabase
         .from("hero_banners")
-        .select("*")
+        .select("id, title, subtitle, image_url, link_url, cta_primary_text, cta_primary_link, cta_secondary_text, cta_secondary_link, text_align, gradient_type, gradient_opacity")
         .eq("is_active", true)
         .order("sort_order");
       if (error) throw error;
       if (!data || data.length === 0) return [];
-      return data.map(b => ({
+      const result = data.map(b => ({
         ...b,
         image_url: optimizeUnsplashUrl(b.image_url),
       })) as Banner[];
+      writeBootstrapCache("hero-banners", result);
+      return result;
     },
+    initialData: initialBanners,
+    enabled: heroEnabled,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -120,7 +129,7 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
   }, [emblaApi, onSelect]);
 
   // Show skeleton while loading to prevent flash of stale content
-  if (isLoading) {
+  if (isLoading && !initialBanners.length) {
     return (
       <>
         <section className="relative aspect-[16/9] md:aspect-auto md:h-[50vh] md:max-h-[60vh] overflow-hidden bg-muted animate-pulse" />

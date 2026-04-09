@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { usePublicSystemSettings } from '@/hooks/usePublicSystemSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,6 @@ import { Camera, Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import VerificationPending from '@/components/auth/VerificationPending';
 import ForgotPasswordDialog from '@/components/auth/ForgotPasswordDialog';
-import { lovable } from '@/integrations/lovable/index';
 import { Separator } from '@/components/ui/separator';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,7 +59,7 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState('');
 
   const { signIn, signUp, user } = useAuth();
-  const { siteLogo } = useSystemSettings();
+  const { siteLogo } = usePublicSystemSettings();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const handledRedirectRef = useRef(false);
@@ -103,6 +102,36 @@ export default function Auth() {
     }
 
     return '/';
+  };
+
+  const handleGoogleOAuth = async (mode: 'login' | 'register') => {
+    setErrors({});
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth`,
+        },
+      });
+
+      if (error) {
+        setErrors({
+          form: mode === 'login'
+            ? '使用 Google 登入時發生錯誤，請稍後再試'
+            : '使用 Google 註冊時發生錯誤，請稍後再試',
+        });
+      }
+    } catch {
+      setErrors({
+        form: mode === 'login'
+          ? '使用 Google 登入時發生錯誤，請稍後再試'
+          : '使用 Google 註冊時發生錯誤，請稍後再試',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -365,16 +394,7 @@ export default function Auth() {
                   variant="outline"
                   className="w-full"
                   disabled={isLoading}
-                  onClick={async () => {
-                    setIsLoading(true);
-                    const result = await lovable.auth.signInWithOAuth("google", {
-                      redirect_uri: window.location.origin,
-                    });
-                    if (result?.error) {
-                      setErrors({ form: '使用 Google 登入時發生錯誤，請稍後再試' });
-                    }
-                    setIsLoading(false);
-                  }}
+                  onClick={() => handleGoogleOAuth('login')}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -519,16 +539,7 @@ export default function Auth() {
                   variant="outline"
                   className="w-full"
                   disabled={isLoading}
-                  onClick={async () => {
-                    setIsLoading(true);
-                    const result = await lovable.auth.signInWithOAuth("google", {
-                      redirect_uri: window.location.origin,
-                    });
-                    if (result?.error) {
-                      setErrors({ form: '使用 Google 註冊時發生錯誤，請稍後再試' });
-                    }
-                    setIsLoading(false);
-                  }}
+                  onClick={() => handleGoogleOAuth('register')}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />

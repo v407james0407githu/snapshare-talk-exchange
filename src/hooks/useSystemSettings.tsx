@@ -8,7 +8,7 @@ interface SystemSetting {
 }
 
 export function useSystemSettings() {
-  const { data: settings = [] } = useQuery({
+  const { data: settings = [], isLoading } = useQuery({
     queryKey: ["system-settings-public"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -34,14 +34,15 @@ export function useSystemSettings() {
 
   return {
     settings,
+    isLoading,
     get,
     getBool,
     getNum,
     galleryEnabled: true, // always enabled, toggle removed
-    forumEnabled: getBool("forum_enabled"),
-    marketplaceEnabled: getBool("marketplace_enabled"),
-    registrationEnabled: getBool("registration_enabled"),
-    siteName: get("site_name", "IP543攝影論壇"),
+    forumEnabled: getBool("forum_enabled", false),
+    marketplaceEnabled: getBool("marketplace_enabled", false),
+    registrationEnabled: getBool("registration_enabled", true),
+    siteName: get("site_name", "愛屁543論壇"),
     siteLogo: get("site_logo_url", ""),
   };
 }

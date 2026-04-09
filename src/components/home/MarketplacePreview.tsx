@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ArrowRight, MapPin, Clock, ShieldCheck } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { useLazySection } from "@/hooks/useLazySection";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 
 interface ListingItem {
   id: string;
@@ -25,6 +25,19 @@ interface ListingItem {
   };
 }
 
+function normalizeSellerName(
+  profile?: { display_name?: string | null; username?: string | null },
+  userId?: string,
+) {
+  const displayName = profile?.display_name?.trim();
+  if (displayName) return displayName;
+
+  const username = profile?.username?.trim();
+  if (username) return username;
+
+  return userId ? `會員 ${userId.slice(0, 8)}` : "愛屁543會員";
+}
+
 const conditionLabels: Record<string, string> = {
   new: "全新",
   like_new: "幾乎全新",
@@ -40,49 +53,54 @@ const conditionColors: Record<string, string> = {
 };
 
 export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const [listings, setListings] = useState<ListingItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [sectionRef, isVisible] = useLazySection('400px 0px');
+  const initialListings = readBootstrapCache<ListingItem[]>("homepage-marketplace-preview") ?? [];
 
-  useEffect(() => {
-    if (!isVisible) return;
-
-    const load = async () => {
-      const { data } = await supabase
+  const { data: listings = [], isLoading } = useQuery({
+    queryKey: ["homepage-marketplace-preview"],
+    enabled: isVisible,
+    queryFn: async () => {
+      const supabase = await getPublicSupabase();
+      const { data, error } = await supabase
         .from("marketplace_listings")
         .select("id, title, price, currency, verification_image_url, condition, location, is_verified, created_at, user_id")
         .eq("is_hidden", false)
         .eq("is_sold", false)
         .order("created_at", { ascending: false })
         .limit(6);
+      if (error) throw error;
 
       const items = (data || []) as ListingItem[];
 
       if (items.length > 0) {
         const userIds = [...new Set(items.map((i) => i.user_id))];
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, username, display_name")
-          .in("user_id", userIds);
+        const { data: profiles, error: profilesError } = await supabase.rpc("get_public_profiles");
+        if (profilesError) throw profilesError;
         if (profiles) {
-          const map = new Map(profiles.map((p) => [p.user_id, p]));
+          const map = new Map(
+            profiles
+              .filter((p) => userIds.includes(p.user_id))
+              .map((p) => [p.user_id, p] as const),
+          );
           items.forEach((item) => {
             const p = map.get(item.user_id);
-            if (p) {
-              item.seller = {
-                username: p.username,
-                display_name: p.display_name,
-              };
-            }
+            item.seller = {
+              username: p?.username ?? null,
+              display_name: normalizeSellerName(
+                p ? { display_name: p.display_name, username: p.username } : undefined,
+                item.user_id,
+              ),
+            };
           });
         }
       }
 
-      setListings(items);
-      setIsLoading(false);
-    };
-    load();
-  }, [isVisible]);
+      writeBootstrapCache("homepage-marketplace-preview", items);
+      return items;
+    },
+    initialData: initialListings,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (!isLoading && listings.length === 0) return null;
 
@@ -147,7 +165,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
                 <Link
                   key={item.id}
                   to={`/marketplace/${item.id}`}
-                  className="block px-6 py-4 hover:bg-muted/30 transition-colors"
+                  className="group block px-6 py-4 motion-list-item hover:bg-muted/40"
                 >
                   <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                     {/* Thumbnail + Title */}
@@ -158,7 +176,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
                           alt={item.title}
                           width={48}
                           height={48}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover motion-media"
                           loading="lazy"
                           decoding="async"
                         />
@@ -168,13 +186,13 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
                           {item.is_verified && (
                             <ShieldCheck className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                           )}
-                          <h3 className="font-medium text-foreground line-clamp-1">
+                          <h3 className="font-medium text-foreground line-clamp-1 motion-list-title">
                             {item.title}
                           </h3>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span className="truncate">
-                            {item.seller?.display_name || item.seller?.username || "賣家"}
+                            {item.seller?.display_name || item.seller?.username || normalizeSellerName(undefined, item.user_id)}
                           </span>
                           {item.location && (
                             <>

@@ -22,10 +22,14 @@ import {
   Crown,
   Loader2,
   UserX,
+  UserPlus,
+  UserCheck,
+  Users,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { usePhotographerFollow } from '@/hooks/usePhotographerFollow';
 
 interface UserProfile {
   id: string;
@@ -66,6 +70,7 @@ export default function UserProfile() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('photos');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const followState = usePhotographerFollow(userId);
 
   const handleSendMessage = async () => {
     if (!user) {
@@ -218,22 +223,51 @@ export default function UserProfile() {
                 <span>
                   加入於 {format(new Date(profile.created_at), 'yyyy年M月', { locale: zhTW })}
                 </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 py-1">
+                  <Users className="h-3.5 w-3.5" />
+                  {followState.followerCount} 位追蹤者
+                </span>
               </div>
-              {user && user.id !== userId && (
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={sendingMessage}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {sendingMessage ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <MessageSquare className="h-4 w-4" />
-                  )}
-                  傳送私訊
-                </Button>
-              )}
+              <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
+                {!followState.isSelf && (
+                  <Button
+                    onClick={() => {
+                      if (!user) {
+                        navigate('/auth?tab=register');
+                        return;
+                      }
+                      void (followState.isFollowing ? followState.unfollow() : followState.follow());
+                    }}
+                    disabled={followState.isMutating}
+                    variant={followState.isFollowing ? 'outline' : 'gold'}
+                    className="gap-2"
+                  >
+                    {followState.isMutating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : followState.isFollowing ? (
+                      <UserCheck className="h-4 w-4" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {followState.isFollowing ? '已追蹤' : '追蹤攝影師'}
+                  </Button>
+                )}
+                {user && user.id !== userId && (
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={sendingMessage}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {sendingMessage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MessageSquare className="h-4 w-4" />
+                    )}
+                    傳送私訊
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -316,13 +350,13 @@ export default function UserProfile() {
                     <Link
                       key={photo.id}
                       to={`/gallery/${photo.id}`}
-                      className="group relative block overflow-hidden rounded-xl bg-card border border-border hover-lift"
+                      className="group relative block overflow-hidden rounded-xl bg-card border border-border motion-card-surface motion-press"
                     >
                       <div className="aspect-[4/3] overflow-hidden">
                         <img
                           src={photo.image_url}
                           alt={photo.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          className="w-full h-full object-cover motion-media"
                         />
                       </div>
 

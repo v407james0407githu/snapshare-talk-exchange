@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +24,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ReportDialog } from '@/components/reports/ReportDialog';
 import {
+  prefetchListingDetailBundle,
+  readPrefetchedListingDetail,
+} from '@/lib/listingDetailPrefetch';
+import {
   ArrowLeft,
   Camera,
   Smartphone,
@@ -43,6 +47,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { pickImageSrc, SIZES } from '@/lib/responsiveImage';
 import { formatDistanceToNow, format } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 
@@ -92,9 +97,42 @@ const categoryLabels: Record<string, string> = {
   accessory: '配件',
 };
 
+type ListingDetailPerfSnapshot = {
+  listingId: string;
+  source: string;
+  routeStartAt: number;
+  mountAt: number;
+  routeSwitchMs: number;
+  queryReadyMs?: number;
+  queryFetchMs?: number;
+  imageReadyMs?: number;
+  imageFetchMs?: number;
+  imageUrl?: string | null;
+};
+
+function readListingNavigationMark(listingId?: string) {
+  if (!listingId || typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(`listing-detail-nav:${listingId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      listingId: string;
+      at: number;
+      timestamp: number;
+      source?: string;
+    };
+    if (parsed.listingId !== listingId) return null;
+    if (Date.now() - parsed.timestamp > 15_000) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default function ListingDetail() {
   const { listingId } = useParams<{ listingId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -112,47 +150,132 @@ export default function ListingDetail() {
   const editVerificationInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const viewIncrementedRef = useRef<string | null>(null);
+  const [mainImageLoaded, setMainImageLoaded] = useState(false);
+  const perfRef = useRef<ListingDetailPerfSnapshot | null>(null);
+
+  const listingPreview = useMemo(() => {
+    const candidate = (location.state as { listingPreview?: Partial<Listing> } | null)?.listingPreview;
+    if (!candidate || candidate.id !== listingId) return null;
+    return candidate as Listing;
+  }, [location.state, listingId]);
+
+  const prefetchedBundle = useMemo(
+    () => (listingId ? readPrefetchedListingDetail(listingId) : null),
+    [listingId],
+  );
+
+  useEffect(() => {
+    if (!listingId) return;
+    const mark = readListingNavigationMark(listingId);
+    const mountAt = performance.now();
+    perfRef.current = {
+      listingId,
+      source: mark?.source || 'direct',
+      routeStartAt: mark?.at || mountAt,
+      mountAt,
+      routeSwitchMs: Math.max(0, mountAt - (mark?.at || mountAt)),
+    };
+    if (import.meta.env.DEV) {
+      console.info('[ListingDetail perf] route mounted', {
+        listingId,
+        source: perfRef.current.source,
+        routeSwitchMs: Number(perfRef.current.routeSwitchMs.toFixed(1)),
+      });
+    }
+  }, [listingId]);
 
   // Fetch listing
   const { data: listing, isLoading: listingLoading } = useQuery({
     queryKey: ['listing', listingId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('marketplace_listings')
-        .select('*')
-        .eq('id', listingId)
-        .single();
+      const bundle = await prefetchListingDetailBundle(
+        listingId!,
+        listingPreview ?? prefetchedBundle?.listing ?? undefined,
+      );
 
-      if (error) throw error;
-
-      // Increment view count
-      await supabase
-        .from('marketplace_listings')
-        .update({ view_count: (data.view_count || 0) + 1 })
-        .eq('id', listingId);
-
-      return data as Listing;
+      if (!bundle.listing) throw new Error('商品不存在');
+      return bundle.listing as Listing;
     },
     enabled: !!listingId,
-  });
-
-  // Fetch seller profile using secure RPC function
-  const { data: seller } = useQuery({
-    queryKey: ['seller-profile', listing?.user_id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .rpc('get_public_profile', { target_user_id: listing?.user_id });
-
-      if (error) throw error;
-      return (data?.[0] || null) as SellerProfile | null;
-    },
-    enabled: !!listing?.user_id,
+    initialData: listingPreview ?? prefetchedBundle?.listing ?? undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 
   // Get all images
   const allImages = listing
     ? [listing.verification_image_url, ...(listing.additional_images || [])]
     : [];
+  const activeImage = allImages[currentImageIndex] || null;
+  const previewImage =
+    currentImageIndex === 0
+      ? listingPreview?.verification_image_url ||
+        prefetchedBundle?.listing?.verification_image_url ||
+        activeImage
+      : activeImage;
+
+  // Fetch seller profile using secure RPC function
+  const { data: seller } = useQuery({
+    queryKey: ['seller-profile', listing?.user_id],
+    queryFn: async () => {
+      const bundle = listingId ? readPrefetchedListingDetail(listingId) : null;
+      if (bundle?.seller) return bundle.seller as SellerProfile;
+
+      const { data, error } = await supabase.rpc('get_public_profile', {
+        target_user_id: listing?.user_id,
+      });
+
+      if (error) throw error;
+      return (data?.[0] || null) as SellerProfile | null;
+    },
+    enabled: !!listing?.user_id,
+    initialData: prefetchedBundle?.seller ?? undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
+  });
+
+  useEffect(() => {
+    if (!listingId || !listing || viewIncrementedRef.current === listingId) return;
+
+    viewIncrementedRef.current = listingId;
+    void supabase
+      .from('marketplace_listings')
+      .update({ view_count: (listing.view_count || 0) + 1 })
+      .eq('id', listingId);
+  }, [listing, listingId]);
+
+  useEffect(() => {
+    if (!listing || !perfRef.current || perfRef.current.queryReadyMs !== undefined) return;
+    const now = performance.now();
+    perfRef.current = {
+      ...perfRef.current,
+      queryReadyMs: Math.max(0, now - perfRef.current.routeStartAt),
+      queryFetchMs: Math.max(0, now - perfRef.current.mountAt),
+      imageUrl: activeImage,
+    };
+    if (import.meta.env.DEV) {
+      console.info('[ListingDetail perf] query ready', {
+        listingId,
+        source: perfRef.current.source,
+        routeSwitchMs: Number(perfRef.current.routeSwitchMs.toFixed(1)),
+        queryReadyMs: Number((perfRef.current.queryReadyMs || 0).toFixed(1)),
+        queryFetchMs: Number((perfRef.current.queryFetchMs || 0).toFixed(1)),
+      });
+    }
+  }, [listing, listingId, activeImage]);
+
+  useEffect(() => {
+    setMainImageLoaded(false);
+  }, [listingId, currentImageIndex]);
+
+  useEffect(() => {
+    if (!activeImage) return;
+    const preload = new Image();
+    preload.decoding = 'sync';
+    preload.fetchPriority = 'high';
+    preload.src = activeImage;
+  }, [activeImage]);
 
   const handleContactSeller = () => {
     if (!user) {
@@ -364,10 +487,61 @@ export default function ListingDetail() {
           <div className="lg:col-span-2 space-y-4">
             {/* Main Image */}
             <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted">
+              {!mainImageLoaded && previewImage && (
+                <img
+                  src={previewImage}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-contain scale-[1.01] opacity-60 blur-sm"
+                />
+              )}
+              {!mainImageLoaded && (
+                <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted via-muted/70 to-muted/40" />
+              )}
               <img
-                src={allImages[currentImageIndex]}
+                src={activeImage || undefined}
                 alt={listing.title}
-                className="w-full h-full object-contain"
+                loading="eager"
+                fetchPriority="high"
+                decoding="sync"
+                sizes={SIZES.marketplace}
+                onLoad={() => {
+                  setMainImageLoaded(true);
+                  if (!perfRef.current || perfRef.current.imageReadyMs !== undefined) return;
+                  const now = performance.now();
+                  const nextPerf: ListingDetailPerfSnapshot = {
+                    ...perfRef.current,
+                    imageReadyMs: Math.max(0, now - perfRef.current.routeStartAt),
+                    imageFetchMs: Math.max(0, now - (perfRef.current.mountAt || now)),
+                    imageUrl: activeImage,
+                  };
+                  perfRef.current = nextPerf;
+                  if (import.meta.env.DEV) {
+                    console.groupCollapsed(
+                      `[ListingDetail perf] ${listingId} ${nextPerf.source}`,
+                    );
+                    console.table({
+                      routeSwitchMs: Number(nextPerf.routeSwitchMs.toFixed(1)),
+                      queryReadyMs: Number((nextPerf.queryReadyMs || 0).toFixed(1)),
+                      queryFetchMs: Number((nextPerf.queryFetchMs || 0).toFixed(1)),
+                      imageReadyMs: Number((nextPerf.imageReadyMs || 0).toFixed(1)),
+                      imageFetchMs: Number((nextPerf.imageFetchMs || 0).toFixed(1)),
+                    });
+                    console.log('imageUrl', nextPerf.imageUrl);
+                    console.groupEnd();
+                    (window as typeof window & {
+                      __listingDetailPerf?: Record<string, ListingDetailPerfSnapshot>;
+                    }).__listingDetailPerf = {
+                      ...((window as typeof window & {
+                        __listingDetailPerf?: Record<string, ListingDetailPerfSnapshot>;
+                      }).__listingDetailPerf || {}),
+                      [listingId || 'unknown']: nextPerf,
+                    };
+                  }
+                }}
+                className={`relative z-[1] h-full w-full object-contain transition-opacity duration-300 ${
+                  mainImageLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
               />
               {allImages.length > 1 && (
                 <>

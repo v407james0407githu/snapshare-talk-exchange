@@ -53,15 +53,15 @@ INSERT INTO public.homepage_sections (section_key, section_label, sort_order) VA
 
 -- Insert default system settings
 INSERT INTO public.system_settings (setting_key, setting_label, setting_group, setting_type, setting_value, sort_order) VALUES
-  ('site_name', '網站名稱', 'general', 'text', 'IP543攝影論壇', 1),
+  ('site_name', '網站名稱', 'general', 'text', '愛屁543論壇', 1),
   ('site_description', '網站描述', 'general', 'text', '攝影愛好者的交流平台', 2),
   ('site_logo_url', 'Logo 網址', 'general', 'text', '', 3),
-  ('seo_title', 'SEO 標題', 'seo', 'text', 'IP543攝影論壇 - 攝影愛好者的交流平台', 1),
+  ('seo_title', 'SEO 標題', 'seo', 'text', '愛屁543論壇 - 攝影愛好者的交流平台', 1),
   ('seo_description', 'SEO 描述', 'seo', 'text', '分享攝影作品、交流攝影技巧、買賣二手器材', 2),
   ('registration_enabled', '開放註冊', 'features', 'boolean', 'true', 1),
   ('daily_upload_limit', '每日上傳限制', 'features', 'number', '10', 2),
   ('comment_moderation', '留言審核', 'features', 'boolean', 'false', 3),
   ('marketplace_enabled', '二手市集', 'features', 'boolean', 'true', 4),
   ('forum_enabled', '討論區', 'features', 'boolean', 'true', 5),
-  ('email_welcome_subject', '歡迎郵件主旨', 'email', 'text', '歡迎加入IP543攝影論壇！', 1),
-  ('email_welcome_body', '歡迎郵件內容', 'email', 'textarea', '感謝您加入IP543攝影論壇群，開始分享您的攝影故事吧！', 2);
+  ('email_welcome_subject', '歡迎郵件主旨', 'email', 'text', '歡迎加入愛屁543論壇！', 1),
+  ('email_welcome_body', '歡迎郵件內容', 'email', 'textarea', '感謝您加入愛屁543論壇，開始分享您的攝影故事吧！', 2);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import { useForumCategories, ForumCategorySidebar } from "@/components/forums/Fo
 import { TopicList, type ForumTopic } from "@/components/forums/TopicList";
 import { TagInput } from "@/components/forums/TagInput";
 import { ForumImageUpload, useTextareaDrop, filesToItems, uploadPendingItems, type ImageItem } from "@/components/forums/ForumImageUpload";
+import { prefetchForumTopicBundle } from "@/lib/forumTopicPrefetch";
 
 const TOPICS_PER_PAGE = 24;
 
@@ -56,7 +57,7 @@ export default function Forums() {
 
   const contentDrag = useTextareaDrop(handleDragUploadFiles, false);
 
-  const { data: categories } = useForumCategories();
+  const { data: categories, isLoading: categoriesLoading } = useForumCategories();
 
   // Fetch topics
   const { data: topics, isLoading } = useQuery({
@@ -64,18 +65,27 @@ export default function Forums() {
     queryFn: async () => {
       const { data: topicsData, error } = await supabase
         .from("forum_topics")
-        .select("*")
+        .select("id, title, content, category, brand, user_id, reply_count, view_count, is_pinned, is_locked, created_at, last_reply_at, category_id")
+        .eq("is_hidden", false)
         .order("is_pinned", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(120);
       if (error) throw error;
 
       const userIds = [...new Set(topicsData.map((t) => t.user_id))];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", userIds);
-      const profilesMap = new Map(profilesData?.map((p) => [p.user_id, p]) || []);
+      const { data: profilesData, error: profilesError } = userIds.length
+        ? await supabase.rpc("get_public_profiles")
+        : { data: [], error: null };
+      if (profilesError) throw profilesError;
+
+      const filteredProfiles = ((profilesData as Array<{
+        user_id: string;
+        username: string | null;
+        display_name: string | null;
+        avatar_url: string | null;
+      }> | null) || []).filter((p) => userIds.includes(p.user_id));
+
+      const profilesMap = new Map(filteredProfiles.map((p) => [p.user_id, p]));
 
       // Fetch tags for topics
       const topicIds = topicsData.map((t) => t.id);
@@ -105,14 +115,35 @@ export default function Forums() {
 
       return topicsData.map((topic) => ({
         ...topic,
-        profiles: profilesMap.get(topic.user_id),
+        profiles: profilesMap.get(topic.user_id)
+          ? {
+              ...profilesMap.get(topic.user_id),
+              username:
+                profilesMap.get(topic.user_id)?.username?.trim() ||
+                profilesMap.get(topic.user_id)?.display_name?.trim() ||
+                `會員 ${topic.user_id.slice(0, 8)}`,
+              display_name: profilesMap.get(topic.user_id)?.display_name?.trim() || null,
+            }
+          : {
+              username: `會員 ${topic.user_id.slice(0, 8)}`,
+              display_name: null,
+              avatar_url: null,
+            },
         tags: tagMap.get(topic.id) || [],
       })) as ForumTopic[];
     },
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 
+  useEffect(() => {
+    (topics || []).slice(0, 3).forEach((topic) => {
+      void prefetchForumTopicBundle(topic.id, topic);
+    });
+  }, [topics]);
+
   // Stats
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["forum-stats"],
     queryFn: async () => {
       const { count: topicCount } = await supabase.from("forum_topics").select("*", { count: "exact", head: true });
@@ -120,10 +151,12 @@ export default function Forums() {
       const { count: userCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
       return { topics: topicCount || 0, replies: replyCount || 0, users: userCount || 0 };
     },
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
   });
 
   // Popular tags
-  const { data: popularTags } = useQuery({
+  const { data: popularTags, isLoading: popularTagsLoading } = useQuery({
     queryKey: ["popular-tags"],
     queryFn: async () => {
       const { data } = await supabase
@@ -133,6 +166,8 @@ export default function Forums() {
         .limit(10);
       return (data as any[] || []) as { id: string; name: string; usage_count: number }[];
     },
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 20,
   });
 
   // Create topic
@@ -336,6 +371,8 @@ export default function Forums() {
     );
   };
 
+  const topicSkeletons = Array.from({ length: 6 }, (_, idx) => idx);
+
   return (
     <MainLayout>
       <section className="bg-gradient-hero py-16">
@@ -373,10 +410,17 @@ export default function Forums() {
               />
 
               {/* Tags */}
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="bg-card rounded-xl border border-border p-4 motion-panel">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                   <Tag className="h-4 w-4" />熱門標籤
                 </h3>
+                {popularTagsLoading ? (
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: 6 }, (_, idx) => (
+                      <div key={idx} className="h-7 w-20 animate-pulse rounded-full bg-muted" />
+                    ))}
+                  </div>
+                ) : (
                 <div className="flex flex-wrap gap-2">
                   {popularTags?.map((tag) => (
                     <Badge
@@ -390,24 +434,36 @@ export default function Forums() {
                     </Badge>
                   ))}
                 </div>
+                )}
               </div>
 
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="bg-card rounded-xl border border-border p-4 motion-panel">
                 <h3 className="font-semibold mb-4">論壇統計</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">總主題</span>
-                    <span className="font-medium">{stats?.topics?.toLocaleString() || 0}</span>
+                {statsLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }, (_, idx) => (
+                      <div key={idx} className="flex items-center justify-between">
+                        <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+                        <div className="h-4 w-10 animate-pulse rounded bg-muted" />
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">總回覆</span>
-                    <span className="font-medium">{stats?.replies?.toLocaleString() || 0}</span>
+                ) : (
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">總主題</span>
+                      <span className="font-medium">{stats?.topics?.toLocaleString() || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">總回覆</span>
+                      <span className="font-medium">{stats?.replies?.toLocaleString() || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">會員數</span>
+                      <span className="font-medium">{stats?.users?.toLocaleString() || 0}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">會員數</span>
-                    <span className="font-medium">{stats?.users?.toLocaleString() || 0}</span>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </aside>
@@ -439,9 +495,41 @@ export default function Forums() {
               </div>
             </div>
 
-            {isLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            {isLoading || categoriesLoading ? (
+              <div className="space-y-4">
+                <div className="h-10 w-72 animate-pulse rounded-xl bg-muted" />
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                  <div className="hidden md:grid grid-cols-12 gap-4 border-b border-border bg-muted/40 px-6 py-3">
+                    <div className="col-span-7 h-4 w-16 animate-pulse rounded bg-muted" />
+                    <div className="col-span-2 mx-auto h-4 w-12 animate-pulse rounded bg-muted" />
+                    <div className="col-span-3 ml-auto h-4 w-16 animate-pulse rounded bg-muted" />
+                  </div>
+                  <div className="divide-y divide-border">
+                    {topicSkeletons.map((idx) => (
+                      <div key={idx} className="px-6 py-4">
+                        <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
+                          <div className="col-span-7 flex items-start gap-3">
+                            <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div className="flex gap-2">
+                                <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
+                                <div className="h-5 w-12 animate-pulse rounded-full bg-muted" />
+                              </div>
+                              <div className="h-5 w-4/5 animate-pulse rounded bg-muted" />
+                              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+                            </div>
+                          </div>
+                          <div className="col-span-2 hidden md:flex justify-center">
+                            <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+                          </div>
+                          <div className="col-span-3 hidden md:flex justify-end">
+                            <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <Tabs defaultValue="latest" className="space-y-6" onValueChange={() => setCurrentPage(1)}>

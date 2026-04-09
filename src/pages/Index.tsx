@@ -1,13 +1,15 @@
 import { lazy, Suspense } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { HeroSection } from "@/components/home/HeroSection";
-import { FeaturedCarousel } from "@/components/home/FeaturedCarousel";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { usePublicSystemSettings } from "@/hooks/usePublicSystemSettings";
 import { useLazySection } from "@/hooks/useLazySection";
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 // Lazy load below-fold sections to reduce initial JS bundle
+const FeaturedCarousel = lazy(() => import("@/components/home/FeaturedCarousel").then(m => ({ default: m.FeaturedCarousel })));
 const EquipmentCategories = lazy(() => import("@/components/home/EquipmentCategories").then(m => ({ default: m.EquipmentCategories })));
 const FeaturedGallery = lazy(() => import("@/components/home/FeaturedGallery").then(m => ({ default: m.FeaturedGallery })));
 const ForumPreview = lazy(() => import("@/components/home/ForumPreview").then(m => ({ default: m.ForumPreview })));
@@ -59,7 +61,7 @@ function LazyWrapper({
   children: React.ReactNode;
   sectionKey: string;
 }) {
-  const isCritical = sectionKey === "hero" || sectionKey === "featured_carousel";
+  const isCritical = sectionKey === "hero";
   const [sectionRef, isVisible] = useLazySection(
     sectionKey === "featured_carousel" ? "180px 0px" : "420px 0px"
   );
@@ -80,7 +82,8 @@ function LazyWrapper({
 }
 
 const Index = () => {
-  const { forumEnabled, marketplaceEnabled } = useSystemSettings();
+  const { forumEnabled, marketplaceEnabled } = usePublicSystemSettings();
+  const sectionsEnabled = useDeferredPublicQuery(500);
 
   const featureFlags: Record<string, boolean> = {
     forum_enabled: forumEnabled,
@@ -90,14 +93,19 @@ const Index = () => {
   const { data: sections } = useQuery({
     queryKey: ["homepage-sections"],
     queryFn: async () => {
+      const supabase = await getPublicSupabase();
       const { data, error } = await supabase
         .from("homepage_sections")
         .select("section_key, section_label, section_subtitle, is_visible, sort_order")
         .order("sort_order");
       if (error) throw error;
-      return data as SectionData[];
+      const result = (data ?? []) as SectionData[];
+      writeBootstrapCache("homepage-sections", result);
+      return result;
     },
-    staleTime: 60 * 1000,
+    initialData: readBootstrapCache<SectionData[]>("homepage-sections"),
+    enabled: sectionsEnabled,
+    staleTime: 5 * 60 * 1000,
   });
 
   const visibleSections = sections
@@ -126,12 +134,14 @@ const Index = () => {
         const Component = sectionComponents[s.section_key];
         if (!Component) return null;
         return (
-          <LazyWrapper key={s.section_key} sectionKey={s.section_key}>
-            <Component 
-              sectionTitle={s.section_label || undefined} 
-              sectionSubtitle={s.section_subtitle || undefined} 
-            />
-          </LazyWrapper>
+          <Suspense key={s.section_key} fallback={null}>
+            <LazyWrapper sectionKey={s.section_key}>
+              <Component 
+                sectionTitle={s.section_label || undefined} 
+                sectionSubtitle={s.section_subtitle || undefined} 
+              />
+            </LazyWrapper>
+          </Suspense>
         );
       })}
     </MainLayout>

@@ -4,7 +4,11 @@ import { Camera, Sparkles } from "lucide-react";
 import { useSiteContent } from "@/hooks/useSiteContent";
 
 export function CTASection({ sectionTitle: _sectionTitle, sectionSubtitle: _sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const { get } = useSiteContent();
+  const { get, isLoading } = useSiteContent();
+
+  if (isLoading) {
+    return <section className="py-24 bg-gradient-hero min-h-[420px]" />;
+  }
 
   const title = get("cta_title", "準備好分享您的攝影故事了嗎？");
   const subtitle = get("cta_subtitle", "加入我們的社群，與超過 12,000 位攝影愛好者一起交流、學習、成長。");

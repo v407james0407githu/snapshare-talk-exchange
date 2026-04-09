@@ -44,5 +44,5 @@ INSERT INTO public.site_content (section_key, section_label, content_type, conte
   ('forum_subtitle', '討論區副標題', 'text', '依您使用的器材選擇專區，與同樣愛好者交流心得', '{}', 31),
   ('featured_gallery_title', '精選作品標題', 'text', '精選作品', '{}', 40),
   ('featured_gallery_subtitle', '精選作品副標題', 'text', '論壇精選的優質攝影作品', '{}', 41),
-  ('footer_copyright', '頁尾版權文字', 'text', '© 2026 IP543攝影論壇. All rights reserved.', '{}', 50),
+  ('footer_copyright', '頁尾版權文字', 'text', '© 2026 愛屁543論壇. All rights reserved.', '{}', 50),
   ('site_announcement', '全站公告', 'text', '', '{"show": false}', 60);

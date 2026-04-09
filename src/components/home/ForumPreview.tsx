@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   MessageSquare, 
   ArrowRight, 
   Clock, 
   Eye, 
   TrendingUp,
   Pin,
-  Loader2,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { fetchTopicReplyPreviews, type TopicReplyPreview } from "@/components/forums/TopicList";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
+import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface TopicRow {
   id: string;
@@ -28,24 +30,29 @@ interface TopicRow {
   author_name?: string;
   category_name?: string;
   category_color?: string;
+  reply_previews?: TopicReplyPreview[];
 }
 
-const fallbackCategoryColors: Record<string, string> = {
-  phone: "bg-green-500/10 text-green-600",
-  camera: "bg-blue-500/10 text-blue-600",
-};
+function normalizeAuthorName(
+  profile?: { display_name?: string | null; username?: string | null },
+  userId?: string,
+) {
+  const displayName = profile?.display_name?.trim();
+  if (displayName) return displayName;
+
+  const username = profile?.username?.trim();
+  if (username) return username;
+
+  return userId ? `會員 ${userId.slice(0, 8)}` : "愛屁543會員";
+}
 
 export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const [topics, setTopics] = useState<TopicRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    async function fetchHotTopics() {
+  const initialTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview") ?? [];
+  const enabled = useDeferredPublicQuery(500);
+  const { data: topics = [], isLoading: loading } = useQuery({
+    queryKey: ["homepage-forum-preview"],
+    queryFn: async () => {
+      const supabase = await getPublicSupabase();
       const { data, error } = await supabase
         .from("forum_topics")
         .select("id, title, category, category_id, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
@@ -53,54 +60,60 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
         .order("reply_count", { ascending: false })
         .limit(6);
 
-      if (error || !data || data.length === 0) {
-        setLoading(false);
-        return;
-      }
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
 
-      // Fetch category info
       const categoryIds = [...new Set(data.map((t) => t.category_id).filter(Boolean))] as string[];
       const categoryMap = new Map<string, { name: string; color: string }>();
       if (categoryIds.length > 0) {
-        const { data: cats } = await supabase
+        const { data: cats, error: catsError } = await supabase
           .from("forum_categories")
           .select("id, name, color")
           .in("id", categoryIds);
+        if (catsError) throw catsError;
         cats?.forEach((c) => categoryMap.set(c.id, { name: c.name, color: c.color || "blue" }));
       }
 
-      // Fetch author names
       const userIds = [...new Set(data.map((t) => t.user_id))];
       const profileMap = new Map<string, string>();
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, username, display_name")
-          .in("user_id", userIds);
-        profiles?.forEach((p) => {
-          profileMap.set(p.user_id, p.display_name || p.username);
-        });
+        const { data: profiles, error: profilesError } = await supabase.rpc("get_public_profiles");
+        if (profilesError) throw profilesError;
+        profiles
+          ?.filter((p) => userIds.includes(p.user_id))
+          .forEach((p) => {
+            profileMap.set(
+              p.user_id,
+              normalizeAuthorName(
+                { display_name: p.display_name, username: p.username },
+                p.user_id,
+              ),
+            );
+          });
       }
 
-      setTopics(
-        data.map((t) => {
-          const catInfo = t.category_id ? categoryMap.get(t.category_id) : null;
-          return {
-            ...t,
-            reply_count: t.reply_count ?? 0,
-            view_count: t.view_count ?? 0,
-            is_pinned: t.is_pinned ?? false,
-            author_name: profileMap.get(t.user_id) || "匿名",
-            category_name: catInfo?.name || (t.category === "phone" ? "手機" : "相機"),
-            category_color: catInfo?.color || (t.category === "phone" ? "green" : "blue"),
-          };
-        })
-      );
-      setLoading(false);
-    }
+      const replyPreviewMap = await fetchTopicReplyPreviews(data.map((t) => t.id));
 
-    fetchHotTopics();
-  }, []);
+      const result = data.map((t) => {
+        const catInfo = t.category_id ? categoryMap.get(t.category_id) : null;
+        return {
+          ...t,
+          reply_count: t.reply_count ?? 0,
+          view_count: t.view_count ?? 0,
+          is_pinned: t.is_pinned ?? false,
+          author_name: profileMap.get(t.user_id) || normalizeAuthorName(undefined, t.user_id),
+          category_name: catInfo?.name || (t.category === "phone" ? "手機" : "相機"),
+          category_color: catInfo?.color || (t.category === "phone" ? "green" : "blue"),
+          reply_previews: replyPreviewMap.get(t.id) || [],
+        };
+      }) as TopicRow[];
+      writeBootstrapCache("homepage-forum-preview", result);
+      return result;
+    },
+    initialData: initialTopics,
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const colorClasses: Record<string, string> = {
     blue: "bg-blue-500/10 text-blue-600",
@@ -142,7 +155,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
 
           {/* Topics - 固定高度 552px (5-6 個項目) 避免載入時位移 */}
           <div className="divide-y divide-border min-h-[552px]">
-            {loading || !isMounted ? (
+            {loading ? (
               <div className="divide-y divide-border">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="block px-6 py-4">
@@ -178,7 +191,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                   <Link
                     key={topic.id}
                     to={`/forums/topic/${topic.id}`}
-                    className="block px-6 py-4 hover:bg-muted/30 transition-colors"
+                    className="group block px-6 py-4 motion-list-item hover:bg-muted/40"
                   >
                     <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       <div className="col-span-7">
@@ -195,12 +208,23 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                                 {topic.category_name}
                               </span>
                             </div>
-                            <h3 className="font-medium text-foreground line-clamp-1">
+                            <h3 className="font-medium text-foreground line-clamp-1 motion-list-title">
                               {topic.title}
                             </h3>
                             <p className="text-sm text-muted-foreground mt-0.5">
                               {topic.author_name}
                             </p>
+                            {topic.reply_previews && topic.reply_previews.length > 0 && (
+                              <div className="mt-3 space-y-1.5 rounded-lg border border-border/60 bg-background/70 px-3 py-2">
+                                {topic.reply_previews.map((reply) => (
+                                  <div key={reply.id} className="text-xs text-muted-foreground">
+                                    <span className="font-medium text-foreground/80">{reply.author_name}</span>
+                                    <span className="mx-1 text-muted-foreground/60">：</span>
+                                    <span className="line-clamp-1">{reply.content}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

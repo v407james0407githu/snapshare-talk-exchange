@@ -1,12 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
-import { Heart, MessageCircle, Eye, Star, ImagePlus, Loader2, Aperture, Clock, Sun, Award } from "lucide-react";
+import { Heart, MessageCircle, Eye, Star, ImagePlus, Aperture, Clock, Sun, Award, ChevronLeft, ChevronRight, Sparkles, Camera } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GalleryFilters } from "@/components/gallery/GalleryFilters";
 import { PhotoCardSkeleton } from "@/components/gallery/PhotoCardSkeleton";
+import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
+import { useQuery } from "@tanstack/react-query";
+import { prefetchPhotoDetailBundle } from "@/lib/photoDetailPrefetch";
+import { formatDistanceToNow } from "date-fns";
+import { zhTW } from "date-fns/locale";
 
 interface Photo {
   id: string;
@@ -26,18 +31,211 @@ interface Photo {
   exif_data: Record<string, any> | null;
   is_featured: boolean;
   profiles?: {
-    username: string;
+    user_id?: string;
+    username: string | null;
     display_name: string | null;
     avatar_url: string | null;
   };
 }
 
+interface PhotographerSpotlight {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  cover_photo: {
+    id: string;
+    title: string;
+    image_url: string;
+    thumbnail_url: string | null;
+    like_count: number;
+    comment_count: number;
+    view_count: number;
+    created_at: string;
+  };
+  photo_count: number;
+}
+
 const PAGE_SIZE = 20;
+
+function shuffle<T>(items: T[]) {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+async function fetchGalleryPage({
+  page,
+  selectedCategory,
+  selectedBrand,
+  debouncedSearch,
+  sortBy,
+  featuredOnly,
+}: {
+  page: number;
+  selectedCategory: string;
+  selectedBrand: string;
+  debouncedSearch: string;
+  sortBy: "newest" | "most_liked" | "highest_rated";
+  featuredOnly: boolean;
+}) {
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+  const orderColumn =
+    sortBy === "most_liked" ? "like_count" : sortBy === "highest_rated" ? "average_rating" : "created_at";
+
+  let query = supabase
+    .from("photos")
+    .select(
+      "id, title, image_url, thumbnail_url, user_id, like_count, comment_count, view_count, average_rating, category, brand, camera_body, lens, phone_model, exif_data, is_featured, created_at",
+      { count: "exact" }
+    )
+    .eq("is_hidden", false)
+    .order(orderColumn, { ascending: false })
+    .range(from, to);
+
+  if (selectedCategory !== "全部") {
+    query = query.eq("category", selectedCategory);
+  }
+
+  if (selectedBrand !== "全部品牌") {
+    query = query.eq("brand", selectedBrand);
+  }
+
+  if (debouncedSearch) {
+    query = query.or(
+      `title.ilike.%${debouncedSearch}%,brand.ilike.%${debouncedSearch}%,camera_body.ilike.%${debouncedSearch}%,phone_model.ilike.%${debouncedSearch}%`
+    );
+  }
+
+  if (featuredOnly) {
+    query = query.eq("is_featured", true);
+  }
+
+  const { data: photosData, error, count } = await query;
+  if (error) throw error;
+
+  const userIds = [...new Set((photosData || []).map((p) => p.user_id))];
+  let profilesMap = new Map<string, Photo["profiles"]>();
+  if (userIds.length > 0) {
+    const { data: profilesData, error: profilesError } = await supabase.rpc("get_public_profiles");
+
+    if (profilesError) throw profilesError;
+    profilesMap = new Map(
+      (profilesData || [])
+        .filter((profile) => userIds.includes(profile.user_id))
+        .map((profile) => [
+          profile.user_id,
+          {
+            user_id: profile.user_id,
+            username: profile.username?.trim() || null,
+            display_name: profile.display_name?.trim() || null,
+            avatar_url: profile.avatar_url || null,
+          },
+        ]),
+    );
+  }
+
+  const items = (photosData || []).map((photo) => ({
+    ...photo,
+    profiles: profilesMap.get(photo.user_id),
+  })) as Photo[];
+
+  return {
+    items,
+    totalCount: count ?? items.length,
+  };
+}
+
+function GalleryCardImage({
+  photo,
+  index,
+  viewMode,
+}: {
+  photo: Photo;
+  index: number;
+  viewMode: "grid" | "masonry";
+}) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const imgSrc = pickImageSrc(photo.image_url, photo.thumbnail_url);
+  const isPriority = index < 6;
+
+  return (
+    <div className={`overflow-hidden rounded-lg relative bg-muted ${viewMode === "grid" ? "aspect-[4/3]" : ""}`}>
+      {!imgLoaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
+      <img
+        src={imgSrc}
+        sizes={SIZES.card}
+        alt={photo.title}
+        width={640}
+        height={480}
+        className={`w-full content-fade ${imgLoaded ? "media-reveal" : ""} transition-all duration-500 ease-out group-hover:scale-[1.02] group-hover:brightness-105 ${
+          viewMode === "grid" ? "h-full object-cover" : "h-auto object-contain"
+        } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+        data-loaded={imgLoaded ? "true" : "false"}
+        loading={isPriority ? "eager" : "lazy"}
+        fetchPriority={isPriority ? "high" : undefined}
+        decoding={isPriority ? "sync" : "async"}
+        onLoad={() => setImgLoaded(true)}
+      />
+    </div>
+  );
+}
+
+function getPublicName(profile: { display_name: string | null; username: string | null }, userId: string) {
+  return profile.display_name?.trim() || profile.username?.trim() || `會員 ${userId.slice(0, 8)}`;
+}
+
+function PhotographerSpotlightCard({ item }: { item: PhotographerSpotlight }) {
+  const coverImage = pickImageSrc(item.cover_photo.image_url, item.cover_photo.thumbnail_url);
+  const authorName = getPublicName(item, item.user_id);
+
+  return (
+    <Link
+      to={`/user/${item.user_id}`}
+      className="group min-w-[260px] max-w-[260px] overflow-hidden rounded-2xl border border-border bg-card motion-card-surface motion-press"
+    >
+      <div className="aspect-[4/3] overflow-hidden bg-muted">
+        <img
+          src={coverImage}
+          alt={item.cover_photo.title}
+          sizes={SIZES.card}
+          width={400}
+          height={300}
+          className="h-full w-full object-cover motion-media"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+      <div className="space-y-3 p-4">
+        <div className="space-y-1">
+          <p className="line-clamp-1 text-lg font-semibold motion-list-title">{authorName}</p>
+          <p className="line-clamp-1 text-sm text-muted-foreground">{item.cover_photo.title}</p>
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Camera className="h-3.5 w-3.5" />
+            {item.photo_count} 張作品
+          </span>
+          <span>{formatDistanceToNow(new Date(item.cover_photo.created_at), { addSuffix: true, locale: zhTW })}</span>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><Heart className="h-3.5 w-3.5" /> {item.cover_photo.like_count || 0}</span>
+          <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" /> {item.cover_photo.comment_count || 0}</span>
+          <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" /> {item.cover_photo.view_count || 0}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 export default function Gallery() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [selectedBrand, setSelectedBrand] = useState("全部品牌");
@@ -45,14 +243,10 @@ export default function Gallery() {
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
   const [sortBy, setSortBy] = useState<"newest" | "most_liked" | "highest_rated">("newest");
   const [featuredOnly, setFeaturedOnly] = useState(false);
-
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(0);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const parsed = Number(searchParams.get("page") || "1");
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  });
 
   // Debounce search
   useEffect(() => {
@@ -60,106 +254,109 @@ export default function Gallery() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Reset when filters change
   useEffect(() => {
-    setPhotos([]);
-    setPage(0);
-    setHasMore(true);
-    setIsLoading(true);
+    setCurrentPage(1);
   }, [selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly]);
 
-  // Fetch photos
-  const fetchPhotos = useCallback(async (pageNum: number) => {
-    const from = pageNum * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-
-    const orderColumn = sortBy === "most_liked" ? "like_count" : sortBy === "highest_rated" ? "average_rating" : "created_at";
-
-    let query = supabase
-      .from("photos")
-      .select("*")
-      .eq("is_hidden", false)
-      .order(orderColumn, { ascending: false })
-      .range(from, to);
-
-    if (selectedCategory !== "全部") {
-      query = query.eq("category", selectedCategory);
-    }
-
-    if (selectedBrand !== "全部品牌") {
-      query = query.eq("brand", selectedBrand);
-    }
-
-    if (debouncedSearch) {
-      query = query.or(
-        `title.ilike.%${debouncedSearch}%,brand.ilike.%${debouncedSearch}%,camera_body.ilike.%${debouncedSearch}%,phone_model.ilike.%${debouncedSearch}%`
-      );
-    }
-
-    if (featuredOnly) {
-      query = query.eq("is_featured", true);
-    }
-
-    const { data: photosData, error } = await query;
-    if (error) throw error;
-
-    const userIds = [...new Set((photosData || []).map((p) => p.user_id))];
-    let profilesMap = new Map<string, any>();
-    if (userIds.length > 0) {
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", userIds);
-      profilesMap = new Map(profilesData?.map((p) => [p.user_id, p]) || []);
-    }
-
-    return (photosData || []).map((photo) => ({
-      ...photo,
-      profiles: profilesMap.get(photo.user_id),
-    })) as Photo[];
-  }, [selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly]);
-
-  // Load page
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        if (page === 0) setIsLoading(true);
-        else setIsLoadingMore(true);
+    const next = new URLSearchParams(searchParams);
+    if (searchQuery) next.set("q", searchQuery);
+    else next.delete("q");
+    if (currentPage > 1) next.set("page", String(currentPage));
+    else next.delete("page");
+    setSearchParams(next, { replace: true });
+  }, [currentPage, searchQuery, searchParams, setSearchParams]);
 
-        const data = await fetchPhotos(page);
-        if (cancelled) return;
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["gallery-photos", currentPage, selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly],
+    queryFn: () =>
+      fetchGalleryPage({
+        page: currentPage,
+        selectedCategory,
+        selectedBrand,
+        debouncedSearch,
+        sortBy,
+        featuredOnly,
+      }),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
+  });
 
-        if (page === 0) setPhotos(data);
-        else setPhotos((prev) => [...prev, ...data]);
-        setHasMore(data.length === PAGE_SIZE);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-          setIsLoadingMore(false);
+  const { data: spotlightPhotographers, isLoading: spotlightLoading } = useQuery({
+    queryKey: ["gallery-photographer-spotlights"],
+    staleTime: 1000 * 60 * 10,
+    gcTime: 1000 * 60 * 30,
+    queryFn: async () => {
+      const { data: recentPhotos, error: photosError } = await supabase
+        .from("photos")
+        .select("id, user_id, title, image_url, thumbnail_url, like_count, comment_count, view_count, created_at")
+        .eq("is_hidden", false)
+        .order("created_at", { ascending: false })
+        .limit(120);
+
+      if (photosError) throw photosError;
+
+      const grouped = new Map<string, PhotographerSpotlight["cover_photo"]>();
+      const counts = new Map<string, number>();
+
+      for (const photo of recentPhotos || []) {
+        counts.set(photo.user_id, (counts.get(photo.user_id) || 0) + 1);
+        if (!grouped.has(photo.user_id)) {
+          grouped.set(photo.user_id, {
+            id: photo.id,
+            title: photo.title,
+            image_url: photo.image_url,
+            thumbnail_url: photo.thumbnail_url,
+            like_count: photo.like_count || 0,
+            comment_count: photo.comment_count || 0,
+            view_count: photo.view_count || 0,
+            created_at: photo.created_at,
+          });
         }
       }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, [page, fetchPhotos]);
 
-  // Intersection observer
-  useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
-          setPage((prev) => prev + 1);
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
-    return () => observerRef.current?.disconnect();
-  }, [hasMore, isLoading, isLoadingMore]);
+      const userIds = [...grouped.keys()];
+      if (userIds.length === 0) return [] as PhotographerSpotlight[];
+
+      const { data: profilesData, error: profilesError } = await supabase.rpc("get_public_profiles");
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map(
+        (((profilesData as Array<{ user_id: string; username: string | null; display_name: string | null; avatar_url: string | null }> | null) || [])
+          .filter((profile) => userIds.includes(profile.user_id))
+          .map((profile) => [profile.user_id, profile])),
+      );
+
+      return shuffle(
+        userIds
+          .map((userId) => {
+            const profile = profileMap.get(userId);
+            const coverPhoto = grouped.get(userId);
+            if (!coverPhoto) return null;
+            return {
+              user_id: userId,
+              username: profile?.username || null,
+              display_name: profile?.display_name || null,
+              avatar_url: profile?.avatar_url || null,
+              cover_photo: coverPhoto,
+              photo_count: counts.get(userId) || 1,
+            } satisfies PhotographerSpotlight;
+          })
+          .filter((item): item is PhotographerSpotlight => !!item),
+      ).slice(0, 8);
+    },
+  });
+
+  const photos = data?.items ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const visiblePages = useMemo(() => {
+    const pages: number[] = [];
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, currentPage + 2);
+    for (let p = start; p <= end; p += 1) pages.push(p);
+    return pages;
+  }, [currentPage, totalPages]);
 
   const getEquipmentDisplay = (photo: Photo) => {
     if (photo.phone_model) return photo.phone_model;
@@ -178,14 +375,25 @@ export default function Gallery() {
     return items;
   };
 
+  const getAuthorDisplay = (photo: Photo) => {
+    const displayName = photo.profiles?.display_name?.trim();
+    const username = photo.profiles?.username?.trim();
+    return displayName || username || `會員 ${photo.user_id.slice(0, 8)}`;
+  };
+
+  const getAuthorInitial = (photo: Photo) => {
+    const name = getAuthorDisplay(photo);
+    return name.slice(0, 1).toUpperCase();
+  };
+
   const handleUpload = () => {
     if (!user) { navigate("/auth"); return; }
     navigate("/upload");
   };
 
   const gridClass = viewMode === "masonry"
-    ? "columns-2 sm:columns-3 md:columns-4 xl:columns-5 gap-3 [column-fill:_balance]"
-    : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3";
+    ? "columns-2 sm:columns-3 md:columns-4 xl:columns-4 gap-3 [column-fill:_balance]"
+    : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3";
 
   return (
     <MainLayout>
@@ -232,24 +440,25 @@ export default function Gallery() {
           ) : photos.length > 0 ? (
             <>
               <div className={gridClass}>
-                {photos.map((photo) => (
+                {photos.map((photo, index) => (
                   <Link
                     key={photo.id}
                     to={`/gallery/${photo.id}`}
-                    className={`group relative block overflow-hidden rounded-lg border border-border/50 ${
+                    state={{ photoPreview: photo }}
+                    onMouseEnter={() => {
+                      void prefetchPhotoDetailBundle(photo.id, photo);
+                    }}
+                    onFocus={() => {
+                      void prefetchPhotoDetailBundle(photo.id, photo);
+                    }}
+                    onTouchStart={() => {
+                      void prefetchPhotoDetailBundle(photo.id, photo);
+                    }}
+                    className={`group relative block overflow-hidden rounded-lg border border-border/50 motion-card-surface motion-press ${
                       viewMode === "masonry" ? "mb-3 break-inside-avoid" : ""
                     }`}
                   >
-                    <div className={`overflow-hidden rounded-lg ${viewMode === "grid" ? "aspect-[4/3]" : ""}`}>
-                      <img
-                        src={photo.thumbnail_url || photo.image_url}
-                        alt={photo.title}
-                        className={`w-full transition-all duration-500 ease-out group-hover:scale-[1.03] group-hover:brightness-110 ${
-                          viewMode === "grid" ? "h-full object-cover" : "h-auto object-contain"
-                        }`}
-                        loading="lazy"
-                      />
-                    </div>
+                    <GalleryCardImage photo={photo} index={index} viewMode={viewMode} />
 
                     <div className="absolute inset-0 rounded-lg bg-gradient-to-t from-charcoal/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
@@ -259,12 +468,18 @@ export default function Gallery() {
                       </h3>
                       <div className="flex items-center gap-2 mb-1.5">
                         {photo.profiles?.avatar_url ? (
-                          <img src={photo.profiles.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover ring-1 ring-cream/30" />
+                          <img
+                            src={photo.profiles.avatar_url}
+                            alt={getAuthorDisplay(photo)}
+                            className="w-5 h-5 rounded-full object-cover ring-1 ring-cream/30"
+                          />
                         ) : (
-                          <span className="text-sm">👤</span>
+                          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-cream/15 text-[10px] font-medium text-cream ring-1 ring-cream/20">
+                            {getAuthorInitial(photo)}
+                          </span>
                         )}
                         <span className="text-xs text-cream/80 truncate drop-shadow-sm">
-                          {photo.profiles?.display_name || photo.profiles?.username}
+                          {getAuthorDisplay(photo)}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-cream/70">
@@ -315,17 +530,77 @@ export default function Gallery() {
                   </Link>
                 ))}
               </div>
-
-              <div ref={sentinelRef} className="h-4" />
-              {isLoadingMore && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <span className="ml-2 text-sm text-muted-foreground">載入更多作品...</span>
+              <div className="mt-10 flex flex-col items-center gap-4">
+                <p className="text-sm text-muted-foreground">
+                  第 {currentPage} / {totalPages} 頁，共 {totalCount} 張作品
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    disabled={currentPage === 1 || isFetching}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    上一頁
+                  </Button>
+                  {visiblePages.map((page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "gold" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      disabled={isFetching && page === currentPage}
+                      className="min-w-10"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    disabled={currentPage === totalPages || isFetching}
+                    className="gap-1"
+                  >
+                    下一頁
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
-              {!hasMore && photos.length > 0 && (
-                <p className="text-center text-sm text-muted-foreground py-8">已顯示所有作品</p>
-              )}
+              </div>
+              <div className="mt-14 space-y-5">
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-primary">
+                      <Sparkles className="h-5 w-5" />
+                      <span className="text-sm font-medium">隨機推薦攝影師</span>
+                    </div>
+                    <h2 className="font-serif text-2xl font-bold">看看其他攝影師最近的代表作品</h2>
+                    <p className="text-sm text-muted-foreground">點進卡片即可前往該攝影師頁面，瀏覽他上傳的全部作品。</p>
+                  </div>
+                </div>
+                {spotlightLoading ? (
+                  <div className="flex gap-4 overflow-hidden">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <div key={index} className="min-w-[260px] max-w-[260px] overflow-hidden rounded-2xl border border-border bg-card">
+                        <div className="aspect-[4/3] animate-pulse bg-muted" />
+                        <div className="space-y-2 p-4">
+                          <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
+                          <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
+                          <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : spotlightPhotographers?.length ? (
+                  <div className="flex gap-4 overflow-x-auto pb-2">
+                    {spotlightPhotographers.map((item) => (
+                      <PhotographerSpotlightCard key={item.user_id} item={item} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </>
           ) : (
             <div className="text-center py-20">

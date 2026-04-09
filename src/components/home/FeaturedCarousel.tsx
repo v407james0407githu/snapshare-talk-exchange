@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +9,9 @@ import { Heart, Eye, Star, ArrowRight, Award } from "lucide-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useSiteContent } from "@/hooks/useSiteContent";
 import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
+import { getPublicSupabase } from "@/lib/publicSupabase";
+import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
+import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 
 interface FeaturedPhoto {
@@ -27,10 +29,23 @@ interface FeaturedPhoto {
   brand: string | null;
   is_featured: boolean;
   profiles?: {
-    username: string;
+    username: string | null;
     display_name: string | null;
     avatar_url: string | null;
   };
+}
+
+type PublicProfile = {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+function getAuthorDisplayName(profile?: PublicProfile) {
+  const displayName = profile?.display_name?.trim();
+  const username = profile?.username?.trim();
+  return displayName || username || "愛屁543會員";
 }
 
 function getEquipmentDisplay(photo: FeaturedPhoto) {
@@ -48,7 +63,7 @@ function PhotoCard({ photo, sizes }: { photo: FeaturedPhoto; sizes: string }) {
   return (
     <Link
       to={`/gallery/${photo.id}`}
-      className="group relative block overflow-hidden rounded-xl bg-card border border-border md:hover-lift"
+      className="group relative block overflow-hidden rounded-xl bg-card border border-border motion-card-surface motion-press"
     >
       {/* Fixed aspect-ratio container — prevents CLS */}
       <div className="aspect-[4/3] overflow-hidden relative bg-muted">
@@ -59,7 +74,7 @@ function PhotoCard({ photo, sizes }: { photo: FeaturedPhoto; sizes: string }) {
           alt={photo.title}
           width={400}
           height={300}
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-300 md:group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 w-full h-full object-cover motion-media ${imgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setImgLoaded(true)}
           loading="lazy"
           decoding="async"
@@ -72,11 +87,9 @@ function PhotoCard({ photo, sizes }: { photo: FeaturedPhoto; sizes: string }) {
           <div className="flex items-center gap-2 mb-3">
             <Avatar className="h-6 w-6">
               <AvatarImage src={photo.profiles?.avatar_url || undefined} />
-              <AvatarFallback>{photo.profiles?.username?.[0] || "U"}</AvatarFallback>
+              <AvatarFallback>{getAuthorDisplayName(photo.profiles)?.[0] || "會"}</AvatarFallback>
             </Avatar>
-            <span className="text-sm text-muted-foreground">
-              {photo.profiles?.display_name || photo.profiles?.username}
-            </span>
+            <span className="text-sm text-muted-foreground">{getAuthorDisplayName(photo.profiles)}</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
@@ -255,16 +268,20 @@ export function FeaturedCarousel({
   sectionTitle,
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const { get } = useSiteContent();
-  const row2Visible = true;
+  const { get, isLoading: siteContentLoading } = useSiteContent();
+  const enabled = useDeferredPublicQuery(500);
+  const initialLatestPhotos = readBootstrapCache<any[]>("featured-photos-latest") ?? [];
+  const initialTopRatedPhotos = readBootstrapCache<any[]>("featured-photos-top-rated") ?? [];
+  const initialProfiles = readBootstrapCache<PublicProfile[]>("featured-photos-profiles") ?? [];
 
-  const row1Label = get("featured_carousel_row1_label", "最新精選");
-  const row2Label = get("featured_carousel_row2_label", "高評分精選");
+  const row1Label = siteContentLoading ? "" : get("featured_carousel_row1_label", "最新精選");
+  const row2Label = siteContentLoading ? "" : get("featured_carousel_row2_label", "高評分精選");
 
   // 最新精選 — always load (above fold)
   const { data: latestPhotos, isLoading: l1 } = useQuery({
     queryKey: ["featured-photos-latest"],
     queryFn: async () => {
+      const supabase = await getPublicSupabase();
       const { data, error } = await supabase
         .from("photos")
         .select(
@@ -275,14 +292,19 @@ export function FeaturedCarousel({
         .order("created_at", { ascending: false })
         .limit(8);
       if (error) throw error;
-      return data;
+      const result = data ?? [];
+      writeBootstrapCache("featured-photos-latest", result);
+      return result;
     },
+    initialData: initialLatestPhotos,
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 
-  // 高評分精選 — lazy load when row2 enters viewport
   const { data: topRatedPhotos, isLoading: l2 } = useQuery({
     queryKey: ["featured-photos-top-rated"],
     queryFn: async () => {
+      const supabase = await getPublicSupabase();
       const { data, error } = await supabase
         .from("photos")
         .select(
@@ -293,9 +315,13 @@ export function FeaturedCarousel({
         .order("average_rating", { ascending: false })
         .limit(8);
       if (error) throw error;
-      return data;
+      const result = data ?? [];
+      writeBootstrapCache("featured-photos-top-rated", result);
+      return result;
     },
-    enabled: true,
+    initialData: initialTopRatedPhotos,
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 
   const allPhotos = [...(latestPhotos || []), ...(topRatedPhotos || [])];
@@ -305,13 +331,23 @@ export function FeaturedCarousel({
     queryKey: ["featured-photos-profiles", userIds.join(",")],
     queryFn: async () => {
       if (!userIds.length) return [];
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", userIds);
-      return data || [];
+      const supabase = await getPublicSupabase();
+      const { data, error } = await supabase.rpc("get_public_profiles");
+      if (error) throw error;
+      const result = (data || [])
+        .filter((profile: any) => userIds.includes(profile.user_id))
+        .map((profile: any) => ({
+          user_id: profile.user_id,
+          username: profile.username?.trim() || null,
+          display_name: profile.display_name?.trim() || null,
+          avatar_url: profile.avatar_url || null,
+        })) as PublicProfile[];
+      writeBootstrapCache("featured-photos-profiles", result);
+      return result;
     },
-    enabled: userIds.length > 0,
+    initialData: initialProfiles,
+    enabled: enabled && userIds.length > 0,
+    staleTime: 5 * 60 * 1000,
   });
 
   const profilesMap = new Map(profilesData?.map((p) => [p.user_id, p]) || []);
@@ -342,7 +378,7 @@ export function FeaturedCarousel({
           ) : (
             <div>
               <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">{sectionTitle || "精選作品"}</h2>
-              <p className="text-muted-foreground">{sectionSubtitle || "論壇精選的優質攝影作品"}</p>
+              <p className="text-muted-foreground">{sectionSubtitle || "最新與高評分的攝影作品"}</p>
             </div>
           )}
           {!l1 && (

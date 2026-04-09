@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -15,6 +14,10 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
 import { useMarketplaceCategories, MarketplaceCategorySidebar } from '@/components/marketplace/MarketplaceCategorySelector';
+import { useQuery } from '@tanstack/react-query';
+import { fetchMarketplaceListings } from '@/lib/publicRoutePrefetch';
+import { prefetchListingDetailBundle } from '@/lib/listingDetailPrefetch';
+import { pickImageSrc, SIZES } from '@/lib/responsiveImage';
 
 interface Listing {
   id: string;
@@ -47,8 +50,6 @@ const conditionLabels: Record<string, string> = {
 };
 
 export default function Marketplace() {
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [conditionFilter, setConditionFilter] = useState<string>('all');
   const [showSold, setShowSold] = useState(false);
@@ -56,33 +57,36 @@ export default function Marketplace() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const { data: categories } = useMarketplaceCategories();
+  const { data: categories, isLoading: categoriesLoading } = useMarketplaceCategories();
+  const { data: listings = [], isLoading } = useQuery({
+    queryKey: ['marketplace-listings', showSold],
+    queryFn: () => fetchMarketplaceListings(showSold) as Promise<Listing[]>,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 15,
+  });
 
-  useEffect(() => { loadListings(); }, [showSold]);
+  const prefetchListing = useCallback((listing: Listing) => {
+    void prefetchListingDetailBundle(listing.id, listing);
+  }, []);
 
-  const loadListings = async () => {
-    setIsLoading(true);
-    let query = supabase.from('marketplace_listings').select('*').eq('is_hidden', false);
-    if (!showSold) query = query.eq('is_sold', false);
-    const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) { console.error('Error loading listings:', error); setIsLoading(false); return; }
-    const items = (data || []) as Listing[];
-    const userIds = [...new Set(items.map(l => l.user_id))];
-    if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from('profiles').select('user_id, username, display_name, avatar_url, is_verified')
-        .in('user_id', userIds);
-      if (profiles) {
-        const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
-        items.forEach(item => {
-          const p = profileMap.get(item.user_id);
-          if (p) item.profiles = { username: p.username, display_name: p.display_name, avatar_url: p.avatar_url, is_verified: p.is_verified ?? false };
-        });
-      }
+  const markListingNavigationStart = useCallback((listingId: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(
+        `listing-detail-nav:${listingId}`,
+        JSON.stringify({
+          listingId,
+          at: performance.now(),
+          timestamp: Date.now(),
+          source: 'marketplace-list',
+        }),
+      );
+    } catch {
+      // Ignore storage failures in private mode or restricted browsers.
     }
-    setListings(items);
-    setIsLoading(false);
-  };
+  }, []);
+
+  const listingSkeletons = Array.from({ length: 6 }, (_, idx) => idx);
 
   const filteredListings = listings.filter((listing) => {
     const matchesSearch =
@@ -168,7 +172,7 @@ export default function Marketplace() {
               />
 
               {/* Filters */}
-              <div className="bg-card rounded-xl border border-border p-4 space-y-4">
+              <div className="bg-card rounded-xl border border-border p-4 space-y-4 motion-panel">
                 <h3 className="font-semibold">篩選條件</h3>
                 <div>
                   <label className="text-sm text-muted-foreground mb-1 block">商品狀態</label>
@@ -219,10 +223,71 @@ export default function Marketplace() {
               </div>
             </div>
 
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+            {isLoading || categoriesLoading ? (
+              viewMode === 'list' ? (
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                  <div className="hidden md:grid grid-cols-12 gap-4 border-b border-border bg-muted/40 px-4 py-3">
+                    <div className="col-span-5 h-4 w-16 animate-pulse rounded bg-muted" />
+                    <div className="col-span-2 h-4 w-12 animate-pulse rounded bg-muted" />
+                    <div className="col-span-2 ml-auto h-4 w-12 animate-pulse rounded bg-muted" />
+                    <div className="col-span-1 mx-auto h-4 w-8 animate-pulse rounded bg-muted" />
+                    <div className="col-span-2 ml-auto h-4 w-12 animate-pulse rounded bg-muted" />
+                  </div>
+                  <div className="divide-y divide-border">
+                    {listingSkeletons.map((idx) => (
+                      <div key={idx} className="px-4 py-3">
+                        <div className="hidden md:grid grid-cols-12 gap-4 items-center">
+                          <div className="col-span-5 flex items-center gap-3">
+                            <div className="h-12 w-12 animate-pulse rounded-lg bg-muted" />
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                              <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                            </div>
+                          </div>
+                          <div className="col-span-2 h-5 w-14 animate-pulse rounded-full bg-muted" />
+                          <div className="col-span-2 ml-auto h-5 w-20 animate-pulse rounded bg-muted" />
+                          <div className="col-span-1 mx-auto h-4 w-8 animate-pulse rounded bg-muted" />
+                          <div className="col-span-2 ml-auto h-4 w-16 animate-pulse rounded bg-muted" />
+                        </div>
+                        <div className="md:hidden flex items-center gap-3">
+                          <div className="h-12 w-12 animate-pulse rounded-lg bg-muted" />
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+                            <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {listingSkeletons.map((idx) => (
+                    <Card key={idx} className="overflow-hidden">
+                      <div className="aspect-[4/3] animate-pulse bg-muted" />
+                      <CardHeader className="space-y-2 pb-2">
+                        <div className="h-5 w-4/5 animate-pulse rounded bg-muted" />
+                        <div className="h-8 w-1/2 animate-pulse rounded bg-muted" />
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <div className="flex gap-2">
+                          <div className="h-6 w-14 animate-pulse rounded-full bg-muted" />
+                          <div className="h-6 w-16 animate-pulse rounded-full bg-muted" />
+                        </div>
+                      </CardContent>
+                      <CardFooter className="pt-0">
+                        <div className="flex w-full items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 animate-pulse rounded-full bg-muted" />
+                            <div className="h-4 w-16 animate-pulse rounded bg-muted" />
+                          </div>
+                          <div className="h-4 w-20 animate-pulse rounded bg-muted" />
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              )
             ) : filteredListings.length === 0 ? (
               <Card className="py-12 text-center">
                 <CardContent>
@@ -245,17 +310,41 @@ export default function Marketplace() {
                   <div className="col-span-2 text-right">時間</div>
                 </div>
                 {filteredListings.map((listing, idx) => (
-                  <Link key={listing.id} to={`/marketplace/${listing.id}`}>
-                    <div className={`hover:bg-muted/30 transition-colors ${idx < filteredListings.length - 1 ? 'border-b border-border' : ''} ${listing.is_sold ? 'opacity-60' : ''}`}>
+                  <Link
+                    key={listing.id}
+                    to={`/marketplace/${listing.id}`}
+                    state={{ listingPreview: listing }}
+                    onMouseEnter={() => prefetchListing(listing)}
+                    onFocus={() => prefetchListing(listing)}
+                    onMouseDown={() => {
+                      markListingNavigationStart(listing.id);
+                      prefetchListing(listing);
+                    }}
+                    onPointerDown={() => prefetchListing(listing)}
+                    onTouchStart={() => {
+                      markListingNavigationStart(listing.id);
+                      prefetchListing(listing);
+                    }}
+                    onClick={() => markListingNavigationStart(listing.id)}
+                  >
+                    <div className={`group motion-list-item hover:bg-muted/40 ${idx < filteredListings.length - 1 ? 'border-b border-border' : ''} ${listing.is_sold ? 'opacity-60' : ''}`}>
                       {/* Desktop */}
                       <div className="hidden md:grid grid-cols-12 gap-4 px-4 py-3 items-center">
                         <div className="col-span-5 flex items-center gap-3 min-w-0">
                           <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-muted">
-                            <img src={listing.verification_image_url} alt={listing.title} className="w-full h-full object-cover" />
+                            <img
+                              src={pickImageSrc(listing.verification_image_url, null)}
+                              alt={listing.title}
+                              loading={idx < 4 ? "eager" : "lazy"}
+                              fetchPriority={idx < 2 ? "high" : "auto"}
+                              decoding="async"
+                              sizes={SIZES.marketplace}
+                              className="w-full h-full object-cover motion-media"
+                            />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-sm line-clamp-1">{listing.title}</h3>
+                              <h3 className="font-medium text-sm line-clamp-1 motion-list-title">{listing.title}</h3>
                               {listing.is_sold && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">已售出</Badge>}
                               {!listing.is_sold && listing.is_verified && <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 text-primary gap-0.5"><ShieldCheck className="h-2.5 w-2.5" />已驗證</Badge>}
                             </div>
@@ -281,11 +370,18 @@ export default function Marketplace() {
                       <div className="md:hidden px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-muted">
-                            <img src={listing.verification_image_url} alt={listing.title} className="w-full h-full object-cover" />
+                            <img
+                              src={pickImageSrc(listing.verification_image_url, null)}
+                              alt={listing.title}
+                              loading="lazy"
+                              decoding="async"
+                              sizes={SIZES.marketplace}
+                              className="w-full h-full object-cover motion-media"
+                            />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-sm line-clamp-1">{listing.title}</h3>
+                              <h3 className="font-medium text-sm line-clamp-1 motion-list-title">{listing.title}</h3>
                               {listing.is_sold && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">已售出</Badge>}
                             </div>
                             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
@@ -305,10 +401,33 @@ export default function Marketplace() {
               /* Grid view - card style */
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredListings.map((listing) => (
-                  <Link key={listing.id} to={`/marketplace/${listing.id}`}>
-                    <Card className={`overflow-hidden hover-lift h-full ${listing.is_sold ? 'opacity-70' : ''}`}>
+                  <Link
+                    key={listing.id}
+                    to={`/marketplace/${listing.id}`}
+                    state={{ listingPreview: listing }}
+                    onMouseEnter={() => prefetchListing(listing)}
+                    onFocus={() => prefetchListing(listing)}
+                    onMouseDown={() => {
+                      markListingNavigationStart(listing.id);
+                      prefetchListing(listing);
+                    }}
+                    onPointerDown={() => prefetchListing(listing)}
+                    onTouchStart={() => {
+                      markListingNavigationStart(listing.id);
+                      prefetchListing(listing);
+                    }}
+                    onClick={() => markListingNavigationStart(listing.id)}
+                  >
+                    <Card className={`group overflow-hidden motion-card-surface motion-press h-full ${listing.is_sold ? 'opacity-70' : ''}`}>
                       <div className="aspect-[4/3] relative overflow-hidden">
-                        <img src={listing.verification_image_url} alt={listing.title} className="w-full h-full object-cover transition-transform hover:scale-105" />
+                        <img
+                          src={pickImageSrc(listing.verification_image_url, null)}
+                          alt={listing.title}
+                          loading="lazy"
+                          decoding="async"
+                          sizes={SIZES.marketplace}
+                          className="w-full h-full object-cover motion-media"
+                        />
                         <div className="absolute top-2 left-2 flex gap-1">
                           <Badge variant="secondary" className="gap-1">
                             {listing.category === 'phone' ? <Smartphone className="h-3 w-3" /> : <Camera className="h-3 w-3" />}
@@ -321,7 +440,7 @@ export default function Marketplace() {
                         )}
                       </div>
                       <CardHeader className="pb-2">
-                        <h3 className="font-semibold line-clamp-2">{listing.title}</h3>
+                        <h3 className="font-semibold line-clamp-2 motion-list-title">{listing.title}</h3>
                         <p className="text-2xl font-bold text-primary">
                           ${listing.price.toLocaleString()}
                           <span className="text-sm font-normal text-muted-foreground ml-1">{listing.currency}</span>
@@ -337,11 +456,11 @@ export default function Marketplace() {
                         <div className="flex items-center justify-between w-full text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
-                              <AvatarImage src={listing.profiles?.avatar_url || undefined} />
-                              <AvatarFallback>{listing.profiles?.username?.[0] || 'U'}</AvatarFallback>
+                              <AvatarImage src={listing.profiles?.avatar_url || undefined} loading="lazy" decoding="async" />
+                              <AvatarFallback>{(listing.profiles?.display_name || listing.profiles?.username || '會').slice(0, 1)}</AvatarFallback>
                             </Avatar>
                             <span className="flex items-center gap-1">
-                              {listing.profiles?.username}
+                              {listing.profiles?.display_name || listing.profiles?.username}
                               {listing.profiles?.is_verified && <ShieldCheck className="h-3 w-3 text-primary" />}
                             </span>
                           </div>
