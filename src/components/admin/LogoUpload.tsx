@@ -55,7 +55,7 @@ export function LogoUpload({
   hint = "最大 1MB，上傳後自動壓縮",
   maxBytes = 1 * 1024 * 1024,
   preserveOriginalFormat = false,
-  pathPrefix = "logos",
+  pathPrefix = "content/logos",
 }: LogoUploadProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

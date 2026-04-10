@@ -124,7 +124,7 @@ export default function SystemSettings() {
                 hint: "建議尺寸：32×32px 或 64×64px，PNG、ICO 或 SVG 格式，最大 2MB",
                 maxBytes: 2 * 1024 * 1024,
                 preserveOriginalFormat: true,
-                pathPrefix: "favicons",
+                pathPrefix: "content/favicons",
               }
             : {})}
         />
