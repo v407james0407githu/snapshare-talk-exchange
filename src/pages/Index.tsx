@@ -3,7 +3,6 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { HeroSection } from "@/components/home/HeroSection";
 import { useQuery } from "@tanstack/react-query";
 import { usePublicSystemSettings } from "@/hooks/usePublicSystemSettings";
-import { useLazySection } from "@/hooks/useLazySection";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
@@ -51,34 +50,6 @@ function SectionFallback({ sectionKey }: { sectionKey: string }) {
     cta: "min-h-[320px]",
   };
   return <div className={`${heights[sectionKey] || "min-h-[400px]"}`} />;
-}
-
-/** Wrapper that mounts a section only when it's near the viewport */
-function LazyWrapper({
-  children,
-  sectionKey
-}: {
-  children: React.ReactNode;
-  sectionKey: string;
-}) {
-  const isCritical = sectionKey === "hero";
-  const [sectionRef, isVisible] = useLazySection(
-    sectionKey === "featured_carousel" ? "180px 0px" : "420px 0px"
-  );
-
-  if (isCritical) return <>{children}</>;
-
-  return (
-    <div ref={sectionRef}>
-      {isVisible ? (
-        <Suspense fallback={<SectionFallback sectionKey={sectionKey} />}>
-          {children}
-        </Suspense>
-      ) : (
-        <SectionFallback sectionKey={sectionKey} />
-      )}
-    </div>
-  );
 }
 
 const Index = () => {
@@ -134,13 +105,13 @@ const Index = () => {
         const Component = sectionComponents[s.section_key];
         if (!Component) return null;
         return (
-          <Suspense key={s.section_key} fallback={null}>
-            <LazyWrapper sectionKey={s.section_key}>
+          <Suspense key={s.section_key} fallback={<SectionFallback sectionKey={s.section_key} />}>
+            <section data-home-section={s.section_key}>
               <Component 
                 sectionTitle={s.section_label || undefined} 
                 sectionSubtitle={s.section_subtitle || undefined} 
               />
-            </LazyWrapper>
+            </section>
           </Suspense>
         );
       })}
