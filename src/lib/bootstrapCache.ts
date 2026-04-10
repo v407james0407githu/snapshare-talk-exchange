@@ -23,3 +23,12 @@ export function writeBootstrapCache<T>(key: string, value: T) {
     // Ignore quota / serialization failures
   }
 }
+
+export function clearBootstrapCache(key: string) {
+  if (!canUseStorage()) return;
+  try {
+    window.localStorage.removeItem(`${CACHE_PREFIX}${key}`);
+  } catch {
+    // Ignore storage failures
+  }
+}

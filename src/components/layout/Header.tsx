@@ -37,7 +37,7 @@ export function Header() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { forumEnabled, marketplaceEnabled, siteFavicon, siteLogo, siteName } = usePublicSystemSettings();
-  const brandImage = siteFavicon || siteLogo;
+  const brandImage = siteLogo || siteFavicon;
 
   const navItems = [
     { label: "首頁", href: "/" },

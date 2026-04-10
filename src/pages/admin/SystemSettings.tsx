@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { clearBootstrapCache } from "@/lib/bootstrapCache";
 
 interface SystemSetting {
   id: string;
@@ -79,6 +80,8 @@ export default function SystemSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-system-settings"] });
       queryClient.invalidateQueries({ queryKey: ["system-settings-public"] });
+      queryClient.invalidateQueries({ queryKey: ["system-settings-public-light"] });
+      clearBootstrapCache("public-system-settings");
       setEditedValues({});
       toast.success("設定已儲存");
     },

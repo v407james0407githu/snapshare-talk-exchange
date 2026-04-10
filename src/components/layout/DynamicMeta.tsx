@@ -1,6 +1,12 @@
 import { useEffect } from "react";
 import { usePublicSystemSettings } from "@/hooks/usePublicSystemSettings";
 
+function withCacheBust(url: string) {
+  if (!url) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${encodeURIComponent(url)}`;
+}
+
 export function DynamicMeta() {
   const { get } = usePublicSystemSettings();
 
@@ -18,14 +24,28 @@ export function DynamicMeta() {
       document.querySelector('meta[property="og:description"]')?.setAttribute("content", description);
     }
     if (favicon) {
-      let link = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
-      if (!link) {
-        link = document.createElement("link");
-        link.rel = "icon";
-        document.head.appendChild(link);
-      }
-      link.href = favicon;
-      link.type = favicon.endsWith(".svg") ? "image/svg+xml" : "image/png";
+      const faviconHref = withCacheBust(favicon);
+      const faviconType = favicon.endsWith(".svg") ? "image/svg+xml" : "image/png";
+      const linkSpecs = [
+        { selector: 'link[rel="icon"]', rel: "icon", type: faviconType },
+        { selector: 'link[rel="shortcut icon"]', rel: "shortcut icon", type: faviconType },
+        { selector: 'link[rel="apple-touch-icon"]', rel: "apple-touch-icon" },
+      ];
+
+      linkSpecs.forEach(({ selector, rel, type }) => {
+        let link = document.querySelector(selector) as HTMLLinkElement | null;
+        if (!link) {
+          link = document.createElement("link");
+          link.rel = rel;
+          document.head.appendChild(link);
+        }
+        link.href = faviconHref;
+        if (type) {
+          link.type = type;
+        } else {
+          link.removeAttribute("type");
+        }
+      });
     }
   }, [title, description, favicon]);
 
