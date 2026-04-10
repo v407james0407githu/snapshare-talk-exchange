@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { fetchTopicReplyPreviews, type TopicReplyPreview } from "@/components/forums/TopicList";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 
@@ -29,7 +28,6 @@ interface TopicRow {
   author_name?: string;
   category_name?: string;
   category_color?: string;
-  reply_previews?: TopicReplyPreview[];
 }
 
 function normalizeAuthorName(
@@ -46,7 +44,8 @@ function normalizeAuthorName(
 }
 
 export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const initialTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview");
+  const cachedTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview");
+  const initialTopics = cachedTopics && cachedTopics.length > 0 ? cachedTopics : undefined;
   const { data: topics = [], isLoading: loading, isFetched } = useQuery({
     queryKey: ["homepage-forum-preview"],
     queryFn: async () => {
@@ -90,8 +89,6 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
           });
       }
 
-      const replyPreviewMap = await fetchTopicReplyPreviews(data.map((t) => t.id));
-
       const result = data.map((t) => {
         const catInfo = t.category_id ? categoryMap.get(t.category_id) : null;
         return {
@@ -102,7 +99,6 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
           author_name: profileMap.get(t.user_id) || normalizeAuthorName(undefined, t.user_id),
           category_name: catInfo?.name || (t.category === "phone" ? "手機" : "相機"),
           category_color: catInfo?.color || (t.category === "phone" ? "green" : "blue"),
-          reply_previews: replyPreviewMap.get(t.id) || [],
         };
       }) as TopicRow[];
       writeBootstrapCache("homepage-forum-preview", result);
@@ -211,17 +207,6 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                             <p className="text-sm text-muted-foreground mt-0.5">
                               {topic.author_name}
                             </p>
-                            {topic.reply_previews && topic.reply_previews.length > 0 && (
-                              <div className="mt-3 space-y-1.5 rounded-lg border border-border/60 bg-background/70 px-3 py-2">
-                                {topic.reply_previews.map((reply) => (
-                                  <div key={reply.id} className="text-xs text-muted-foreground">
-                                    <span className="font-medium text-foreground/80">{reply.author_name}</span>
-                                    <span className="mx-1 text-muted-foreground/60">：</span>
-                                    <span className="line-clamp-1">{reply.content}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>

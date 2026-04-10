@@ -24,6 +24,7 @@ interface CategoryColumnProps {
   parentSlug: string;
   linkPrefix: string;
   categoryName: string;
+  initialTopics?: TopicRow[];
 }
 
 function normalizeAuthorName(
@@ -71,8 +72,7 @@ function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title:
   );
 }
 
-function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: CategoryColumnProps) {
-  const initialTopics = readBootstrapCache<TopicRow[]>(`equipment-category-topics:${parentSlug}:${categoryName}`) ?? [];
+function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName, initialTopics }: CategoryColumnProps) {
   const { data: topics = [], isLoading: loading } = useQuery({
     queryKey: ["equipment-category-topics", parentSlug, categoryName],
     queryFn: async () => {
@@ -245,6 +245,9 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: C
 }
 
 export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
+  const initialPhoneTopics = readBootstrapCache<TopicRow[]>("equipment-category-topics:mobile:手機攝影");
+  const initialCameraTopics = readBootstrapCache<TopicRow[]>("equipment-category-topics:camera:相機攝影");
+
   return (
     <section className="py-20 bg-background">
       <div className="container">
@@ -264,6 +267,7 @@ export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { section
             parentSlug="mobile"
             linkPrefix="/forums?category=phone"
             categoryName="手機攝影"
+            initialTopics={initialPhoneTopics && initialPhoneTopics.length > 0 ? initialPhoneTopics : undefined}
           />
           <CategoryColumn
             icon={<Camera className="h-6 w-6" />}
@@ -271,6 +275,7 @@ export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { section
             parentSlug="camera"
             linkPrefix="/forums?category=camera"
             categoryName="相機攝影"
+            initialTopics={initialCameraTopics && initialCameraTopics.length > 0 ? initialCameraTopics : undefined}
           />
         </div>
       </div>

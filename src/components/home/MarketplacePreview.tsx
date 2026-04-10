@@ -52,7 +52,8 @@ const conditionColors: Record<string, string> = {
 };
 
 export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const initialListings = readBootstrapCache<ListingItem[]>("homepage-marketplace-preview") ?? [];
+  const cachedListings = readBootstrapCache<ListingItem[]>("homepage-marketplace-preview");
+  const initialListings = cachedListings && cachedListings.length > 0 ? cachedListings : undefined;
 
   const { data: listings = [], isLoading, isFetched } = useQuery({
     queryKey: ["homepage-marketplace-preview"],

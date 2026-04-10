@@ -121,7 +121,8 @@ export function FeaturedGallery({
   sectionTitle,
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const initialPhotos = readBootstrapCache<FeaturedPhoto[]>("homepage-featured-gallery");
+  const cachedPhotos = readBootstrapCache<FeaturedPhoto[]>("homepage-featured-gallery");
+  const initialPhotos = cachedPhotos && cachedPhotos.length > 0 ? cachedPhotos : undefined;
   const { data: photos = [], isLoading: loading, isFetched } = useQuery({
     queryKey: ["homepage-featured-gallery"],
     queryFn: async () => {
