@@ -14,7 +14,6 @@ import { zhTW } from "date-fns/locale";
 import { fetchTopicReplyPreviews, type TopicReplyPreview } from "@/components/forums/TopicList";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
-import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface TopicRow {
   id: string;
@@ -47,8 +46,7 @@ function normalizeAuthorName(
 }
 
 export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const initialTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview") ?? [];
-  const enabled = useDeferredPublicQuery(500);
+  const initialTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview");
   const { data: topics = [], isLoading: loading, isFetched } = useQuery({
     queryKey: ["homepage-forum-preview"],
     queryFn: async () => {
@@ -111,7 +109,6 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
       return result;
     },
     initialData: initialTopics,
-    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -123,7 +120,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
     red: "bg-red-500/10 text-red-600",
   };
 
-  if (enabled && isFetched && !loading && topics.length === 0) return null;
+  if (isFetched && !loading && topics.length === 0) return null;
 
   return (
     <section className="py-20 bg-background">

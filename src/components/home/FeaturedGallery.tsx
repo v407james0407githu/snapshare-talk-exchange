@@ -6,7 +6,6 @@ import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
-import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface FeaturedPhoto {
   id: string;
@@ -122,8 +121,7 @@ export function FeaturedGallery({
   sectionTitle,
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const initialPhotos = readBootstrapCache<FeaturedPhoto[]>("homepage-featured-gallery") ?? [];
-  const enabled = useDeferredPublicQuery(450);
+  const initialPhotos = readBootstrapCache<FeaturedPhoto[]>("homepage-featured-gallery");
   const { data: photos = [], isLoading: loading, isFetched } = useQuery({
     queryKey: ["homepage-featured-gallery"],
     queryFn: async () => {
@@ -190,11 +188,10 @@ export function FeaturedGallery({
       return result;
     },
     initialData: initialPhotos,
-    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
-  if (enabled && isFetched && !loading && photos.length === 0) return null;
+  if (isFetched && !loading && photos.length === 0) return null;
 
   const row1 = photos.slice(0, 4);
   const row2 = photos.slice(4, 9);

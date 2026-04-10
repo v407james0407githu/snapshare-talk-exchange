@@ -11,7 +11,6 @@ import { useSiteContent } from "@/hooks/useSiteContent";
 import { pickImageSrc, SIZES } from "@/lib/responsiveImage";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
-import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 
 interface FeaturedPhoto {
@@ -269,10 +268,9 @@ export function FeaturedCarousel({
   sectionSubtitle,
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const { get, isLoading: siteContentLoading } = useSiteContent();
-  const enabled = useDeferredPublicQuery(500);
-  const initialLatestPhotos = readBootstrapCache<any[]>("featured-photos-latest") ?? [];
-  const initialTopRatedPhotos = readBootstrapCache<any[]>("featured-photos-top-rated") ?? [];
-  const initialProfiles = readBootstrapCache<PublicProfile[]>("featured-photos-profiles") ?? [];
+  const initialLatestPhotos = readBootstrapCache<any[]>("featured-photos-latest");
+  const initialTopRatedPhotos = readBootstrapCache<any[]>("featured-photos-top-rated");
+  const initialProfiles = readBootstrapCache<PublicProfile[]>("featured-photos-profiles");
 
   const row1Label = siteContentLoading ? "" : get("featured_carousel_row1_label", "最新精選");
   const row2Label = siteContentLoading ? "" : get("featured_carousel_row2_label", "高評分精選");
@@ -297,7 +295,6 @@ export function FeaturedCarousel({
       return result;
     },
     initialData: initialLatestPhotos,
-    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -320,7 +317,6 @@ export function FeaturedCarousel({
       return result;
     },
     initialData: initialTopRatedPhotos,
-    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -346,7 +342,7 @@ export function FeaturedCarousel({
       return result;
     },
     initialData: initialProfiles,
-    enabled: enabled && userIds.length > 0,
+    enabled: userIds.length > 0,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -361,7 +357,7 @@ export function FeaturedCarousel({
   const latestFeatured = withProfiles(latestPhotos);
   const topRatedFeatured = withProfiles(topRatedPhotos);
 
-  const isEmpty = enabled && latestFetched && topRatedFetched && !l1 && !latestFeatured.length && !topRatedFeatured.length;
+  const isEmpty = latestFetched && topRatedFetched && !l1 && !latestFeatured.length && !topRatedFeatured.length;
 
   // Don't render anything if truly empty (no skeleton shown yet)
   if (isEmpty) return null;
