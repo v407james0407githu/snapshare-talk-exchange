@@ -85,13 +85,9 @@ SEO：
 
 ## 6. Cloudflare SPA 路由
 
-本專案已加入 `public/_redirects`：
-
-```txt
-/* /index.html 200
-```
-
-如前端路由仍 404，請先確認這個檔案有被包含進部署產物。
+本專案部署到 Cloudflare Workers/Pages 時，不使用 `public/_redirects`。
+Cloudflare 新版部署流程會把 `/* /index.html 200` 判定為可能造成無限迴圈的規則並中止部署。
+目前先依賴 Vite + Cloudflare 的預設 SPA 路由處理；若之後深層路由仍有 404，再改用 Cloudflare 相容的 routing 設定補上。
 
 ## 7. Cloudflare Headers
 

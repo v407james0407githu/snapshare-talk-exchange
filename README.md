@@ -78,14 +78,9 @@ VITE_SUPABASE_PROJECT_ID=your-project-ref
 
 ### SPA 路由設定
 
-本專案已包含 `public/_redirects`，可讓以下前端路由在 Cloudflare 正常工作：
-
-- `/auth`
-- `/admin`
-- `/about`
-- `/contact`
-- `/privacy`
-- `/terms`
+本專案部署到 Cloudflare Workers/Pages 時，不使用 `public/_redirects`。
+Cloudflare 新版部署流程會把 `/* /index.html 200` 視為可能造成無限迴圈的規則並拒絕部署。
+目前採用 Vite + Cloudflare 的預設 SPA 處理方式，不額外放 `_redirects`。
 
 ### Headers 與快取
 
