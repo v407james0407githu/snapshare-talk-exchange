@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, MapPin, Clock, ShieldCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { useLazySection } from "@/hooks/useLazySection";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
@@ -53,12 +52,10 @@ const conditionColors: Record<string, string> = {
 };
 
 export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const [sectionRef, isVisible] = useLazySection('400px 0px');
   const initialListings = readBootstrapCache<ListingItem[]>("homepage-marketplace-preview") ?? [];
 
   const { data: listings = [], isLoading, isFetched } = useQuery({
     queryKey: ["homepage-marketplace-preview"],
-    enabled: isVisible,
     queryFn: async () => {
       const supabase = await getPublicSupabase();
       const { data, error } = await supabase
@@ -102,10 +99,10 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
     staleTime: 5 * 60 * 1000,
   });
 
-  if (isVisible && isFetched && !isLoading && listings.length === 0) return null;
+  if (isFetched && !isLoading && listings.length === 0) return null;
 
   return (
-    <section ref={sectionRef} className="py-20 bg-muted/30">
+    <section className="py-20 bg-muted/30">
       <div className="container">
         <div className="flex items-center justify-between mb-12">
           <div>
@@ -135,7 +132,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
 
           {/* Listings */}
           <div className="divide-y divide-border min-h-[460px]">
-            {!isVisible || isLoading ? (
+            {isLoading ? (
               <div className="divide-y divide-border">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="px-6 py-4">

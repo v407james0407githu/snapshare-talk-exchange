@@ -5,7 +5,6 @@ import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
-import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface TopicRow {
   id: string;
@@ -74,7 +73,6 @@ function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title:
 
 function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: CategoryColumnProps) {
   const initialTopics = readBootstrapCache<TopicRow[]>(`equipment-category-topics:${parentSlug}:${categoryName}`) ?? [];
-  const enabled = useDeferredPublicQuery(550);
   const { data: topics = [], isLoading: loading } = useQuery({
     queryKey: ["equipment-category-topics", parentSlug, categoryName],
     queryFn: async () => {
@@ -170,7 +168,6 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName }: C
       return result;
     },
     initialData: initialTopics,
-    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
