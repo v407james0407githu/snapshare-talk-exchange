@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +27,24 @@ function formatMaxSize(bytes: number) {
     return `${bytes / (1024 * 1024)}MB`;
   }
   return `${Math.round((bytes / (1024 * 1024)) * 10) / 10}MB`;
+}
+
+function createAuthedStorageClient(accessToken: string) {
+  return createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    },
+  );
 }
 
 export function LogoUpload({
@@ -60,6 +79,21 @@ export function LogoUpload({
 
     setUploading(true);
     try {
+      let session = (await supabase.auth.getSession()).data.session;
+
+      if (!session) {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) throw new Error("登入狀態已失效，請重新登入後再上傳");
+        session = data.session;
+      }
+
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("登入狀態已失效，請重新登入後再上傳");
+      }
+
+      const authedStorage = createAuthedStorageClient(accessToken).storage;
+
       const shouldKeepOriginal =
         preserveOriginalFormat || file.type === "image/svg+xml" || /\.svg$/i.test(file.name) || /\.ico$/i.test(file.name);
 
@@ -82,13 +116,13 @@ export function LogoUpload({
       const fileName = `site-logo-${Date.now()}.${ext}`;
       const filePath = `${pathPrefix}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError } = await authedStorage
         .from("photos")
         .upload(filePath, uploadBlob, { contentType: mime, upsert: true });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = authedStorage
         .from("photos")
         .getPublicUrl(filePath);
 
