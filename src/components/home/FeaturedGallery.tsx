@@ -124,7 +124,7 @@ export function FeaturedGallery({
 }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const initialPhotos = readBootstrapCache<FeaturedPhoto[]>("homepage-featured-gallery") ?? [];
   const enabled = useDeferredPublicQuery(450);
-  const { data: photos = [], isLoading: loading } = useQuery({
+  const { data: photos = [], isLoading: loading, isFetched } = useQuery({
     queryKey: ["homepage-featured-gallery"],
     queryFn: async () => {
       const supabase = await getPublicSupabase();
@@ -194,7 +194,7 @@ export function FeaturedGallery({
     staleTime: 5 * 60 * 1000,
   });
 
-  if (!loading && photos.length === 0) return null;
+  if (enabled && isFetched && !loading && photos.length === 0) return null;
 
   const row1 = photos.slice(0, 4);
   const row2 = photos.slice(4, 9);

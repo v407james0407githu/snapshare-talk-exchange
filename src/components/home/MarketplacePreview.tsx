@@ -56,7 +56,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
   const [sectionRef, isVisible] = useLazySection('400px 0px');
   const initialListings = readBootstrapCache<ListingItem[]>("homepage-marketplace-preview") ?? [];
 
-  const { data: listings = [], isLoading } = useQuery({
+  const { data: listings = [], isLoading, isFetched } = useQuery({
     queryKey: ["homepage-marketplace-preview"],
     enabled: isVisible,
     queryFn: async () => {
@@ -102,7 +102,7 @@ export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionT
     staleTime: 5 * 60 * 1000,
   });
 
-  if (!isLoading && listings.length === 0) return null;
+  if (isVisible && isFetched && !isLoading && listings.length === 0) return null;
 
   return (
     <section ref={sectionRef} className="py-20 bg-muted/30">

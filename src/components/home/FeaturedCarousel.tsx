@@ -278,7 +278,7 @@ export function FeaturedCarousel({
   const row2Label = siteContentLoading ? "" : get("featured_carousel_row2_label", "高評分精選");
 
   // 最新精選 — always load (above fold)
-  const { data: latestPhotos, isLoading: l1 } = useQuery({
+  const { data: latestPhotos, isLoading: l1, isFetched: latestFetched } = useQuery({
     queryKey: ["featured-photos-latest"],
     queryFn: async () => {
       const supabase = await getPublicSupabase();
@@ -301,7 +301,7 @@ export function FeaturedCarousel({
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: topRatedPhotos, isLoading: l2 } = useQuery({
+  const { data: topRatedPhotos, isLoading: l2, isFetched: topRatedFetched } = useQuery({
     queryKey: ["featured-photos-top-rated"],
     queryFn: async () => {
       const supabase = await getPublicSupabase();
@@ -361,7 +361,7 @@ export function FeaturedCarousel({
   const latestFeatured = withProfiles(latestPhotos);
   const topRatedFeatured = withProfiles(topRatedPhotos);
 
-  const isEmpty = !l1 && !latestFeatured.length && !topRatedFeatured.length;
+  const isEmpty = enabled && latestFetched && topRatedFetched && !l1 && !latestFeatured.length && !topRatedFeatured.length;
 
   // Don't render anything if truly empty (no skeleton shown yet)
   if (isEmpty) return null;

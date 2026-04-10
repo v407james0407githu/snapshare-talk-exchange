@@ -49,7 +49,7 @@ function normalizeAuthorName(
 export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
   const initialTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview") ?? [];
   const enabled = useDeferredPublicQuery(500);
-  const { data: topics = [], isLoading: loading } = useQuery({
+  const { data: topics = [], isLoading: loading, isFetched } = useQuery({
     queryKey: ["homepage-forum-preview"],
     queryFn: async () => {
       const supabase = await getPublicSupabase();
@@ -123,7 +123,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
     red: "bg-red-500/10 text-red-600",
   };
 
-  if (!loading && topics.length === 0) return null;
+  if (enabled && isFetched && !loading && topics.length === 0) return null;
 
   return (
     <section className="py-20 bg-background">
