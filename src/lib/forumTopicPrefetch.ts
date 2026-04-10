@@ -70,6 +70,22 @@ function preloadImage(url: string | null | undefined) {
   image.src = url;
 }
 
+function resolveForumImageUrl(url: string | null | undefined) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url) || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+
+  const cleaned = url
+    .replace(/^\/+/, "")
+    .replace(/^storage\/v1\/object\/public\/photos\//, "")
+    .replace(/^photos\//, "");
+
+  if (!cleaned) return null;
+  const { data } = supabase.storage.from("photos").getPublicUrl(cleaned);
+  return data.publicUrl;
+}
+
 function preloadForumTopicRoute() {
   if (prefetchedRoutes.has("/forums/topic")) return;
   prefetchedRoutes.add("/forums/topic");
@@ -125,11 +141,15 @@ export async function prefetchForumTopicBundle(
     const topic: TopicPreview = {
       ...preview,
       ...topicData,
+      image_url: resolveForumImageUrl(topicData.image_url || null),
+      image_urls: (topicData.image_urls || []).map(resolveForumImageUrl).filter(Boolean) as string[],
       profiles: profilesMap.get(topicData.user_id) || normalizeProfile(null, topicData.user_id),
     };
 
     const replies: ForumReply[] = ((repliesData || []) as ForumReply[]).map((reply) => ({
       ...reply,
+      image_url: resolveForumImageUrl(reply.image_url || null),
+      image_urls: (reply.image_urls || []).map(resolveForumImageUrl).filter(Boolean) as string[],
       profiles: profilesMap.get(reply.user_id) || normalizeProfile(null, reply.user_id),
     }));
 

@@ -97,6 +97,22 @@ function normalizeProfile(profile: PublicProfile | null | undefined, userId: str
   };
 }
 
+function resolveForumImageUrl(url: string | null | undefined) {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url) || url.startsWith("blob:") || url.startsWith("data:")) {
+    return url;
+  }
+
+  const cleaned = url
+    .replace(/^\/+/, "")
+    .replace(/^storage\/v1\/object\/public\/photos\//, "")
+    .replace(/^photos\//, "");
+
+  if (!cleaned) return null;
+  const { data } = supabase.storage.from("photos").getPublicUrl(cleaned);
+  return data.publicUrl;
+}
+
 export default function ForumTopic() {
   const { topicId } = useParams<{ topicId: string }>();
   const { user } = useAuth();
@@ -329,7 +345,8 @@ export default function ForumTopic() {
     setEditingReplyId(reply.id);
     setEditingContent(reply.content);
     const imgs = reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [];
-    setEditingImages(urlsToItems(imgs));
+    const resolvedImages = imgs.map(resolveForumImageUrl).filter(Boolean) as string[];
+    setEditingImages(urlsToItems(resolvedImages));
   };
 
   const handleCancelEdit = () => {
@@ -349,7 +366,8 @@ export default function ForumTopic() {
     setEditingTopicTitle(topic.title);
     setEditingTopicContent(topic.content);
     const imgs = topic.image_urls?.length ? topic.image_urls : topic.image_url ? [topic.image_url] : [];
-    setEditingTopicImages(urlsToItems(imgs));
+    const resolvedImages = imgs.map(resolveForumImageUrl).filter(Boolean) as string[];
+    setEditingTopicImages(urlsToItems(resolvedImages));
   };
 
   const handleSaveEditTopic = () => {
@@ -750,7 +768,9 @@ export default function ForumTopic() {
                             {reply.content}
                           </p>
                           {(() => {
-                            const imgs = reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [];
+                            const imgs = (reply.image_urls?.length ? reply.image_urls : reply.image_url ? [reply.image_url] : [])
+                              .map(resolveForumImageUrl)
+                              .filter(Boolean) as string[];
                             return imgs.length > 0 ? (
                               <div className="flex flex-wrap gap-2 mt-3">
                                 {imgs.map((url, i) => (
