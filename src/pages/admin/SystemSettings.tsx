@@ -122,6 +122,9 @@ export default function SystemSettings() {
                 placeholder: "尚未設定 Favicon，將顯示預設圖示",
                 uploadLabel: "上傳新 Favicon",
                 hint: "建議尺寸：32×32px 或 64×64px，PNG、ICO 或 SVG 格式，最大 2MB",
+                maxBytes: 2 * 1024 * 1024,
+                preserveOriginalFormat: true,
+                pathPrefix: "favicons",
               }
             : {})}
         />
