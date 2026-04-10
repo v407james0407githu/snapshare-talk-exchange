@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 import { getPublicSupabase } from "@/lib/publicSupabase";
-import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface SystemSetting {
   setting_key: string;
@@ -83,7 +82,6 @@ const PUBLIC_SETTING_KEYS = [
 
 export function usePublicSystemSettings() {
   const initialSettings = readBootstrapCache<SystemSetting[]>("public-system-settings") ?? [];
-  const enabled = useDeferredPublicQuery(250);
   const { data: settings = [], isLoading } = useQuery({
     queryKey: ["system-settings-public-light"],
     queryFn: async () => {
@@ -99,7 +97,6 @@ export function usePublicSystemSettings() {
       return result;
     },
     initialData: initialSettings,
-    enabled,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -123,8 +120,8 @@ export function usePublicSystemSettings() {
     getBool,
     getNum,
     galleryEnabled: true,
-    forumEnabled: getBool("forum_enabled", false),
-    marketplaceEnabled: getBool("marketplace_enabled", false),
+    forumEnabled: getBool("forum_enabled", true),
+    marketplaceEnabled: getBool("marketplace_enabled", true),
     registrationEnabled: getBool("registration_enabled", true),
     siteName: get("site_name", "愛屁543論壇"),
     siteFavicon: get("site_favicon_url", ""),
