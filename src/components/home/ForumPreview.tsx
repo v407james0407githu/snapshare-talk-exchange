@@ -14,6 +14,8 @@ import { zhTW } from "date-fns/locale";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 
+const FORUM_PREVIEW_CACHE_KEY = "homepage-forum-preview-v2";
+
 interface TopicRow {
   id: string;
   title: string;
@@ -52,10 +54,10 @@ function normalizeAuthorName(
 }
 
 export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const cachedTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview");
+  const cachedTopics = readBootstrapCache<TopicRow[]>(FORUM_PREVIEW_CACHE_KEY);
   const initialTopics = cachedTopics && cachedTopics.length > 0 ? cachedTopics : undefined;
   const { data: topics = [], isLoading: loading, isFetched } = useQuery({
-    queryKey: ["homepage-forum-preview"],
+    queryKey: ["homepage-forum-preview", "v2"],
     queryFn: async () => {
       const supabase = await getPublicSupabase();
       const { data, error } = await supabase
@@ -105,7 +107,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
           category_color: catInfo?.color || (t.category === "phone" ? "green" : "blue"),
         };
       }) as TopicRow[];
-      writeBootstrapCache("homepage-forum-preview", result);
+      writeBootstrapCache(FORUM_PREVIEW_CACHE_KEY, result);
       return result;
     },
     initialData: initialTopics,
