@@ -12,6 +12,7 @@ import { Plus, Pencil, Trash2, GripVertical, Upload, Loader2 } from "lucide-reac
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearBootstrapCache } from "@/lib/bootstrapCache";
 import {
   DndContext,
   closestCenter,
@@ -181,6 +182,7 @@ export default function BannerManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-banners"] });
       queryClient.invalidateQueries({ queryKey: ["hero-banners"] });
+      clearBootstrapCache("hero-banners");
       toast.success("排序已更新");
     },
     onError: () => toast.error("排序更新失敗"),
@@ -235,6 +237,7 @@ export default function BannerManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-banners"] });
       queryClient.invalidateQueries({ queryKey: ["hero-banners"] });
+      clearBootstrapCache("hero-banners");
       toast.success(editingId ? "Banner 已更新" : "Banner 已新增");
       setDialogOpen(false);
       resetForm();
@@ -253,6 +256,7 @@ export default function BannerManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-banners"] });
       queryClient.invalidateQueries({ queryKey: ["hero-banners"] });
+      clearBootstrapCache("hero-banners");
       toast.success("Banner 已刪除");
     },
     onError: () => toast.error("刪除失敗"),
