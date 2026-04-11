@@ -2,38 +2,55 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  MessageSquare, 
-  ArrowRight, 
-  Clock, 
-  Eye, 
-  TrendingUp,
-  Pin,
+  ArrowRight,
+  Camera,
+  Clock,
+  MessageSquare,
+  Smartphone,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 
-interface TopicRow {
-  id: string;
-  title: string;
-  category: string;
-  category_id: string | null;
+type PublicProfile = {
   user_id: string;
-  reply_count: number;
-  view_count: number;
-  is_pinned: boolean;
-  created_at: string;
-  last_reply_at: string | null;
-  author_name?: string;
-  category_name?: string;
-  category_color?: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+interface CategoryRow {
+  id: string;
+  name: string;
+  color: string | null;
+  parent_id: string | null;
 }
 
-function normalizeAuthorName(
-  profile?: { display_name?: string | null; username?: string | null },
-  userId?: string,
-) {
+interface ReplyRow {
+  id: string;
+  content: string;
+  created_at: string;
+  topic_id: string;
+  user_id: string;
+  topic_title: string;
+  topic_category: string;
+  topic_category_id: string | null;
+  author_name: string;
+  avatar_url: string | null;
+  group: "phone" | "camera" | "other";
+}
+
+interface SectionColumn {
+  key: "phone" | "camera";
+  title: string;
+  subtitle: string;
+  icon: typeof Smartphone;
+  iconClassName: string;
+  items: ReplyRow[];
+}
+
+function normalizeAuthorName(profile: PublicProfile | null | undefined, userId?: string) {
   const displayName = profile?.display_name?.trim();
   if (displayName) return displayName;
 
@@ -43,216 +60,295 @@ function normalizeAuthorName(
   return userId ? `會員 ${userId.slice(0, 8)}` : "愛屁543會員";
 }
 
-export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const cachedTopics = readBootstrapCache<TopicRow[]>("homepage-forum-preview");
-  const initialTopics = cachedTopics && cachedTopics.length > 0 ? cachedTopics : undefined;
-  const { data: topics = [], isLoading: loading, isFetched } = useQuery({
-    queryKey: ["homepage-forum-preview"],
+function compactReplyText(content: string) {
+  return content.replace(/\s+/g, " ").trim();
+}
+
+function getTopLevelCategoryName(
+  topicCategory: string,
+  categoryId: string | null,
+  categoryMap: Map<string, CategoryRow>,
+): string {
+  if (!categoryId) return topicCategory;
+
+  const category = categoryMap.get(categoryId);
+  if (!category) return topicCategory;
+  if (!category.parent_id) return category.name;
+
+  return categoryMap.get(category.parent_id)?.name || category.name;
+}
+
+function getCategoryGroup(
+  topicCategory: string,
+  categoryId: string | null,
+  categoryMap: Map<string, CategoryRow>,
+): "phone" | "camera" | "other" {
+  const topLevelName = getTopLevelCategoryName(topicCategory, categoryId, categoryMap);
+  if (topLevelName === "手機攝影") return "phone";
+  if (topLevelName === "相機攝影") return "camera";
+  return "other";
+}
+
+function buildColumns(replies: ReplyRow[]): SectionColumn[] {
+  return [
+    {
+      key: "phone",
+      title: "手機攝影",
+      subtitle: "最新回應",
+      icon: Smartphone,
+      iconClassName: "bg-green-500/10 text-green-600",
+      items: replies.filter((reply) => reply.group === "phone").slice(0, 6),
+    },
+    {
+      key: "camera",
+      title: "相機攝影",
+      subtitle: "最新回應",
+      icon: Camera,
+      iconClassName: "bg-blue-500/10 text-blue-600",
+      items: replies.filter((reply) => reply.group === "camera").slice(0, 6),
+    },
+  ];
+}
+
+function ReplyCard({ reply }: { reply: ReplyRow }) {
+  return (
+    <article className="rounded-2xl border border-border/70 bg-muted/30 p-4 transition-colors hover:border-primary/30 hover:bg-muted/50">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border bg-background">
+          {reply.avatar_url ? (
+            <img
+              src={reply.avatar_url}
+              alt={reply.author_name}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
+              {reply.author_name.slice(0, 1)}
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-sm leading-6 text-foreground/90">
+            <span className="font-semibold text-foreground">{reply.author_name}</span>
+            <span className="mx-1.5 text-muted-foreground">回覆了主題</span>
+            <Link
+              to={`/forums/topic/${reply.topic_id}`}
+              className="font-medium text-primary underline-offset-4 transition-colors hover:underline"
+            >
+              {reply.topic_title}
+            </Link>
+          </p>
+
+          <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
+            {compactReplyText(reply.content) || "沒有文字內容"}
+          </p>
+
+          <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <MessageSquare className="h-3.5 w-3.5" />
+              最新回應
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true, locale: zhTW })}
+            </span>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ReplyColumnSkeleton() {
+  return (
+    <div className="rounded-[28px] border border-border bg-card p-6">
+      <div className="mb-6 flex items-center gap-4">
+        <div className="h-14 w-14 rounded-2xl bg-muted animate-pulse" />
+        <div className="space-y-2">
+          <div className="h-6 w-24 rounded bg-muted animate-pulse" />
+          <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="rounded-2xl border border-border/70 bg-muted/30 p-4">
+            <div className="flex items-start gap-3">
+              <div className="h-11 w-11 rounded-full bg-muted animate-pulse" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-4/5 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-1/3 rounded bg-muted animate-pulse" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ForumPreview({
+  sectionTitle,
+  sectionSubtitle,
+}: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
+  const cachedReplies = readBootstrapCache<ReplyRow[]>("homepage-forum-activity-preview");
+  const initialReplies = cachedReplies && cachedReplies.length > 0 ? cachedReplies : undefined;
+
+  const { data: replies = [], isLoading: loading, isFetched } = useQuery({
+    queryKey: ["homepage-forum-activity-preview"],
     queryFn: async () => {
       const supabase = await getPublicSupabase();
-      const { data, error } = await supabase
-        .from("forum_topics")
-        .select("id, title, category, category_id, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
-        .eq("is_hidden", false)
-        .order("reply_count", { ascending: false })
-        .limit(6);
 
-      if (error) throw error;
-      if (!data || data.length === 0) return [];
+      const [{ data: categories, error: categoryError }, { data: replyData, error: replyError }] = await Promise.all([
+        supabase.from("forum_categories").select("id, name, color, parent_id"),
+        supabase
+          .from("forum_replies")
+          .select(`
+            id,
+            content,
+            created_at,
+            topic_id,
+            user_id,
+            topic:forum_topics!forum_replies_topic_id_fkey (
+              id,
+              title,
+              category,
+              category_id,
+              is_hidden
+            )
+          `)
+          .eq("is_hidden", false)
+          .order("created_at", { ascending: false })
+          .limit(24),
+      ]);
 
-      const categoryIds = [...new Set(data.map((t) => t.category_id).filter(Boolean))] as string[];
-      const categoryMap = new Map<string, { name: string; color: string }>();
-      if (categoryIds.length > 0) {
-        const { data: cats, error: catsError } = await supabase
-          .from("forum_categories")
-          .select("id, name, color")
-          .in("id", categoryIds);
-        if (catsError) throw catsError;
-        cats?.forEach((c) => categoryMap.set(c.id, { name: c.name, color: c.color || "blue" }));
-      }
+      if (categoryError) throw categoryError;
+      if (replyError) throw replyError;
 
-      const userIds = [...new Set(data.map((t) => t.user_id))];
-      const profileMap = new Map<string, string>();
-      if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase.rpc("get_public_profiles");
-        if (profilesError) throw profilesError;
-        profiles
-          ?.filter((p) => userIds.includes(p.user_id))
-          .forEach((p) => {
-            profileMap.set(
-              p.user_id,
-              normalizeAuthorName(
-                { display_name: p.display_name, username: p.username },
-                p.user_id,
-              ),
-            );
-          });
-      }
+      const categoryMap = new Map<string, CategoryRow>(((categories as CategoryRow[] | null) || []).map((category) => [category.id, category]));
+      const visibleReplies = ((replyData as Array<{
+        id: string;
+        content: string;
+        created_at: string;
+        topic_id: string;
+        user_id: string;
+        topic: {
+          id: string;
+          title: string;
+          category: string;
+          category_id: string | null;
+          is_hidden: boolean | null;
+        } | null;
+      }> | null) || []).filter((reply) => reply.topic && !reply.topic.is_hidden);
 
-      const result = data.map((t) => {
-        const catInfo = t.category_id ? categoryMap.get(t.category_id) : null;
-        return {
-          ...t,
-          reply_count: t.reply_count ?? 0,
-          view_count: t.view_count ?? 0,
-          is_pinned: t.is_pinned ?? false,
-          author_name: profileMap.get(t.user_id) || normalizeAuthorName(undefined, t.user_id),
-          category_name: catInfo?.name || (t.category === "phone" ? "手機" : "相機"),
-          category_color: catInfo?.color || (t.category === "phone" ? "green" : "blue"),
-        };
-      }) as TopicRow[];
-      writeBootstrapCache("homepage-forum-preview", result);
+      if (visibleReplies.length === 0) return [];
+
+      const userIds = [...new Set(visibleReplies.map((reply) => reply.user_id))];
+      const { data: profiles, error: profileError } = userIds.length
+        ? await supabase.rpc("get_public_profiles")
+        : { data: [], error: null };
+
+      if (profileError) throw profileError;
+
+      const profileMap = new Map(
+        (((profiles as PublicProfile[] | null) || []).filter((profile) => userIds.includes(profile.user_id))).map((profile) => [
+          profile.user_id,
+          profile,
+        ]),
+      );
+
+      const result = visibleReplies
+        .map((reply) => {
+          const topic = reply.topic!;
+          const group = getCategoryGroup(topic.category, topic.category_id, categoryMap);
+
+          return {
+            id: reply.id,
+            content: reply.content,
+            created_at: reply.created_at,
+            topic_id: topic.id,
+            user_id: reply.user_id,
+            topic_title: topic.title,
+            topic_category: topic.category,
+            topic_category_id: topic.category_id,
+            author_name: normalizeAuthorName(profileMap.get(reply.user_id), reply.user_id),
+            avatar_url: profileMap.get(reply.user_id)?.avatar_url || null,
+            group,
+          } satisfies ReplyRow;
+        })
+        .filter((reply) => reply.group === "phone" || reply.group === "camera");
+
+      writeBootstrapCache("homepage-forum-activity-preview", result);
       return result;
     },
-    initialData: initialTopics,
+    initialData: initialReplies,
     staleTime: 5 * 60 * 1000,
   });
 
-  const colorClasses: Record<string, string> = {
-    blue: "bg-blue-500/10 text-blue-600",
-    green: "bg-green-500/10 text-green-600",
-    purple: "bg-purple-500/10 text-purple-600",
-    orange: "bg-orange-500/10 text-orange-600",
-    red: "bg-red-500/10 text-red-600",
-  };
-
-  if (isFetched && !loading && topics.length === 0) return null;
+  const columns = buildColumns(replies);
+  if (isFetched && !loading && columns.every((column) => column.items.length === 0)) return null;
 
   return (
     <section className="py-20 bg-background">
       <div className="container">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
-              {sectionTitle || "熱門討論"}
-            </h2>
-            <p className="text-muted-foreground">
-              {sectionSubtitle || "社群最新話題與交流"}
-            </p>
-          </div>
-          <Link to="/forums">
-            <Button variant="outline" className="hidden sm:flex gap-2">
-              進入討論區
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+        <div className="mb-12 text-center">
+          <h2 className="font-serif text-3xl md:text-4xl font-bold mb-2">
+            {sectionTitle || "攝影討論區"}
+          </h2>
+          <p className="text-muted-foreground">
+            {sectionSubtitle || "瀏覽最新討論，與同好交流心得"}
+          </p>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Header */}
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 border-b border-border text-sm font-medium text-muted-foreground">
-            <div className="col-span-7">主題</div>
-            <div className="col-span-2 text-center">回覆 / 瀏覽</div>
-            <div className="col-span-3 text-right">最後活動</div>
+        {loading ? (
+          <div className="grid gap-8 lg:grid-cols-2">
+            <ReplyColumnSkeleton />
+            <ReplyColumnSkeleton />
           </div>
+        ) : (
+          <div className="grid gap-8 lg:grid-cols-2">
+            {columns.map((column) => {
+              const Icon = column.icon;
 
-          {/* Topics - 固定高度 552px (5-6 個項目) 避免載入時位移 */}
-          <div className="divide-y divide-border min-h-[552px]">
-            {loading ? (
-              <div className="divide-y divide-border">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="block px-6 py-4">
-                    <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
-                      <div className="col-span-7">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
-                              <div className="h-5 w-12 bg-muted rounded animate-pulse" />
-                            </div>
-                            <div className="h-5 w-3/4 bg-muted rounded animate-pulse mb-2" />
-                            <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="col-span-2 hidden md:flex items-center justify-center gap-4">
-                        <div className="h-4 w-8 bg-muted rounded animate-pulse" />
-                        <div className="h-4 w-8 bg-muted rounded animate-pulse" />
-                      </div>
-                      <div className="col-span-3 hidden md:flex items-center justify-end">
-                        <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                      </div>
+              return (
+                <div key={column.key} className="rounded-[28px] border border-border bg-card p-6 shadow-sm">
+                  <div className="mb-6 flex items-center gap-4">
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${column.iconClassName}`}>
+                      <Icon className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-3xl font-semibold tracking-tight text-foreground">{column.title}</h3>
+                      <p className="text-sm text-muted-foreground">{column.subtitle}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              topics.map((topic) => {
-                const isHot = topic.reply_count >= 10;
-                const lastActive = topic.last_reply_at || topic.created_at;
 
-                return (
-                  <Link
-                    key={topic.id}
-                    to={`/forums/topic/${topic.id}`}
-                    className="group block px-6 py-4 motion-list-item hover:bg-muted/40"
-                  >
-                    <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
-                      <div className="col-span-7">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              {topic.is_pinned && (
-                                <Pin className="h-3.5 w-3.5 text-primary" />
-                              )}
-                              {isHot && (
-                                <TrendingUp className="h-3.5 w-3.5 text-destructive" />
-                              )}
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${colorClasses[topic.category_color || "blue"] || colorClasses.blue}`}>
-                                {topic.category_name}
-                              </span>
-                            </div>
-                            <h3 className="font-medium text-foreground line-clamp-1 motion-list-title">
-                              {topic.title}
-                            </h3>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              {topic.author_name}
-                            </p>
-                          </div>
-                        </div>
+                  <div className="space-y-3">
+                    {column.items.length > 0 ? (
+                      column.items.map((reply) => <ReplyCard key={reply.id} reply={reply} />)
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-border px-5 py-8 text-center text-sm text-muted-foreground">
+                        目前還沒有最新回應
                       </div>
+                    )}
+                  </div>
 
-                      <div className="col-span-2 hidden md:flex items-center justify-center gap-4">
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MessageSquare className="h-4 w-4" />
-                          {topic.reply_count}
-                        </span>
-                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Eye className="h-4 w-4" />
-                          {topic.view_count}
-                        </span>
-                      </div>
-
-                      <div className="col-span-3 hidden md:flex items-center justify-end gap-1 text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4" />
-                        {formatDistanceToNow(new Date(lastActive), { addSuffix: true, locale: zhTW })}
-                      </div>
-
-                      <div className="flex items-center gap-4 mt-2 md:hidden text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          {topic.reply_count}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {formatDistanceToNow(new Date(lastActive), { addSuffix: true, locale: zhTW })}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })
-            )}
+                  <div className="mt-6 text-center">
+                    <Link to="/forums">
+                      <Button variant="ghost" className="gap-2 text-primary hover:text-primary">
+                        查看全部
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-
-        <div className="mt-8 text-center sm:hidden">
-          <Link to="/forums">
-            <Button variant="outline" className="gap-2">
-              進入討論區
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
-        </div>
+        )}
       </div>
     </section>
   );
