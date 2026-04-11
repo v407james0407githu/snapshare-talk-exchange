@@ -1,36 +1,48 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Smartphone, Camera, ChevronRight, MessageSquare, Eye, Clock, Pin, TrendingUp } from "lucide-react";
+import { Smartphone, Camera, ChevronRight, MessageSquare, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 
-interface TopicRow {
-  id: string;
-  title: string;
+type PublicProfile = {
   user_id: string;
-  reply_count: number;
-  view_count: number;
-  is_pinned: boolean;
-  created_at: string;
-  last_reply_at: string | null;
-  author_name?: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+interface CategoryRow {
+  id: string;
+  name: string;
+  color: string | null;
+  parent_id: string | null;
 }
 
-interface CategoryColumnProps {
+interface ReplyFeedItem {
+  id: string;
+  content: string;
+  created_at: string;
+  topic_id: string;
+  user_id: string;
+  topic_title: string;
+  topic_category: string;
+  topic_category_id: string | null;
+  author_name: string;
+  avatar_url: string | null;
+  group: "phone" | "camera" | "other";
+}
+
+interface ActivityColumnProps {
   icon: React.ReactNode;
   title: string;
-  parentSlug: string;
   linkPrefix: string;
-  categoryName: string;
-  initialTopics?: TopicRow[];
+  items: ReplyFeedItem[];
+  isLoading?: boolean;
 }
 
-function normalizeAuthorName(
-  profile?: { display_name?: string | null; username?: string | null },
-  userId?: string,
-) {
+function normalizeAuthorName(profile: PublicProfile | null | undefined, userId?: string) {
   const displayName = profile?.display_name?.trim();
   if (displayName) return displayName;
 
@@ -40,7 +52,36 @@ function normalizeAuthorName(
   return userId ? `會員 ${userId.slice(0, 8)}` : "愛屁543會員";
 }
 
-function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title: string }) {
+function compactReplyText(content: string) {
+  return content.replace(/\s+/g, " ").trim();
+}
+
+function getTopLevelCategoryName(
+  topicCategory: string,
+  categoryId: string | null,
+  categoryMap: Map<string, CategoryRow>,
+): string {
+  if (!categoryId) return topicCategory;
+
+  const category = categoryMap.get(categoryId);
+  if (!category) return topicCategory;
+  if (!category.parent_id) return category.name;
+
+  return categoryMap.get(category.parent_id)?.name || category.name;
+}
+
+function getCategoryGroup(
+  topicCategory: string,
+  categoryId: string | null,
+  categoryMap: Map<string, CategoryRow>,
+): "phone" | "camera" | "other" {
+  const topLevelName = getTopLevelCategoryName(topicCategory, categoryId, categoryMap);
+  if (topLevelName === "手機攝影") return "phone";
+  if (topLevelName === "相機攝影") return "camera";
+  return "other";
+}
+
+function ActivityColumnSkeleton({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="bg-card rounded-2xl border border-border p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -49,22 +90,25 @@ function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title:
         </div>
         <div>
           <h3 className="font-serif text-xl font-bold">{title}</h3>
-          <p className="text-sm text-muted-foreground">最新討論串</p>
+          <p className="text-sm text-muted-foreground">最新回應</p>
         </div>
       </div>
-      <div className="space-y-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
-            <div className="flex-1 min-w-0 mr-3">
-              <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-2" />
-              <div className="flex items-center gap-3">
-                <div className="h-3 w-16 bg-muted rounded animate-pulse" />
-                <div className="h-3 w-8 bg-muted rounded animate-pulse" />
+
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-2xl border border-border/70 bg-secondary/30 p-4">
+            <div className="flex items-start gap-3">
+              <div className="h-11 w-11 rounded-full bg-muted animate-pulse" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-4/5 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-1/3 rounded bg-muted animate-pulse" />
               </div>
             </div>
           </div>
         ))}
       </div>
+
       <div className="flex items-center justify-center gap-1 mt-4 text-sm text-primary">
         查看全部 <ChevronRight className="h-3.5 w-3.5" />
       </div>
@@ -72,107 +116,9 @@ function CategoryColumnSkeleton({ icon, title }: { icon: React.ReactNode; title:
   );
 }
 
-function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName, initialTopics }: CategoryColumnProps) {
-  const { data: topics = [], isLoading: loading } = useQuery({
-    queryKey: ["equipment-category-topics", parentSlug, categoryName],
-    queryFn: async () => {
-      const supabase = await getPublicSupabase();
-      const { data: parentCat, error: parentError } = await supabase
-        .from("forum_categories")
-        .select("id")
-        .eq("slug", parentSlug)
-        .eq("is_active", true)
-        .limit(1);
-      if (parentError) throw parentError;
-
-      if (!parentCat || parentCat.length === 0) {
-        return [];
-      }
-
-      const parentId = parentCat[0].id;
-      const { data: children, error: childrenError } = await supabase
-        .from("forum_categories")
-        .select("id")
-        .eq("parent_id", parentId)
-        .eq("is_active", true);
-      if (childrenError) throw childrenError;
-
-      const categoryIds = [parentId, ...(children?.map((c) => c.id) || [])];
-
-      const [byId, byName] = await Promise.all([
-        supabase
-          .from("forum_topics")
-          .select("id, title, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
-          .eq("is_hidden", false)
-          .in("category_id", categoryIds)
-          .order("is_pinned", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(9),
-        supabase
-          .from("forum_topics")
-          .select("id, title, user_id, reply_count, view_count, is_pinned, created_at, last_reply_at")
-          .eq("is_hidden", false)
-          .is("category_id", null)
-          .eq("category", categoryName)
-          .order("is_pinned", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(9),
-      ]);
-      if (byId.error) throw byId.error;
-      if (byName.error) throw byName.error;
-
-      const seenIds = new Set<string>();
-      const merged: typeof byId.data = [];
-      for (const t of [...(byId.data || []), ...(byName.data || [])]) {
-        if (!seenIds.has(t.id)) {
-          seenIds.add(t.id);
-          merged.push(t);
-        }
-      }
-      merged.sort((a, b) => {
-        if ((b.is_pinned ? 1 : 0) !== (a.is_pinned ? 1 : 0)) return (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0);
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-      const topicsData = merged.slice(0, 9);
-
-      if (!topicsData || topicsData.length === 0) {
-        return [];
-      }
-
-      const userIds = [...new Set(topicsData.map((t) => t.user_id))];
-      const profileMap = new Map<string, string>();
-      if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase.rpc("get_public_profiles");
-        if (profilesError) throw profilesError;
-        profiles
-          ?.filter((p: any) => userIds.includes(p.user_id))
-          .forEach((p: any) => {
-          profileMap.set(
-            p.user_id,
-            normalizeAuthorName(
-              { display_name: p.display_name, username: p.username },
-              p.user_id,
-            ),
-          );
-        });
-      }
-
-      const result = topicsData.map((t) => ({
-          ...t,
-          reply_count: t.reply_count ?? 0,
-          view_count: t.view_count ?? 0,
-          is_pinned: t.is_pinned ?? false,
-          author_name: profileMap.get(t.user_id) || normalizeAuthorName(undefined, t.user_id),
-        })) as TopicRow[];
-      writeBootstrapCache(`equipment-category-topics:${parentSlug}:${categoryName}`, result);
-      return result;
-    },
-    initialData: initialTopics,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  if (loading) {
-    return <CategoryColumnSkeleton icon={icon} title={title} />;
+function ActivityColumn({ icon, title, linkPrefix, items, isLoading }: ActivityColumnProps) {
+  if (isLoading) {
+    return <ActivityColumnSkeleton icon={icon} title={title} />;
   }
 
   return (
@@ -183,54 +129,69 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName, ini
         </div>
         <div>
           <h3 className="font-serif text-xl font-bold">{title}</h3>
-          <p className="text-sm text-muted-foreground">最新討論串</p>
+          <p className="text-sm text-muted-foreground">最新回應</p>
         </div>
       </div>
 
-      <div className="space-y-1">
-        {topics.length === 0 ? (
+      <div className="space-y-3">
+        {items.length === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
-            尚無討論串，
-            <Link to={linkPrefix} className="text-primary hover:underline ml-1">前往發起</Link>
+            尚無最新回應，
+            <Link to={linkPrefix} className="text-primary hover:underline ml-1">前往討論區</Link>
           </div>
         ) : (
-          topics.map((topic) => {
-            const isHot = topic.reply_count >= 10;
-            const lastActive = topic.last_reply_at || topic.created_at;
+          items.map((reply) => (
+            <article
+              key={reply.id}
+              className="rounded-2xl border border-border/70 bg-secondary/30 p-4 transition-colors hover:border-primary/20 hover:bg-primary/5"
+            >
+              <div className="flex items-start gap-3">
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border bg-background">
+                  {reply.avatar_url ? (
+                    <img
+                      src={reply.avatar_url}
+                      alt={reply.author_name}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
+                      {reply.author_name.slice(0, 1)}
+                    </div>
+                  )}
+                </div>
 
-            return (
-              <Link
-                key={topic.id}
-                to={`/forums/topic/${topic.id}`}
-                className="group flex items-center justify-between p-3 rounded-xl bg-secondary/50 hover:bg-primary/10 transition-colors"
-              >
-                <div className="flex-1 min-w-0 mr-3">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    {topic.is_pinned && <Pin className="h-3 w-3 text-primary flex-shrink-0" />}
-                    {isHot && <TrendingUp className="h-3 w-3 text-destructive flex-shrink-0" />}
-                    <span className="font-medium text-sm line-clamp-1 group-hover:text-primary transition-colors">
-                      {topic.title}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-6 text-foreground/90">
+                    <span className="font-semibold text-foreground">{reply.author_name}</span>
+                    <span className="mx-1.5 text-muted-foreground">回覆了主題</span>
+                    <Link
+                      to={`/forums/topic/${reply.topic_id}`}
+                      className="font-medium text-primary underline-offset-4 transition-colors hover:underline"
+                    >
+                      {reply.topic_title}
+                    </Link>
+                  </p>
+
+                  <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                    {compactReplyText(reply.content) || "沒有文字內容"}
+                  </p>
+
+                  <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      最新回應
                     </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{topic.author_name}</span>
-                    <span className="flex items-center gap-0.5">
-                      <MessageSquare className="h-3 w-3" />{topic.reply_count}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Eye className="h-3 w-3" />{topic.view_count}
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true, locale: zhTW })}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-                  <Clock className="h-3 w-3" />
-                  <span className="hidden sm:inline">
-                    {formatDistanceToNow(new Date(lastActive), { addSuffix: true, locale: zhTW })}
-                  </span>
-                </div>
-              </Link>
-            );
-          })
+              </div>
+            </article>
+          ))
         )}
       </div>
 
@@ -245,8 +206,100 @@ function CategoryColumn({ icon, title, parentSlug, linkPrefix, categoryName, ini
 }
 
 export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const initialPhoneTopics = readBootstrapCache<TopicRow[]>("equipment-category-topics:mobile:手機攝影");
-  const initialCameraTopics = readBootstrapCache<TopicRow[]>("equipment-category-topics:camera:相機攝影");
+  const cachedReplies = readBootstrapCache<ReplyFeedItem[]>("equipment-category-recent-replies");
+  const initialReplies = cachedReplies && cachedReplies.length > 0 ? cachedReplies : undefined;
+
+  const { data: replies = [], isLoading: loading } = useQuery({
+    queryKey: ["equipment-category-recent-replies"],
+    queryFn: async () => {
+      const supabase = await getPublicSupabase();
+
+      const [{ data: categories, error: categoryError }, { data: replyData, error: replyError }] = await Promise.all([
+        supabase.from("forum_categories").select("id, name, color, parent_id"),
+        supabase
+          .from("forum_replies")
+          .select(`
+            id,
+            content,
+            created_at,
+            topic_id,
+            user_id,
+            topic:forum_topics!forum_replies_topic_id_fkey (
+              id,
+              title,
+              category,
+              category_id,
+              is_hidden
+            )
+          `)
+          .eq("is_hidden", false)
+          .order("created_at", { ascending: false })
+          .limit(24),
+      ]);
+
+      if (categoryError) throw categoryError;
+      if (replyError) throw replyError;
+
+      const categoryMap = new Map<string, CategoryRow>(((categories as CategoryRow[] | null) || []).map((category) => [category.id, category]));
+      const visibleReplies = ((replyData as Array<{
+        id: string;
+        content: string;
+        created_at: string;
+        topic_id: string;
+        user_id: string;
+        topic: {
+          id: string;
+          title: string;
+          category: string;
+          category_id: string | null;
+          is_hidden: boolean | null;
+        } | null;
+      }> | null) || []).filter((reply) => reply.topic && !reply.topic.is_hidden);
+
+      if (visibleReplies.length === 0) return [];
+
+      const userIds = [...new Set(visibleReplies.map((reply) => reply.user_id))];
+      const { data: profiles, error: profileError } = userIds.length
+        ? await supabase.rpc("get_public_profiles")
+        : { data: [], error: null };
+
+      if (profileError) throw profileError;
+
+      const profileMap = new Map(
+        (((profiles as PublicProfile[] | null) || []).filter((profile) => userIds.includes(profile.user_id))).map((profile) => [
+          profile.user_id,
+          profile,
+        ]),
+      );
+
+      const result = visibleReplies
+        .map((reply) => {
+          const topic = reply.topic!;
+          return {
+            id: reply.id,
+            content: reply.content,
+            created_at: reply.created_at,
+            topic_id: topic.id,
+            user_id: reply.user_id,
+            topic_title: topic.title,
+            topic_category: topic.category,
+            topic_category_id: topic.category_id,
+            author_name: normalizeAuthorName(profileMap.get(reply.user_id), reply.user_id),
+            avatar_url: profileMap.get(reply.user_id)?.avatar_url || null,
+            group: getCategoryGroup(topic.category, topic.category_id, categoryMap),
+          } satisfies ReplyFeedItem;
+        })
+        .filter((reply) => reply.group === "phone" || reply.group === "camera");
+
+      writeBootstrapCache("equipment-category-recent-replies", result);
+      return result;
+    },
+    initialData: initialReplies,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const phoneReplies = replies.filter((reply) => reply.group === "phone").slice(0, 4);
+  const cameraReplies = replies.filter((reply) => reply.group === "camera").slice(0, 4);
 
   return (
     <section className="py-20 bg-background">
@@ -261,21 +314,19 @@ export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { section
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          <CategoryColumn
+          <ActivityColumn
             icon={<Smartphone className="h-6 w-6" />}
             title="手機攝影"
-            parentSlug="mobile"
             linkPrefix="/forums?category=phone"
-            categoryName="手機攝影"
-            initialTopics={initialPhoneTopics && initialPhoneTopics.length > 0 ? initialPhoneTopics : undefined}
+            items={phoneReplies}
+            isLoading={loading}
           />
-          <CategoryColumn
+          <ActivityColumn
             icon={<Camera className="h-6 w-6" />}
             title="相機攝影"
-            parentSlug="camera"
             linkPrefix="/forums?category=camera"
-            categoryName="相機攝影"
-            initialTopics={initialCameraTopics && initialCameraTopics.length > 0 ? initialCameraTopics : undefined}
+            items={cameraReplies}
+            isLoading={loading}
           />
         </div>
       </div>
