@@ -8,15 +8,16 @@ function withCacheBust(url: string) {
 }
 
 export function DynamicMeta() {
-  const { get } = usePublicSystemSettings();
+  const { get, siteName } = usePublicSystemSettings();
 
-  const title = get("seo_title", "愛屁543論壇 - 攝影愛好者的交流平台");
+  const title = get("seo_title", siteName || "愛屁543論壇");
   const description = get("seo_description", "分享攝影作品、交流攝影技巧、買賣二手器材");
   const favicon = get("site_favicon_url", "");
 
   useEffect(() => {
     if (title) {
       document.title = title;
+      document.querySelector('meta[name="author"]')?.setAttribute("content", siteName || title);
       document.querySelector('meta[property="og:title"]')?.setAttribute("content", title);
     }
     if (description) {
@@ -47,7 +48,7 @@ export function DynamicMeta() {
         }
       });
     }
-  }, [title, description, favicon]);
+  }, [title, description, favicon, siteName]);
 
   return null;
 }

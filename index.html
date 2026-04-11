@@ -28,6 +28,115 @@
     <!-- Preconnect to image/API origins for faster LCP -->
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="preconnect" href="https://wiiaaettcyyxekicpyuh.supabase.co" />
+    <script>
+      (function () {
+        const CACHE_KEY = "ip543:v2:bootstrap:public-system-settings";
+        const SUPABASE_URL = "https://wiiaaettcyyxekicpyuh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndpaWFhZXR0Y3l5eGVraWNweXVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcwNTQwNzksImV4cCI6MjA4MjYzMDA3OX0.LrSURZcWO_xQNAWeTheW3xUUyq9D8hbw1g59__fi0K4";
+        const SETTING_KEYS = [
+          "site_name",
+          "site_favicon_url",
+          "seo_title",
+          "seo_description"
+        ];
+
+        function readCachedSettings() {
+          try {
+            const raw = window.localStorage.getItem(CACHE_KEY);
+            return raw ? JSON.parse(raw) : [];
+          } catch {
+            return [];
+          }
+        }
+
+        function writeCachedSettings(settings) {
+          try {
+            window.localStorage.setItem(CACHE_KEY, JSON.stringify(settings));
+          } catch {}
+        }
+
+        function findValue(settings, key, fallback) {
+          const item = settings.find(function (entry) {
+            return entry.setting_key === key;
+          });
+          return item && item.setting_value ? item.setting_value : fallback;
+        }
+
+        function upsertMeta(selector, attrs) {
+          let el = document.querySelector(selector);
+          if (!el) {
+            el = document.createElement("meta");
+            if (attrs.name) el.setAttribute("name", attrs.name);
+            if (attrs.property) el.setAttribute("property", attrs.property);
+            document.head.appendChild(el);
+          }
+          el.setAttribute("content", attrs.content);
+        }
+
+        function upsertLink(selector, attrs) {
+          let el = document.querySelector(selector);
+          if (!el) {
+            el = document.createElement("link");
+            el.setAttribute("rel", attrs.rel);
+            document.head.appendChild(el);
+          }
+          if (attrs.type) el.setAttribute("type", attrs.type);
+          el.setAttribute("href", attrs.href);
+        }
+
+        function withCacheBust(url) {
+          if (!url) return url;
+          return url + (url.indexOf("?") >= 0 ? "&" : "?") + "v=" + encodeURIComponent(url);
+        }
+
+        function applySettings(settings) {
+          const siteName = findValue(settings, "site_name", "愛屁543論壇");
+          const seoTitle = findValue(settings, "seo_title", siteName);
+          const seoDescription = findValue(settings, "seo_description", "分享攝影作品、交流攝影技巧、買賣二手器材");
+          const favicon = findValue(settings, "site_favicon_url", "");
+
+          document.title = seoTitle;
+          upsertMeta('meta[name="description"]', { name: "description", content: seoDescription });
+          upsertMeta('meta[name="author"]', { name: "author", content: siteName });
+          upsertMeta('meta[property="og:title"]', { property: "og:title", content: seoTitle });
+          upsertMeta('meta[property="og:description"]', { property: "og:description", content: seoDescription });
+
+          if (favicon) {
+            const href = withCacheBust(favicon);
+            const type = favicon.endsWith(".svg") ? "image/svg+xml" : favicon.endsWith(".png") ? "image/png" : "image/x-icon";
+            upsertLink('link[rel="icon"]', { rel: "icon", href: href, type: type });
+            upsertLink('link[rel="shortcut icon"]', { rel: "shortcut icon", href: href, type: type });
+            upsertLink('link[rel="apple-touch-icon"]', { rel: "apple-touch-icon", href: href });
+          }
+        }
+
+        const cached = readCachedSettings();
+        if (cached.length) applySettings(cached);
+
+        fetch(
+          SUPABASE_URL +
+            "/rest/v1/system_settings?select=setting_key,setting_value&setting_key=in.(" +
+            SETTING_KEYS.join(",") +
+            ")",
+          {
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: "Bearer " + SUPABASE_ANON_KEY
+            }
+          }
+        )
+          .then(function (response) {
+            return response.ok ? response.json() : Promise.reject(new Error("Failed to load public settings"));
+          })
+          .then(function (settings) {
+            if (Array.isArray(settings) && settings.length) {
+              writeCachedSettings(settings);
+              applySettings(settings);
+            }
+          })
+          .catch(function () {});
+      })();
+    </script>
   </head>
 
   <body>
