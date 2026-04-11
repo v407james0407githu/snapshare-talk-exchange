@@ -31,6 +31,13 @@ interface TopicRow {
   category_color?: string;
 }
 
+type PublicProfile = {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
 function normalizeAuthorName(
   profile?: { display_name?: string | null; username?: string | null },
   userId?: string,
@@ -73,44 +80,26 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
       }
 
       const userIds = [...new Set(data.map((t) => t.user_id))];
-      const profileMap = new Map<string, string>();
-      let profiles:
-        | Array<{
-            user_id: string;
-            username: string | null;
-            display_name: string | null;
-            avatar_url: string | null;
-          }>
-        | null
-        | undefined = [];
+      const profileMap = new Map<string, PublicProfile>();
       if (userIds.length > 0) {
         const { data: fetchedProfiles, error: profilesError } = await supabase.rpc("get_public_profiles");
         if (profilesError) throw profilesError;
-        profiles = fetchedProfiles;
-        profiles
+        (fetchedProfiles as PublicProfile[] | null)
           ?.filter((p) => userIds.includes(p.user_id))
           .forEach((p) => {
-            profileMap.set(
-              p.user_id,
-              normalizeAuthorName(
-                { display_name: p.display_name, username: p.username },
-                p.user_id,
-              ),
-            );
+            profileMap.set(p.user_id, p);
           });
       }
 
       const result = data.map((t) => {
         const catInfo = t.category_id ? categoryMap.get(t.category_id) : null;
-        const profile = userIds.length > 0
-          ? profiles?.find((p) => p.user_id === t.user_id)
-          : null;
+        const profile = profileMap.get(t.user_id);
         return {
           ...t,
           reply_count: t.reply_count ?? 0,
           view_count: t.view_count ?? 0,
           is_pinned: t.is_pinned ?? false,
-          author_name: profileMap.get(t.user_id) || normalizeAuthorName(undefined, t.user_id),
+          author_name: normalizeAuthorName(profile, t.user_id),
           avatar_url: profile?.avatar_url || null,
           category_name: catInfo?.name || (t.category === "phone" ? "手機" : "相機"),
           category_color: catInfo?.color || (t.category === "phone" ? "green" : "blue"),
@@ -160,21 +149,21 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
             <div className="col-span-3 text-right">最後活動</div>
           </div>
 
-          <div className="divide-y divide-border min-h-[420px]">
+          <div className="divide-y divide-border min-h-[320px]">
             {loading ? (
               <div className="divide-y divide-border">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="block px-6 py-3">
+                  <div key={i} className="block px-5 py-2">
                     <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       <div className="col-span-7">
-                        <div className="flex items-start gap-3">
-                          <div className="h-10 w-10 rounded-full bg-muted animate-pulse shrink-0" />
+                        <div className="flex items-start gap-2.5">
+                          <div className="h-8 w-8 rounded-full bg-muted animate-pulse shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                              <div className="h-5 w-12 bg-muted rounded animate-pulse" />
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <div className="h-4 w-12 bg-muted rounded animate-pulse" />
                             </div>
-                            <div className="h-5 w-3/4 bg-muted rounded animate-pulse mb-1.5" />
-                            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                            <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-1" />
+                            <div className="h-3 w-28 bg-muted rounded animate-pulse" />
                           </div>
                         </div>
                       </div>
@@ -198,12 +187,12 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                   <Link
                     key={topic.id}
                     to={`/forums/topic/${topic.id}`}
-                    className="group block px-6 py-3 motion-list-item hover:bg-muted/40"
+                    className="group block px-5 py-2 motion-list-item hover:bg-muted/40"
                   >
                     <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       <div className="col-span-7">
-                        <div className="flex items-start gap-3">
-                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                        <div className="flex items-start gap-2.5">
+                          <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
                             {topic.avatar_url ? (
                               <img
                                 src={topic.avatar_url}
@@ -219,7 +208,7 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
                               {topic.is_pinned && (
                                 <Pin className="h-3.5 w-3.5 text-primary" />
                               )}
@@ -230,10 +219,10 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                                 {topic.category_name}
                               </span>
                             </div>
-                            <h3 className="font-medium text-foreground line-clamp-1 motion-list-title">
+                            <h3 className="font-medium text-[15px] leading-6 text-foreground line-clamp-1 motion-list-title">
                               {topic.title}
                             </h3>
-                            <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                               <span>{topic.author_name}</span>
                               <span className="text-muted-foreground/50">·</span>
                               <span>{formatDistanceToNow(new Date(topic.created_at), { addSuffix: true, locale: zhTW })}</span>
