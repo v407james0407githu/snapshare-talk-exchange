@@ -72,14 +72,31 @@ function preloadImage(url: string | null | undefined) {
 
 function resolveForumImageUrl(url: string | null | undefined) {
   if (!url) return null;
-  if (/^https?:\/\//i.test(url) || url.startsWith("blob:") || url.startsWith("data:")) {
+  if (url.startsWith("blob:") || url.startsWith("data:")) {
     return url;
   }
 
-  const cleaned = url
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url);
+      if (/\/storage\/v1\/object\/public\/photos\/forum\/.+\.(jpe?g|png)$/i.test(parsed.pathname)) {
+        parsed.pathname = parsed.pathname.replace(/\.(jpe?g|png)$/i, ".webp");
+        return parsed.toString();
+      }
+    } catch {
+      return url;
+    }
+    return url;
+  }
+
+  let cleaned = url
     .replace(/^\/+/, "")
     .replace(/^storage\/v1\/object\/public\/photos\//, "")
     .replace(/^photos\//, "");
+
+  if (/^forum\/.+\.(jpe?g|png)$/i.test(cleaned)) {
+    cleaned = cleaned.replace(/\.(jpe?g|png)$/i, ".webp");
+  }
 
   if (!cleaned) return null;
   const { data } = supabase.storage.from("photos").getPublicUrl(cleaned);
