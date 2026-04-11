@@ -84,8 +84,8 @@ function getCategoryGroup(
 function ActivityColumnSkeleton({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="bg-card rounded-2xl border border-border p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center text-charcoal">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-11 h-11 rounded-xl bg-gradient-gold flex items-center justify-center text-charcoal">
           {icon}
         </div>
         <div>
@@ -96,12 +96,12 @@ function ActivityColumnSkeleton({ icon, title }: { icon: React.ReactNode; title:
 
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-2xl border border-border/70 bg-secondary/30 p-4">
-            <div className="flex items-start gap-3">
-              <div className="h-11 w-11 rounded-full bg-muted animate-pulse" />
+          <div key={i} className="rounded-2xl border border-border/70 bg-secondary/30 p-3">
+            <div className="flex items-start gap-2.5">
+              <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
-                <div className="h-4 w-4/5 rounded bg-muted animate-pulse" />
+                <div className="h-3.5 w-4/5 rounded bg-muted animate-pulse" />
                 <div className="h-3 w-1/3 rounded bg-muted animate-pulse" />
               </div>
             </div>
@@ -123,8 +123,8 @@ function ActivityColumn({ icon, title, linkPrefix, items, isLoading }: ActivityC
 
   return (
     <div className="bg-card rounded-2xl border border-border p-6 md:hover-lift">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-12 h-12 rounded-xl bg-gradient-gold flex items-center justify-center text-charcoal">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-11 h-11 rounded-xl bg-gradient-gold flex items-center justify-center text-charcoal">
           {icon}
         </div>
         <div>
@@ -143,10 +143,10 @@ function ActivityColumn({ icon, title, linkPrefix, items, isLoading }: ActivityC
           items.map((reply) => (
             <article
               key={reply.id}
-              className="rounded-2xl border border-border/70 bg-secondary/30 p-4 transition-colors hover:border-primary/20 hover:bg-primary/5"
+              className="rounded-2xl border border-border/70 bg-secondary/30 p-3 transition-colors hover:border-primary/20 hover:bg-primary/5"
             >
-              <div className="flex items-start gap-3">
-                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border bg-background">
+              <div className="flex items-start gap-2.5">
+                <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full border border-border bg-background">
                   {reply.avatar_url ? (
                     <img
                       src={reply.avatar_url}
@@ -163,9 +163,9 @@ function ActivityColumn({ icon, title, linkPrefix, items, isLoading }: ActivityC
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm leading-6 text-foreground/90">
+                  <p className="text-sm leading-5 text-foreground/90">
                     <span className="font-semibold text-foreground">{reply.author_name}</span>
-                    <span className="mx-1.5 text-muted-foreground">回覆了主題</span>
+                    <span className="mx-1 text-muted-foreground">回覆了主題</span>
                     <Link
                       to={`/forums/topic/${reply.topic_id}`}
                       className="font-medium text-primary underline-offset-4 transition-colors hover:underline"
@@ -174,11 +174,11 @@ function ActivityColumn({ icon, title, linkPrefix, items, isLoading }: ActivityC
                     </Link>
                   </p>
 
-                  <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
                     {compactReplyText(reply.content) || "沒有文字內容"}
                   </p>
 
-                  <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <MessageSquare className="h-3.5 w-3.5" />
                       最新回應
@@ -304,11 +304,11 @@ export function EquipmentCategories({ sectionTitle, sectionSubtitle }: { section
   return (
     <section className="py-20 bg-background">
       <div className="container">
-        <div className="text-center mb-12">
+        <div className="mb-12">
           <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">
             {sectionTitle || "攝影討論區"}
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className="text-muted-foreground max-w-xl">
             {sectionSubtitle || "瀏覽最新討論，與同好交流心得"}
           </p>
         </div>
