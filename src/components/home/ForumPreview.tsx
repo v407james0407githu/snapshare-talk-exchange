@@ -26,6 +26,7 @@ interface TopicRow {
   created_at: string;
   last_reply_at: string | null;
   author_name?: string;
+  avatar_url?: string | null;
   category_name?: string;
   category_color?: string;
 }
@@ -73,9 +74,19 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
 
       const userIds = [...new Set(data.map((t) => t.user_id))];
       const profileMap = new Map<string, string>();
+      let profiles:
+        | Array<{
+            user_id: string;
+            username: string | null;
+            display_name: string | null;
+            avatar_url: string | null;
+          }>
+        | null
+        | undefined = [];
       if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase.rpc("get_public_profiles");
+        const { data: fetchedProfiles, error: profilesError } = await supabase.rpc("get_public_profiles");
         if (profilesError) throw profilesError;
+        profiles = fetchedProfiles;
         profiles
           ?.filter((p) => userIds.includes(p.user_id))
           .forEach((p) => {
@@ -91,12 +102,16 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
 
       const result = data.map((t) => {
         const catInfo = t.category_id ? categoryMap.get(t.category_id) : null;
+        const profile = userIds.length > 0
+          ? profiles?.find((p) => p.user_id === t.user_id)
+          : null;
         return {
           ...t,
           reply_count: t.reply_count ?? 0,
           view_count: t.view_count ?? 0,
           is_pinned: t.is_pinned ?? false,
           author_name: profileMap.get(t.user_id) || normalizeAuthorName(undefined, t.user_id),
+          avatar_url: profile?.avatar_url || null,
           category_name: catInfo?.name || (t.category === "phone" ? "手機" : "相機"),
           category_color: catInfo?.color || (t.category === "phone" ? "green" : "blue"),
         };
@@ -145,20 +160,21 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
             <div className="col-span-3 text-right">最後活動</div>
           </div>
 
-          <div className="divide-y divide-border min-h-[552px]">
+          <div className="divide-y divide-border min-h-[420px]">
             {loading ? (
               <div className="divide-y divide-border">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="block px-6 py-4">
+                  <div key={i} className="block px-6 py-3">
                     <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       <div className="col-span-7">
                         <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 rounded-full bg-muted animate-pulse shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <div className="flex items-center gap-2 flex-wrap mb-1.5">
                               <div className="h-5 w-12 bg-muted rounded animate-pulse" />
                             </div>
-                            <div className="h-5 w-3/4 bg-muted rounded animate-pulse mb-2" />
-                            <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                            <div className="h-5 w-3/4 bg-muted rounded animate-pulse mb-1.5" />
+                            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
                           </div>
                         </div>
                       </div>
@@ -182,11 +198,26 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                   <Link
                     key={topic.id}
                     to={`/forums/topic/${topic.id}`}
-                    className="group block px-6 py-4 motion-list-item hover:bg-muted/40"
+                    className="group block px-6 py-3 motion-list-item hover:bg-muted/40"
                   >
                     <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       <div className="col-span-7">
                         <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                            {topic.avatar_url ? (
+                              <img
+                                src={topic.avatar_url}
+                                alt={topic.author_name || "作者頭像"}
+                                loading="lazy"
+                                decoding="async"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-muted-foreground">
+                                {(topic.author_name || "會").slice(0, 1)}
+                              </div>
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap mb-1">
                               {topic.is_pinned && (
@@ -202,9 +233,11 @@ export function ForumPreview({ sectionTitle, sectionSubtitle }: { sectionTitle?:
                             <h3 className="font-medium text-foreground line-clamp-1 motion-list-title">
                               {topic.title}
                             </h3>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              {topic.author_name}
-                            </p>
+                            <div className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
+                              <span>{topic.author_name}</span>
+                              <span className="text-muted-foreground/50">·</span>
+                              <span>{formatDistanceToNow(new Date(topic.created_at), { addSuffix: true, locale: zhTW })}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
