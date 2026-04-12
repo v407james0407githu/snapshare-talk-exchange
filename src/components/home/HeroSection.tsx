@@ -8,7 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import { unsplashSrcSet } from '@/lib/responsiveImage';
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 import { getPublicSupabase } from "@/lib/publicSupabase";
-import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
 
 interface Banner {
   id: string;
@@ -90,7 +89,6 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   ]);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const heroEnabled = useDeferredPublicQuery(150);
   const initialBanners = readBootstrapCache<Banner[]>("hero-banners") ?? [];
 
   const { data: banners, isLoading } = useQuery({
@@ -112,7 +110,7 @@ export function HeroSection({ sectionTitle: _sectionTitle, sectionSubtitle: _sec
       return result;
     },
     initialData: initialBanners,
-    enabled: heroEnabled,
+    initialDataUpdatedAt: 0,
     staleTime: 5 * 60 * 1000,
   });
 

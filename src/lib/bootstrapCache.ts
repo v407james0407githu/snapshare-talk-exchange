@@ -1,4 +1,9 @@
-const CACHE_PREFIX = "ip543:v2:bootstrap:";
+const projectScopedPrefix =
+  typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_PROJECT_ID
+    ? import.meta.env.VITE_SUPABASE_PROJECT_ID
+    : "default";
+
+const CACHE_PREFIX = `ip543:v4:${projectScopedPrefix}:bootstrap:`;
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";

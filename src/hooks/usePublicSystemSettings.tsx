@@ -97,6 +97,7 @@ export function usePublicSystemSettings() {
       return result;
     },
     initialData: initialSettings,
+    initialDataUpdatedAt: 0,
     staleTime: 10 * 60 * 1000,
   });
 
