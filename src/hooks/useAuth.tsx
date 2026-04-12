@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useRef } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { useToast } from '@/hooks/use-toast';
+import { clearLegacySupabaseAuthStorage, hasAnyCurrentSupabaseSession } from '@/lib/supabaseAuthStorage';
 
 interface Profile {
   id: string;
@@ -43,20 +44,6 @@ async function getSupabase() {
     supabaseClientPromise = import('@/integrations/supabase/client').then((module) => module.supabase);
   }
   return supabaseClientPromise;
-}
-
-function hasPersistedSession() {
-  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return false;
-
-  try {
-    return Object.keys(localStorage).some((key) => {
-      if (!key.startsWith('sb-') || !key.endsWith('-auth-token')) return false;
-      const value = localStorage.getItem(key);
-      return Boolean(value && value !== 'null');
-    });
-  } catch {
-    return false;
-  }
 }
 
 function requiresImmediateAuth(pathname: string) {
@@ -182,7 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const pathname = typeof window !== 'undefined' ? window.location.pathname : '/';
-    const shouldDefer = !requiresImmediateAuth(pathname) && !hasPersistedSession();
+    clearLegacySupabaseAuthStorage();
+    const shouldDefer = !requiresImmediateAuth(pathname) && !hasAnyCurrentSupabaseSession();
 
     if (shouldDefer) {
       setLoading(false);

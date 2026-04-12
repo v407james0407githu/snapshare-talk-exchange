@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { preloadAdminRoute, scheduleAdminWarmup } from '@/lib/adminPrefetch';
+import { clearAllSupabaseAuthStorage, clearCurrentSupabaseAuthStorage, clearLegacySupabaseAuthStorage, shouldResetOAuthState } from '@/lib/supabaseAuthStorage';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的電子郵件'),
@@ -108,6 +109,9 @@ export default function Auth() {
     setErrors({});
 
     try {
+      clearAllSupabaseAuthStorage();
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -131,6 +135,64 @@ export default function Auth() {
       setErrors({ form: '目前無法啟動 Google 登入，請稍後再試' });
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const cleanAuthUrl = () => {
+      const next = new URL(window.location.href);
+      next.searchParams.delete('code');
+      next.searchParams.delete('error');
+      next.searchParams.delete('error_description');
+      const tab = next.searchParams.get('tab');
+      next.hash = '';
+
+      if (!tab || tab === 'login') {
+        next.searchParams.delete('tab');
+      }
+
+      window.history.replaceState({}, document.title, `${next.pathname}${next.search}${next.hash}`);
+    };
+
+    const handleAuthCallback = async () => {
+      clearLegacySupabaseAuthStorage();
+
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+
+      if (code) {
+        setIsLoading(true);
+        setErrors({});
+
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+
+        if (error) {
+          clearAllSupabaseAuthStorage();
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+          setErrors({ form: '登入狀態已自動重置，請再試一次 Google 登入。' });
+        } else {
+          cleanAuthUrl();
+        }
+
+        setIsLoading(false);
+        return;
+      }
+
+      if (shouldResetOAuthState(url)) {
+        clearAllSupabaseAuthStorage();
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+        cleanAuthUrl();
+        setErrors({ form: '偵測到舊登入狀態，已自動重置，請再試一次。' });
+      }
+    };
+
+    void handleAuthCallback();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
