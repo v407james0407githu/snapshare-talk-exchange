@@ -89,9 +89,6 @@ export function clearAllSupabaseAuthStorage() {
 export function shouldResetOAuthState(url: URL) {
   const error = url.searchParams.get('error') ?? '';
   const errorDescription = url.searchParams.get('error_description') ?? '';
-  const hash = url.hash ?? '';
-
-  if (hash === '#') return true;
   if (!error && !errorDescription) return false;
 
   const message = `${error} ${errorDescription}`.toLowerCase();

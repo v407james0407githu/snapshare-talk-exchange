@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { preloadAdminRoute, scheduleAdminWarmup } from '@/lib/adminPrefetch';
-import { clearAllSupabaseAuthStorage, clearCurrentSupabaseAuthStorage, clearLegacySupabaseAuthStorage, shouldResetOAuthState } from '@/lib/supabaseAuthStorage';
+import { clearAllSupabaseAuthStorage, clearLegacySupabaseAuthStorage, shouldResetOAuthState } from '@/lib/supabaseAuthStorage';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的電子郵件'),
@@ -159,6 +159,11 @@ export default function Auth() {
 
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');
+
+      if (url.hash === '#' && !url.searchParams.get('error') && !url.searchParams.get('error_description')) {
+        cleanAuthUrl();
+        return;
+      }
 
       if (code) {
         setIsLoading(true);
