@@ -23,6 +23,10 @@ function isSupabaseAuthStorageKey(key: string) {
   );
 }
 
+function isSupabaseSessionStorageKey(key: string) {
+  return key.startsWith('sb-') && key.includes('-auth-token');
+}
+
 export function getSupabaseAuthStorageKeys(storage: Storage = window.localStorage) {
   const currentRef = getCurrentSupabaseProjectRef();
   const allKeys = Object.keys(storage).filter(isSupabaseAuthStorageKey);
@@ -75,6 +79,24 @@ export function clearCurrentSupabaseAuthStorage(storage: Storage = window.localS
   } catch {
     return 0;
   }
+}
+
+export function clearCurrentSupabaseSessionStorage(storage: Storage = window.localStorage) {
+  try {
+    const { currentKeys } = getSupabaseAuthStorageKeys(storage);
+    const sessionKeys = currentKeys.filter(isSupabaseSessionStorageKey);
+    sessionKeys.forEach((key) => storage.removeItem(key));
+    return sessionKeys.length;
+  } catch {
+    return 0;
+  }
+}
+
+export function clearCurrentSupabaseSessionStorageEverywhere() {
+  if (typeof window === 'undefined') return 0;
+
+  const storages = [window.localStorage, window.sessionStorage];
+  return storages.reduce((total, storage) => total + clearCurrentSupabaseSessionStorage(storage), 0);
 }
 
 export function clearAllSupabaseAuthStorage() {

@@ -15,7 +15,10 @@ import { Separator } from '@/components/ui/separator';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { preloadAdminRoute, scheduleAdminWarmup } from '@/lib/adminPrefetch';
-import { clearAllSupabaseAuthStorage, clearLegacySupabaseAuthStorage, shouldResetOAuthState } from '@/lib/supabaseAuthStorage';
+import {
+  clearCurrentSupabaseSessionStorageEverywhere,
+  shouldResetOAuthState,
+} from '@/lib/supabaseAuthStorage';
 
 const loginSchema = z.object({
   email: z.string().email('請輸入有效的電子郵件'),
@@ -105,11 +108,17 @@ export default function Auth() {
     return '/';
   };
 
+  const finishAuthRedirect = async (userId: string) => {
+    handledRedirectRef.current = true;
+    const destination = await resolvePostLoginDestination(userId);
+    navigate(destination, { replace: true });
+  };
+
   const handleGoogleOAuth = async () => {
     setErrors({});
 
     try {
-      clearAllSupabaseAuthStorage();
+      clearCurrentSupabaseSessionStorageEverywhere();
       await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -155,8 +164,6 @@ export default function Auth() {
     };
 
     const handleAuthCallback = async () => {
-      clearLegacySupabaseAuthStorage();
-
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');
 
@@ -173,11 +180,41 @@ export default function Auth() {
         if (cancelled) return;
 
         if (error) {
-          clearAllSupabaseAuthStorage();
-          await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
-          setErrors({ form: '登入狀態已自動重置，請再試一次 Google 登入。' });
+          const {
+            data: { session: recoveredSession },
+          } = await supabase.auth.getSession();
+
+          if (cancelled) return;
+
+          if (recoveredSession?.user) {
+            cleanAuthUrl();
+            try {
+              await finishAuthRedirect(recoveredSession.user.id);
+            } catch {
+              if (!cancelled) {
+                navigate(from || '/', { replace: true });
+              }
+            }
+          } else {
+            clearCurrentSupabaseSessionStorageEverywhere();
+            await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+            setErrors({ form: error.message || 'Google 登入失敗，請再試一次。' });
+          }
         } else {
           cleanAuthUrl();
+          const {
+            data: { session: nextSession },
+          } = await supabase.auth.getSession();
+
+          if (!cancelled && nextSession?.user) {
+            try {
+              await finishAuthRedirect(nextSession.user.id);
+            } catch {
+              if (!cancelled) {
+                navigate(from || '/', { replace: true });
+              }
+            }
+          }
         }
 
         setIsLoading(false);
@@ -185,7 +222,25 @@ export default function Auth() {
       }
 
       if (shouldResetOAuthState(url)) {
-        clearAllSupabaseAuthStorage();
+        const {
+          data: { session: existingSession },
+        } = await supabase.auth.getSession();
+
+        if (cancelled) return;
+
+        if (existingSession?.user) {
+          cleanAuthUrl();
+          try {
+            await finishAuthRedirect(existingSession.user.id);
+          } catch {
+            if (!cancelled) {
+              navigate(from || '/', { replace: true });
+            }
+          }
+          return;
+        }
+
+        clearCurrentSupabaseSessionStorageEverywhere();
         await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
         cleanAuthUrl();
         setErrors({ form: '偵測到舊登入狀態，已自動重置，請再試一次。' });
