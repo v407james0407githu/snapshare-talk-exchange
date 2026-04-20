@@ -60,6 +60,7 @@ import {
 } from '@/components/ui/select';
 import { AvatarCropDialog } from '@/components/profile/AvatarCropDialog';
 import { useRef } from 'react';
+import { clearCurrentSupabaseSessionStorageEverywhere } from '@/lib/supabaseAuthStorage';
 
 export default function Profile() {
   const { user, profile, updateProfile, loading } = useAuth();
@@ -72,6 +73,9 @@ export default function Profile() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const [showCropDialog, setShowCropDialog] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [deleteAccountConfirmText, setDeleteAccountConfirmText] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -177,6 +181,47 @@ export default function Profile() {
     }
 
     setIsSaving(false);
+  };
+
+  const canDeleteAccount = deleteAccountConfirmText.trim() === (user.email || '');
+
+  const handleDeleteAccount = async () => {
+    if (!canDeleteAccount) return;
+
+    setIsDeletingAccount(true);
+
+    try {
+      const { error } = await supabase.functions.invoke('delete-account', {
+        body: {
+          confirmationEmail: user.email,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      clearCurrentSupabaseSessionStorageEverywhere();
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+
+      toast({
+        title: '帳號已刪除',
+        description: '您的帳號與相關資料已完成刪除。',
+      });
+
+      navigate('/', { replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '刪除帳號失敗，請稍後再試';
+      toast({
+        title: '刪除失敗',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingAccount(false);
+      setShowDeleteAccountDialog(false);
+      setDeleteAccountConfirmText('');
+    }
   };
 
   return (
@@ -377,6 +422,30 @@ export default function Profile() {
                   </div>
                 </CardContent>
               </Card>
+
+              <Card className="border-destructive/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <Trash2 className="h-5 w-5" />
+                    危險操作
+                  </CardTitle>
+                  <CardDescription>
+                    刪除帳號後，您的個人資料、作品、討論、交易刊登與相關內容會一併移除，且無法復原。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    如確定不再使用此帳號，可在這裡執行永久刪除。
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDeleteAccountDialog(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    刪除帳號
+                  </Button>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="photos">
@@ -411,6 +480,53 @@ export default function Profile() {
           isUploading={isUploadingAvatar}
         />
       )}
+      <Dialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">確認刪除帳號</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              此操作無法復原。系統會刪除您的帳號，以及與此帳號相關的作品、頭像、討論、交易資料。
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="delete-account-confirmation">
+                請輸入您的 Email 以確認刪除
+              </Label>
+              <Input
+                id="delete-account-confirmation"
+                value={deleteAccountConfirmText}
+                onChange={(e) => setDeleteAccountConfirmText(e.target.value)}
+                placeholder={user.email || ''}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                需完整輸入：{user.email || '您的 Email'}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteAccountDialog(false);
+                setDeleteAccountConfirmText('');
+              }}
+              disabled={isDeletingAccount}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={!canDeleteAccount || isDeletingAccount}
+            >
+              {isDeletingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              永久刪除帳號
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
