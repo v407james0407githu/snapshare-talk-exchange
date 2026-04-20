@@ -76,10 +76,9 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
   const authHeader = req.headers.get('Authorization')
 
-  if (!supabaseUrl || !serviceRoleKey || !anonKey || !authHeader) {
+  if (!supabaseUrl || !serviceRoleKey || !authHeader) {
     return new Response(JSON.stringify({ error: 'Server configuration error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -87,18 +86,12 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: {
-      headers: {
-        Authorization: authHeader,
-      },
-    },
-  })
+  const accessToken = authHeader.replace(/^Bearer\s+/i, '').trim()
 
   const {
     data: { user },
     error: authError,
-  } = await userClient.auth.getUser()
+  } = await adminClient.auth.getUser(accessToken)
 
   if (authError || !user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
