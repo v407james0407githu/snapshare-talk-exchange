@@ -118,6 +118,30 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('username, display_name, created_at')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const { error: logError } = await adminClient
+      .from('deleted_account_logs')
+      .insert({
+        deleted_user_id: user.id,
+        email: normalizedUserEmail,
+        username: profile?.username ?? null,
+        display_name: profile?.display_name ?? null,
+        profile_created_at: profile?.created_at ?? null,
+        deletion_source: 'self-service',
+        metadata: {
+          provider_count: user.identities?.length ?? 0,
+        },
+      })
+
+    if (logError) {
+      throw logError
+    }
+
     await removeUserFiles(adminClient, user.id)
 
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id)

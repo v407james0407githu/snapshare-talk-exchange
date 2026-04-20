@@ -36,6 +36,17 @@ interface UserWithRole {
   email?: string;
 }
 
+interface DeletedAccountLog {
+  id: string;
+  deleted_user_id: string | null;
+  email: string;
+  username: string | null;
+  display_name: string | null;
+  profile_created_at: string | null;
+  deleted_at: string;
+  deletion_source: string;
+}
+
 const roleLabels: Record<string, string> = { user: "一般會員", moderator: "版主", admin: "管理員" };
 
 async function fetchAllUsers(): Promise<UserWithRole[]> {
@@ -61,6 +72,17 @@ async function fetchAllUsers(): Promise<UserWithRole[]> {
   }));
 }
 
+async function fetchDeletedAccountLogs(): Promise<DeletedAccountLog[]> {
+  const { data, error } = await supabase
+    .from("deleted_account_logs")
+    .select("id, deleted_user_id, email, username, display_name, profile_created_at, deleted_at, deletion_source")
+    .order("deleted_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+  return (data as DeletedAccountLog[]) || [];
+}
+
 export default function UserManagement() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,6 +94,12 @@ export default function UserManagement() {
     queryKey: ["admin-users"],
     queryFn: fetchAllUsers,
     staleTime: 3 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+  const { data: deletedAccountLogs = [], isLoading: deletedLogsLoading } = useQuery({
+    queryKey: ["admin-deleted-account-logs"],
+    queryFn: fetchDeletedAccountLogs,
+    staleTime: 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 
@@ -321,6 +349,62 @@ export default function UserManagement() {
       {!loading && filteredUsers.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">沒有找到符合條件的會員</div>
       )}
+
+      <div className="mt-8 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">已刪除帳號紀錄</h2>
+          <p className="text-sm text-muted-foreground">保留最近 50 筆自助刪帳紀錄，供管理後台查核。</p>
+        </div>
+        <div className="border rounded-xl overflow-hidden">
+          {deletedLogsLoading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : deletedAccountLogs.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">目前沒有刪帳紀錄</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="min-w-[220px]">帳號資訊</TableHead>
+                  <TableHead className="min-w-[220px]">Email</TableHead>
+                  <TableHead className="w-32">刪除來源</TableHead>
+                  <TableHead className="w-28">加入時間</TableHead>
+                  <TableHead className="w-36">刪除時間</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {deletedAccountLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm truncate">{log.display_name || log.username || "未命名會員"}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {log.username ? `@${log.username}` : log.deleted_user_id || "無 user id"}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground break-all">{log.email}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {log.deletion_source === "self-service" ? "會員自行刪除" : log.deletion_source}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {log.profile_created_at ? format(new Date(log.profile_created_at), "yyyy/MM/dd") : "—"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                      {format(new Date(log.deleted_at), "yyyy/MM/dd HH:mm")}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </div>
 
       {/* Suspend/Ban Dialog */}
       <Dialog open={suspendDialog.open} onOpenChange={open => setSuspendDialog(prev => ({ ...prev, open }))}>
