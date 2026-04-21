@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -51,14 +51,40 @@ const conditionLabels: Record<string, string> = {
 
 export default function Marketplace() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const categoryParam = searchParams.get('category');
+  const brandParam = searchParams.get('brand');
   const [searchQuery, setSearchQuery] = useState('');
   const [conditionFilter, setConditionFilter] = useState<string>('all');
   const [showSold, setShowSold] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(searchParams.get('category'));
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(searchParams.get('brand'));
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const { data: categories, isLoading: categoriesLoading } = useMarketplaceCategories();
+
+  useEffect(() => {
+    if (!categoryParam) {
+      if (selectedCategory) setSelectedCategory(null);
+      if (selectedSubCategory) setSelectedSubCategory(null);
+      return;
+    }
+
+    if (!categories?.length) return;
+
+    const matchedCategory = categories.find(
+      (category) =>
+        category.id === categoryParam ||
+        category.slug === categoryParam ||
+        category.name === categoryParam,
+    );
+
+    const nextCategory = matchedCategory?.id ?? null;
+    const nextSubCategory = nextCategory ? brandParam : null;
+
+    if (selectedCategory !== nextCategory) setSelectedCategory(nextCategory);
+    if (selectedSubCategory !== nextSubCategory) setSelectedSubCategory(nextSubCategory);
+  }, [brandParam, categories, categoryParam, selectedCategory, selectedSubCategory]);
+
   const { data: listings = [], isLoading } = useQuery({
     queryKey: ['marketplace-listings', showSold],
     queryFn: () => fetchMarketplaceListings(showSold) as Promise<Listing[]>,
@@ -124,7 +150,8 @@ export default function Marketplace() {
     setSelectedCategory(catId);
     setSelectedSubCategory(null);
     const next = new URLSearchParams(searchParams);
-    if (catId) next.set('category', catId);
+    const category = categories?.find((cat) => cat.id === catId);
+    if (category) next.set('category', category.slug);
     else next.delete('category');
     next.delete('brand');
     setSearchParams(next, { replace: true });
