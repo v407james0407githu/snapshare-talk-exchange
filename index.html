@@ -10,6 +10,12 @@
     <meta property="og:title" content="愛屁543論壇" />
     <meta property="og:description" content="愛屁543論壇是攝影愛好者交流平台，提供作品分享、攝影討論與器材交流。" />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ip543.com/" />
+    <meta property="og:image" content="https://ip543.com/favicon.ico?v=20260410" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="愛屁543論壇" />
+    <meta name="twitter:description" content="愛屁543論壇是攝影愛好者交流平台，提供作品分享、攝影討論與器材交流。" />
+    <meta name="twitter:image" content="https://ip543.com/favicon.ico?v=20260410" />
 
     <link rel="canonical" href="https://ip543.com/" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260410" />
@@ -30,7 +36,8 @@
     <link rel="preconnect" href="%VITE_SUPABASE_URL%" />
     <script>
       (function () {
-        const CACHE_KEY = "ip543:v2:bootstrap:public-system-settings";
+        const PROJECT_ID = "%VITE_SUPABASE_PROJECT_ID%" || "default";
+        const CACHE_KEY = "ip543:v4:" + PROJECT_ID + ":bootstrap:public-system-settings";
         const SUPABASE_URL = "%VITE_SUPABASE_URL%";
         const SUPABASE_ANON_KEY = "%VITE_SUPABASE_PUBLISHABLE_KEY%";
         const SETTING_KEYS = [
@@ -100,6 +107,8 @@
           upsertMeta('meta[name="author"]', { name: "author", content: siteName });
           upsertMeta('meta[property="og:title"]', { property: "og:title", content: seoTitle });
           upsertMeta('meta[property="og:description"]', { property: "og:description", content: seoDescription });
+          upsertMeta('meta[name="twitter:title"]', { name: "twitter:title", content: seoTitle });
+          upsertMeta('meta[name="twitter:description"]', { name: "twitter:description", content: seoDescription });
 
           if (favicon) {
             const href = withCacheBust(favicon);
@@ -107,6 +116,8 @@
             upsertLink('link[rel="icon"]', { rel: "icon", href: href, type: type });
             upsertLink('link[rel="shortcut icon"]', { rel: "shortcut icon", href: href, type: type });
             upsertLink('link[rel="apple-touch-icon"]', { rel: "apple-touch-icon", href: href });
+            upsertMeta('meta[property="og:image"]', { property: "og:image", content: href });
+            upsertMeta('meta[name="twitter:image"]', { name: "twitter:image", content: href });
           }
         }
 
