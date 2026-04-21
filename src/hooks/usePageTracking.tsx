@@ -25,7 +25,6 @@ export function usePageTracking() {
           sessionStorage.setItem("pv_sid", sid);
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
         const referrer = document.referrer || "";
         let referrerDomain: string | null = null;
         try {
@@ -34,26 +33,18 @@ export function usePageTracking() {
           // Ignore invalid referrer URLs; tracking can proceed without a domain.
         }
 
-        const { data: inserted } = await supabase.from("page_views").insert({
-          session_id: sid,
-          user_id: session?.user?.id || null,
-          page_path: path,
-          page_title: document.title,
-          referrer: referrer || null,
-          referrer_domain: referrerDomain,
-          user_agent: navigator.userAgent,
-          language: navigator.language,
-          screen_width: window.screen.width,
-          screen_height: window.screen.height,
-        }).select("id").single();
-
-        if (inserted?.id) {
-          supabase.functions.invoke("geolocate", {
-            body: { page_view_id: inserted.id },
-          }).catch(() => {
-            // Geolocation enrichment is best-effort and should not affect page rendering.
-          });
-        }
+        await supabase.functions.invoke("track-page-view", {
+          body: {
+            session_id: sid,
+            page_path: path,
+            page_title: document.title,
+            referrer: referrer || null,
+            referrer_domain: referrerDomain,
+            language: navigator.language,
+            screen_width: window.screen.width,
+            screen_height: window.screen.height,
+          },
+        });
       } catch {
         // Page tracking must never block or break the user-facing route.
       }
