@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { readBootstrapCache, writeBootstrapCache } from "@/lib/bootstrapCache";
 import { getPublicSupabase } from "@/lib/publicSupabase";
 import { useDeferredPublicQuery } from "@/hooks/useDeferredPublicQuery";
+import type { Json } from "@/integrations/supabase/types";
 
 interface SiteContent {
   id: string;
@@ -9,7 +10,7 @@ interface SiteContent {
   section_label: string;
   content_type: string;
   content_value: string;
-  content_meta: Record<string, any>;
+  content_meta: Json | null;
   sort_order: number;
   is_active: boolean;
   updated_at: string;
@@ -23,7 +24,7 @@ export function useSiteContent() {
     queryFn: async () => {
       const supabase = await getPublicSupabase();
       const { data, error } = await supabase
-        .from("site_content" as any)
+        .from("site_content")
         .select("id, section_key, section_label, content_type, content_value, content_meta, sort_order, is_active, updated_at")
         .eq("is_active", true);
       if (error) throw error;

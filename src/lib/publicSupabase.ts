@@ -1,4 +1,9 @@
-let publicSupabasePromise: Promise<any> | null = null;
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+type PublicSupabaseClient = SupabaseClient<Database>;
+
+let publicSupabasePromise: Promise<PublicSupabaseClient> | null = null;
 
 export async function getPublicSupabase() {
   if (!publicSupabasePromise) {

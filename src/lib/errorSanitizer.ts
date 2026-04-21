@@ -5,10 +5,13 @@
 export function getSafeErrorMessage(error: unknown): string {
   if (!error) return '發生錯誤，請稍後再試。';
 
+  const errorLike = error as { message?: unknown; code?: unknown };
   const message = typeof error === 'string'
     ? error
-    : (error as any)?.message || '';
-  const code = (error as any)?.code || '';
+    : typeof errorLike.message === 'string'
+      ? errorLike.message
+      : '';
+  const code = typeof errorLike.code === 'string' ? errorLike.code : '';
 
   // Database constraint violations
   if (message.includes('violates') || message.includes('constraint')) {

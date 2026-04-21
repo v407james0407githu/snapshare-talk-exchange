@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { prefetchPhotoDetailBundle } from "@/lib/photoDetailPrefetch";
 import { formatDistanceToNow } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Photo {
   id: string;
@@ -28,7 +29,7 @@ interface Photo {
   camera_body: string | null;
   lens: string | null;
   phone_model: string | null;
-  exif_data: Record<string, any> | null;
+  exif_data: Json | null;
   is_featured: boolean;
   profiles?: {
     user_id?: string;

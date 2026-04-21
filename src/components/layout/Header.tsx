@@ -12,6 +12,10 @@ import {
   Search,
 } from "lucide-react";
 
+type WindowWithIdleCallback = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+};
+
 const HeaderAuthControls = lazy(() =>
   import("./HeaderAuthControls").then((m) => ({ default: m.HeaderAuthControls })),
 );
@@ -51,7 +55,7 @@ export function Header() {
 
     const schedule =
       typeof window !== "undefined" && "requestIdleCallback" in window
-        ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 1500 })
+        ? (cb: () => void) => (window as WindowWithIdleCallback).requestIdleCallback?.(cb, { timeout: 1500 }) ?? window.setTimeout(cb, 900)
         : (cb: () => void) => window.setTimeout(cb, 900);
 
     const handle = schedule(() => {
@@ -83,9 +87,7 @@ export function Header() {
     const schedule =
       typeof window !== "undefined" && "requestIdleCallback" in window
         ? (cb: () => void) =>
-            (window as Window & {
-              requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-            }).requestIdleCallback?.(cb, { timeout: 2500 }) ?? window.setTimeout(cb, 1500)
+            (window as WindowWithIdleCallback).requestIdleCallback?.(cb, { timeout: 2500 }) ?? window.setTimeout(cb, 1500)
         : (cb: () => void) => window.setTimeout(cb, 1500);
 
     const handle = schedule(() => setEnableAuthControls(true));

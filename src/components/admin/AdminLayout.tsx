@@ -123,8 +123,11 @@ const Sidebar = memo(function Sidebar({
   // Auto-expand group when navigating
   useEffect(() => {
     const active = navGroups.find((g) => g.items.some((i) => i.href === pathname));
-    if (active && !expandedGroups.has(active.label)) {
-      setExpandedGroups((prev) => new Set(prev).add(active.label));
+    if (active) {
+      setExpandedGroups((prev) => {
+        if (prev.has(active.label)) return prev;
+        return new Set(prev).add(active.label);
+      });
     }
   }, [pathname]);
 

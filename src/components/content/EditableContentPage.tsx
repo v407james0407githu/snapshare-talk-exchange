@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Save, X, Plus, Trash2, ImagePlus, Loader2, GripVertical } from "lucide-react";
+import type { Json } from "@/integrations/supabase/types";
 
 interface ContentBlock {
   id: string;
@@ -15,7 +16,7 @@ interface ContentBlock {
   section_label: string;
   content_type: string;
   content_value: string;
-  content_meta: Record<string, any> | null;
+  content_meta: Json | null;
   sort_order: number | null;
   is_active: boolean | null;
 }
@@ -43,7 +44,7 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
     queryKey: ["page-content", pageKey],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("site_content" as any)
+        .from("site_content")
         .select("*")
         .like("section_key", `${prefix}%`)
         .eq("is_active", true)
@@ -58,17 +59,17 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
     mutationFn: async (block: Partial<ContentBlock> & { section_key: string }) => {
       if (block.id) {
         const { error } = await supabase
-          .from("site_content" as any)
+          .from("site_content")
           .update({
             content_value: block.content_value,
             section_label: block.section_label,
             updated_at: new Date().toISOString(),
-          } as any)
+          })
           .eq("id", block.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("site_content" as any)
+          .from("site_content")
           .insert({
             section_key: block.section_key,
             section_label: block.section_label || "內容區塊",
@@ -76,7 +77,7 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
             content_value: block.content_value || "",
             sort_order: block.sort_order ?? (blocks.length + 1) * 10,
             is_active: true,
-          } as any);
+          });
         if (error) throw error;
       }
     },
@@ -85,7 +86,7 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
       setEditingBlockId(null);
       toast({ title: "已儲存" });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       toast({ title: "儲存失敗", description: err.message, variant: "destructive" });
     },
   });
@@ -93,8 +94,8 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("site_content" as any)
-        .update({ is_active: false } as any)
+        .from("site_content")
+        .update({ is_active: false })
         .eq("id", id);
       if (error) throw error;
     },
@@ -138,13 +139,17 @@ export default function EditableContentPage({ pageKey, pageTitle, pageDescriptio
         content_value: imageUrl,
         sort_order: (blocks.length + 1) * 10,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ContentUpload] full error:", err);
-      toast({ title: "上傳失敗", description: err.message, variant: "destructive" });
+      toast({
+        title: "上傳失敗",
+        description: err instanceof Error ? err.message : "請稍後再試。",
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
     }
-  }, [pageKey, blocks.length, upsertMutation, toast]);
+  }, [pageKey, prefix, blocks.length, upsertMutation, toast]);
 
   const startEdit = (block: ContentBlock) => {
     setEditingBlockId(block.id);

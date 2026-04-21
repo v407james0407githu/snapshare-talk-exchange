@@ -20,6 +20,13 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { resizeImage, createThumbnail, getOutputExtension, getOutputMimeType } from '@/lib/imageResize';
+import type { Database } from '@/integrations/supabase/types';
+
+type ForumCategoryRow = Pick<
+  Database['public']['Tables']['forum_categories']['Row'],
+  'name' | 'slug' | 'parent_id' | 'sort_order'
+>;
+type BrandModel = Pick<Database['public']['Tables']['brand_models']['Row'], 'id' | 'model_name' | 'sort_order'>;
 
 function useBrandOptions() {
   return useQuery({
@@ -40,7 +47,7 @@ function useBrandOptions() {
       const mobileParentId = parents?.find(p => p.slug === 'mobile')?.id;
       const cameraParentId = parents?.find(p => p.slug === 'camera')?.id;
 
-      const toBrandOption = (cat: any) => ({
+      const toBrandOption = (cat: ForumCategoryRow) => ({
         value: cat.slug.replace(/^(mobile|camera)-/, ''),
         label: cat.name,
       });
@@ -68,13 +75,13 @@ function useBrandModels(category: string, brand: string) {
     queryKey: ['brand-models', category, brand],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('brand_models' as any)
+        .from('brand_models')
         .select('id, model_name, sort_order')
         .eq('category', category)
         .eq('brand', brand)
         .order('sort_order');
       if (error) throw error;
-      return (data as any[]) || [];
+      return (data as BrandModel[] | null) || [];
     },
     enabled: !!category && !!brand && brand !== 'other',
     staleTime: 5 * 60 * 1000,
@@ -168,7 +175,7 @@ export function PhotoUpload() {
     }));
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
-  }, [uploadedFiles.length, profile?.is_vip, toast]);
+  }, [dailyMax, dailyRemaining, uploadedFiles.length, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -503,7 +510,7 @@ export function PhotoUpload() {
                           <SelectValue placeholder="選擇型號" />
                         </SelectTrigger>
                         <SelectContent>
-                          {modelOptions.map((m: any) => (
+                          {modelOptions.map((m) => (
                             <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
                           ))}
                           <SelectItem value="__other__">其他（手動輸入）</SelectItem>
@@ -545,7 +552,7 @@ export function PhotoUpload() {
                             <SelectValue placeholder="選擇機身" />
                           </SelectTrigger>
                           <SelectContent>
-                            {modelOptions.map((m: any) => (
+                            {modelOptions.map((m) => (
                               <SelectItem key={m.id} value={m.model_name}>{m.model_name}</SelectItem>
                             ))}
                             <SelectItem value="__other__">其他（手動輸入）</SelectItem>

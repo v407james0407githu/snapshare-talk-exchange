@@ -18,6 +18,8 @@ const brands = [
   "Leica", "Pentax", "Apple", "Samsung", "Google", "其他",
 ];
 
+type GallerySort = "newest" | "most_liked" | "highest_rated";
+
 interface GalleryFiltersProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
@@ -25,8 +27,8 @@ interface GalleryFiltersProps {
   onCategoryChange: (value: string) => void;
   selectedBrand: string;
   onBrandChange: (value: string) => void;
-  sortBy: "newest" | "most_liked" | "highest_rated";
-  onSortChange: (value: "newest" | "most_liked" | "highest_rated") => void;
+  sortBy: GallerySort;
+  onSortChange: (value: GallerySort) => void;
   viewMode: "grid" | "masonry";
   onViewModeChange: (mode: "grid" | "masonry") => void;
   onUpload: () => void;
@@ -49,6 +51,12 @@ export function GalleryFilters({
   featuredOnly,
   onFeaturedOnlyChange,
 }: GalleryFiltersProps) {
+  const handleSortChange = (value: string) => {
+    if (value === "newest" || value === "most_liked" || value === "highest_rated") {
+      onSortChange(value);
+    }
+  };
+
   return (
     <section className="sticky top-16 z-40 bg-background/95 backdrop-blur-sm border-b border-border py-4">
       <div className="container">
@@ -86,7 +94,7 @@ export function GalleryFilters({
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={sortBy} onValueChange={(v) => onSortChange(v as any)}>
+              <Select value={sortBy} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-32">
                   <ArrowUpDown className="h-4 w-4 mr-1" />
                   <SelectValue />
