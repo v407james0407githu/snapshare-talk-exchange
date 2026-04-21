@@ -28,9 +28,13 @@ export function usePageTracking() {
         const { data: { session } } = await supabase.auth.getSession();
         const referrer = document.referrer || "";
         let referrerDomain: string | null = null;
-        try { referrerDomain = referrer ? new URL(referrer).hostname : null; } catch {}
+        try {
+          referrerDomain = referrer ? new URL(referrer).hostname : null;
+        } catch {
+          // Ignore invalid referrer URLs; tracking can proceed without a domain.
+        }
 
-        const { data: inserted } = await (supabase.from("page_views") as any).insert({
+        const { data: inserted } = await supabase.from("page_views").insert({
           session_id: sid,
           user_id: session?.user?.id || null,
           page_path: path,
@@ -46,9 +50,13 @@ export function usePageTracking() {
         if (inserted?.id) {
           supabase.functions.invoke("geolocate", {
             body: { page_view_id: inserted.id },
-          }).catch(() => {});
+          }).catch(() => {
+            // Geolocation enrichment is best-effort and should not affect page rendering.
+          });
         }
-      } catch {}
+      } catch {
+        // Page tracking must never block or break the user-facing route.
+      }
     });
 
     return () => {

@@ -95,7 +95,7 @@ export default function Forums() {
         .eq("content_type", "forum_topic")
         .in("content_id", topicIds);
 
-      let tagMap = new Map<string, string[]>();
+      const tagMap = new Map<string, string[]>();
       if (contentTags && (contentTags as any[]).length > 0) {
         const tagIds = [...new Set((contentTags as any[]).map((ct: any) => ct.tag_id))];
         const { data: tagsData } = await supabase
