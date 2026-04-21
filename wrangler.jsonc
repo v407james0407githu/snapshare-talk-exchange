@@ -6,6 +6,11 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "VITE_SUPABASE_URL": "https://rdyqyaacfkopruprxkpq.supabase.co",
+    "VITE_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_mwDjLlme7TnmnVkpaP1jpA_i1ktZSyS",
+    "VITE_SUPABASE_PROJECT_ID": "rdyqyaacfkopruprxkpq"
+  },
   "assets": {
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
