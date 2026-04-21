@@ -18,7 +18,7 @@ import {
   PaginationNext, PaginationPrevious, PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { Search, Plus, MessageSquare, Clock, TrendingUp, Loader2, Tag, ArrowUpDown, Eye } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ const TOPICS_PER_PAGE = 24;
 export default function Forums() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -58,6 +59,20 @@ export default function Forums() {
   const contentDrag = useTextareaDrop(handleDragUploadFiles, false);
 
   const { data: categories, isLoading: categoriesLoading } = useForumCategories();
+
+  useEffect(() => {
+    const categoryParam = searchParams.get("category");
+    if (!categoryParam || !categories?.length) return;
+
+    const matchedCategory = categories.find(
+      (category) => category.slug === categoryParam || category.name === categoryParam,
+    );
+    if (matchedCategory && matchedCategory.id !== selectedCategory) {
+      setSelectedCategory(matchedCategory.id);
+      setSelectedSubCategory(null);
+      setCurrentPage(1);
+    }
+  }, [categories, searchParams, selectedCategory]);
 
   // Fetch topics
   const { data: topics, isLoading } = useQuery({
@@ -299,10 +314,20 @@ export default function Forums() {
   // Reset page when filters change
   const handleCategoryChange = (catId: string | null) => {
     setSelectedCategory(catId);
+    const next = new URLSearchParams(searchParams);
+    const category = categories?.find((cat) => cat.id === catId);
+    if (category) next.set("category", category.slug);
+    else next.delete("category");
+    next.delete("subCategory");
+    setSearchParams(next, { replace: true });
     setCurrentPage(1);
   };
   const handleSubCategoryChange = (subId: string | null) => {
     setSelectedSubCategory(subId);
+    const next = new URLSearchParams(searchParams);
+    if (subId) next.set("subCategory", subId);
+    else next.delete("subCategory");
+    setSearchParams(next, { replace: true });
     setCurrentPage(1);
   };
   const handleTagChange = (tag: string | null) => {

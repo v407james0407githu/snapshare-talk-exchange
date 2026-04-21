@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,11 +50,12 @@ const conditionLabels: Record<string, string> = {
 };
 
 export default function Marketplace() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [conditionFilter, setConditionFilter] = useState<string>('all');
   const [showSold, setShowSold] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(searchParams.get('category'));
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(searchParams.get('brand'));
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const { data: categories, isLoading: categoriesLoading } = useMarketplaceCategories();
@@ -122,6 +123,19 @@ export default function Marketplace() {
   const handleCategoryChange = (catId: string | null) => {
     setSelectedCategory(catId);
     setSelectedSubCategory(null);
+    const next = new URLSearchParams(searchParams);
+    if (catId) next.set('category', catId);
+    else next.delete('category');
+    next.delete('brand');
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleSubCategoryChange = (brand: string | null) => {
+    setSelectedSubCategory(brand);
+    const next = new URLSearchParams(searchParams);
+    if (brand) next.set('brand', brand);
+    else next.delete('brand');
+    setSearchParams(next, { replace: true });
   };
 
   return (
@@ -167,7 +181,7 @@ export default function Marketplace() {
                 selectedCategory={selectedCategory}
                 selectedSubCategory={selectedSubCategory}
                 onSelectCategory={handleCategoryChange}
-                onSelectSubCategory={setSelectedSubCategory}
+                onSelectSubCategory={handleSubCategoryChange}
                 listingCounts={listingCounts}
               />
 

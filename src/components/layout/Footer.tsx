@@ -60,6 +60,20 @@ const footerSections = [
   },
 ];
 
+const footerLabelRoutes: Record<string, string> = {
+  手機作品區: "/gallery?category=phone",
+  相機作品區: "/gallery?category=camera",
+  手機討論區: "/forums?category=phone",
+  相機討論區: "/forums?category=camera",
+  手機交易: "/marketplace?category=phone",
+  相機交易: "/marketplace?category=camera",
+};
+
+function resolveFooterUrl(label: string, configuredUrl: string) {
+  const normalizedLabel = label.replace(/\s+/g, "");
+  return footerLabelRoutes[normalizedLabel] || configuredUrl;
+}
+
 export function Footer() {
   const { siteLogo, siteName, get, getBool, isLoading } = usePublicSystemSettings();
 
@@ -142,8 +156,8 @@ export function Footer() {
                 </h4>
                 <ul className="space-y-2.5">
                   {visibleLinks.map((link) => {
-                    const url = get(link.urlKey, link.defaultUrl);
                     const label = get(link.labelKey, link.defaultLabel);
+                    const url = resolveFooterUrl(label, get(link.urlKey, link.defaultUrl));
                     return (
                       <li key={link.urlKey}>
                         {url ? (

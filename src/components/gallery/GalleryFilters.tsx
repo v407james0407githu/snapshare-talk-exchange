@@ -10,7 +10,18 @@ import {
 import { Search, Filter, Grid3X3, LayoutGrid, ImagePlus, ArrowUpDown, Star } from "lucide-react";
 
 const categories = [
-  "全部", "風景", "城市", "街拍", "夜景", "微距", "生活", "天文", "人像", "其他",
+  { value: "全部", label: "全部" },
+  { value: "phone", label: "手機" },
+  { value: "camera", label: "相機" },
+  { value: "風景", label: "風景" },
+  { value: "城市", label: "城市" },
+  { value: "街拍", label: "街拍" },
+  { value: "夜景", label: "夜景" },
+  { value: "微距", label: "微距" },
+  { value: "生活", label: "生活" },
+  { value: "天文", label: "天文" },
+  { value: "人像", label: "人像" },
+  { value: "其他", label: "其他" },
 ];
 
 const brands = [
@@ -80,7 +91,7 @@ export function GalleryFilters({
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

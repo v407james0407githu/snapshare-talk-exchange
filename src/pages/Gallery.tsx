@@ -239,8 +239,8 @@ export default function Gallery() {
   const [searchParams, setSearchParams] = useSearchParams();
   const galleryTopRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry");
-  const [selectedCategory, setSelectedCategory] = useState("全部");
-  const [selectedBrand, setSelectedBrand] = useState("全部品牌");
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "全部");
+  const [selectedBrand, setSelectedBrand] = useState(searchParams.get("brand") || "全部品牌");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
   const [sortBy, setSortBy] = useState<"newest" | "most_liked" | "highest_rated">("newest");
@@ -264,10 +264,14 @@ export default function Gallery() {
     const next = new URLSearchParams(searchParams);
     if (searchQuery) next.set("q", searchQuery);
     else next.delete("q");
+    if (selectedCategory !== "全部") next.set("category", selectedCategory);
+    else next.delete("category");
+    if (selectedBrand !== "全部品牌") next.set("brand", selectedBrand);
+    else next.delete("brand");
     if (currentPage > 1) next.set("page", String(currentPage));
     else next.delete("page");
     setSearchParams(next, { replace: true });
-  }, [currentPage, searchQuery, searchParams, setSearchParams]);
+  }, [currentPage, searchQuery, selectedCategory, selectedBrand, searchParams, setSearchParams]);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["gallery-photos", currentPage, selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly],
