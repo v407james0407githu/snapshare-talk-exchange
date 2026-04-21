@@ -237,18 +237,47 @@ export default function Gallery() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const categoryParam = searchParams.get("category");
+  const brandParam = searchParams.get("brand");
+  const searchParam = searchParams.get("q");
+  const pageParam = searchParams.get("page");
   const galleryTopRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry");
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "全部");
-  const [selectedBrand, setSelectedBrand] = useState(searchParams.get("brand") || "全部品牌");
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
+  const [selectedCategory, setSelectedCategory] = useState(categoryParam || "全部");
+  const [selectedBrand, setSelectedBrand] = useState(brandParam || "全部品牌");
+  const [searchQuery, setSearchQuery] = useState(searchParam || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParam || "");
   const [sortBy, setSortBy] = useState<"newest" | "most_liked" | "highest_rated">("newest");
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(() => {
-    const parsed = Number(searchParams.get("page") || "1");
+    const parsed = Number(pageParam || "1");
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
   });
+
+  useEffect(() => {
+    const nextCategory = categoryParam || "全部";
+    const nextBrand = brandParam || "全部品牌";
+    const nextSearch = searchParam || "";
+    const parsedPage = Number(pageParam || "1");
+    const nextPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
+    if (selectedCategory !== nextCategory) setSelectedCategory(nextCategory);
+    if (selectedBrand !== nextBrand) setSelectedBrand(nextBrand);
+    if (searchQuery !== nextSearch) {
+      setSearchQuery(nextSearch);
+      setDebouncedSearch(nextSearch);
+    }
+    if (currentPage !== nextPage) setCurrentPage(nextPage);
+  }, [
+    brandParam,
+    categoryParam,
+    currentPage,
+    pageParam,
+    searchParam,
+    searchQuery,
+    selectedBrand,
+    selectedCategory,
+  ]);
 
   // Debounce search
   useEffect(() => {
@@ -257,21 +286,46 @@ export default function Gallery() {
   }, [searchQuery]);
 
   useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (debouncedSearch) next.set("q", debouncedSearch);
+    else next.delete("q");
+    next.delete("page");
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [debouncedSearch, searchParams, setSearchParams]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly]);
 
-  useEffect(() => {
+  const updateCategory = (value: string) => {
+    setSelectedCategory(value);
     const next = new URLSearchParams(searchParams);
-    if (searchQuery) next.set("q", searchQuery);
-    else next.delete("q");
-    if (selectedCategory !== "全部") next.set("category", selectedCategory);
+    if (value !== "全部") next.set("category", value);
     else next.delete("category");
-    if (selectedBrand !== "全部品牌") next.set("brand", selectedBrand);
+    next.delete("brand");
+    next.delete("page");
+    setSearchParams(next, { replace: true });
+  };
+
+  const updateBrand = (value: string) => {
+    setSelectedBrand(value);
+    const next = new URLSearchParams(searchParams);
+    if (value !== "全部品牌") next.set("brand", value);
     else next.delete("brand");
-    if (currentPage > 1) next.set("page", String(currentPage));
+    next.delete("page");
+    setSearchParams(next, { replace: true });
+  };
+
+  const updatePage = (page: number) => {
+    setCurrentPage(page);
+    const next = new URLSearchParams(searchParams);
+    if (page > 1) next.set("page", String(page));
     else next.delete("page");
     setSearchParams(next, { replace: true });
-  }, [currentPage, searchQuery, selectedCategory, selectedBrand, searchParams, setSearchParams]);
+  };
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["gallery-photos", currentPage, selectedCategory, selectedBrand, debouncedSearch, sortBy, featuredOnly],
@@ -401,7 +455,7 @@ export default function Gallery() {
   const goToPage = (page: number) => {
     const nextPage = Math.min(totalPages, Math.max(1, page));
     if (nextPage === currentPage) return;
-    setCurrentPage(nextPage);
+    updatePage(nextPage);
     scrollToGalleryTop();
   };
 
@@ -435,9 +489,9 @@ export default function Gallery() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        onCategoryChange={updateCategory}
         selectedBrand={selectedBrand}
-        onBrandChange={setSelectedBrand}
+        onBrandChange={updateBrand}
         sortBy={sortBy}
         onSortChange={setSortBy}
         viewMode={viewMode}
