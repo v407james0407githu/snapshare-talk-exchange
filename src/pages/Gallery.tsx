@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Heart, MessageCircle, Eye, Star, ImagePlus, Aperture, Clock, Sun, Award, ChevronLeft, ChevronRight, Sparkles, Camera } from "lucide-react";
@@ -236,6 +236,7 @@ export default function Gallery() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const galleryTopRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "masonry">("masonry");
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [selectedBrand, setSelectedBrand] = useState("全部品牌");
@@ -386,6 +387,19 @@ export default function Gallery() {
     return name.slice(0, 1).toUpperCase();
   };
 
+  const scrollToGalleryTop = () => {
+    window.requestAnimationFrame(() => {
+      galleryTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const goToPage = (page: number) => {
+    const nextPage = Math.min(totalPages, Math.max(1, page));
+    if (nextPage === currentPage) return;
+    setCurrentPage(nextPage);
+    scrollToGalleryTop();
+  };
+
   const handleUpload = () => {
     if (!user) { navigate("/auth"); return; }
     navigate("/upload");
@@ -431,6 +445,7 @@ export default function Gallery() {
       {/* Gallery Grid */}
       <section className="py-8">
         <div className="container">
+          <div ref={galleryTopRef} className="scroll-mt-28" />
           {isLoading ? (
             <div className={gridClass}>
               {Array.from({ length: 12 }).map((_, i) => (
@@ -538,7 +553,7 @@ export default function Gallery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    onClick={() => goToPage(currentPage - 1)}
                     disabled={currentPage === 1 || isFetching}
                     className="gap-1"
                   >
@@ -550,7 +565,7 @@ export default function Gallery() {
                       key={page}
                       variant={page === currentPage ? "gold" : "outline"}
                       size="sm"
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => goToPage(page)}
                       disabled={isFetching && page === currentPage}
                       className="min-w-10"
                     >
@@ -560,7 +575,7 @@ export default function Gallery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    onClick={() => goToPage(currentPage + 1)}
                     disabled={currentPage === totalPages || isFetching}
                     className="gap-1"
                   >
