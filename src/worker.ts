@@ -1,4 +1,5 @@
 interface Env {
+  ASSETS: Fetcher;
   VITE_SUPABASE_URL?: string;
   VITE_SUPABASE_PUBLISHABLE_KEY?: string;
 }
@@ -20,10 +21,14 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;");
 }
 
+function getPhotoId(pathname: string) {
+  const match = pathname.match(/^\/gallery\/([^/?#]+)$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 function buildMetaTags(photo: PhotoMeta, canonicalUrl: string) {
   const title = `${photo.title} - ${SITE_NAME}`;
   const description = photo.description?.trim() || `由攝影師拍攝的作品：${photo.title}`;
-  const imageUrl = photo.image_url;
 
   return [
     `<title>${escapeHtml(title)}</title>`,
@@ -32,11 +37,11 @@ function buildMetaTags(photo: PhotoMeta, canonicalUrl: string) {
     `<meta property="og:description" content="${escapeHtml(description)}" />`,
     `<meta property="og:type" content="article" />`,
     `<meta property="og:url" content="${escapeHtml(canonicalUrl)}" />`,
-    `<meta property="og:image" content="${escapeHtml(imageUrl)}" />`,
+    `<meta property="og:image" content="${escapeHtml(photo.image_url)}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${escapeHtml(title)}" />`,
     `<meta name="twitter:description" content="${escapeHtml(description)}" />`,
-    `<meta name="twitter:image" content="${escapeHtml(imageUrl)}" />`,
+    `<meta name="twitter:image" content="${escapeHtml(photo.image_url)}" />`,
     `<link rel="canonical" href="${escapeHtml(canonicalUrl)}" />`,
   ].join("\n");
 }
@@ -63,26 +68,28 @@ async function fetchPhotoMeta(env: Env, photoId: string) {
   return photos[0] ?? null;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const photoId = context.params.photoId;
-  const id = Array.isArray(photoId) ? photoId[0] : photoId;
+export default {
+  async fetch(request, env) {
+    const assetResponse = await env.ASSETS.fetch(request);
+    const url = new URL(request.url);
+    const photoId = getPhotoId(url.pathname);
 
-  const assetResponse = await context.next();
-  if (!id || !assetResponse.headers.get("content-type")?.includes("text/html")) {
-    return assetResponse;
-  }
+    if (!photoId || !assetResponse.headers.get("content-type")?.includes("text/html")) {
+      return assetResponse;
+    }
 
-  const photo = await fetchPhotoMeta(context.env, id);
-  if (!photo) return assetResponse;
+    const photo = await fetchPhotoMeta(env, photoId);
+    if (!photo) return assetResponse;
 
-  const canonicalUrl = `${SITE_URL}/gallery/${encodeURIComponent(id)}`;
-  const metaTags = buildMetaTags(photo, canonicalUrl);
+    const canonicalUrl = `${SITE_URL}/gallery/${encodeURIComponent(photoId)}`;
+    const metaTags = buildMetaTags(photo, canonicalUrl);
 
-  return new HTMLRewriter()
-    .on("head", {
-      element(element) {
-        element.prepend(metaTags, { html: true });
-      },
-    })
-    .transform(assetResponse);
-};
+    return new HTMLRewriter()
+      .on("head", {
+        element(element) {
+          element.prepend(metaTags, { html: true });
+        },
+      })
+      .transform(assetResponse);
+  },
+} satisfies ExportedHandler<Env>;
