@@ -161,9 +161,19 @@ export default function Forums() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["forum-stats"],
     queryFn: async () => {
-      const { count: topicCount } = await supabase.from("forum_topics").select("*", { count: "exact", head: true });
-      const { count: replyCount } = await supabase.from("forum_replies").select("*", { count: "exact", head: true });
-      const { count: userCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
+      const [
+        { count: topicCount },
+        { count: replyCount },
+        { data: publicProfiles, error: publicProfilesError },
+      ] = await Promise.all([
+        supabase.from("forum_topics").select("*", { count: "exact", head: true }),
+        supabase.from("forum_replies").select("*", { count: "exact", head: true }),
+        supabase.rpc("get_public_profiles"),
+      ]);
+
+      if (publicProfilesError) throw publicProfilesError;
+
+      const userCount = Array.isArray(publicProfiles) ? publicProfiles.length : 0;
       return { topics: topicCount || 0, replies: replyCount || 0, users: userCount || 0 };
     },
     staleTime: 1000 * 60 * 5,

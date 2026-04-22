@@ -138,12 +138,19 @@ async function fetchForumTopics() {
 }
 
 async function fetchForumStats() {
-  const [{ count: topicCount }, { count: replyCount }, { count: userCount }] = await Promise.all([
+  const [
+    { count: topicCount },
+    { count: replyCount },
+    { data: publicProfiles, error: publicProfilesError },
+  ] = await Promise.all([
     supabase.from("forum_topics").select("*", { count: "exact", head: true }),
     supabase.from("forum_replies").select("*", { count: "exact", head: true }),
-    supabase.from("profiles").select("*", { count: "exact", head: true }),
+    supabase.rpc("get_public_profiles"),
   ]);
 
+  if (publicProfilesError) throw publicProfilesError;
+
+  const userCount = Array.isArray(publicProfiles) ? publicProfiles.length : 0;
   return { topics: topicCount || 0, replies: replyCount || 0, users: userCount || 0 };
 }
 
