@@ -26,23 +26,6 @@ interface ListingItem {
   };
 }
 
-type MarketplacePreviewRow = {
-  id: string;
-  title: string;
-  price: number;
-  currency: string;
-  verification_image_url: string;
-  condition: string;
-  location: string | null;
-  is_verified: boolean;
-  created_at: string;
-  user_id: string;
-  view_count: number | null;
-  inquiry_count: number | null;
-  seller_username: string | null;
-  seller_display_name: string | null;
-};
-
 function normalizeSellerName(
   profile?: { display_name?: string | null; username?: string | null },
   userId?: string,
@@ -71,80 +54,49 @@ const conditionColors: Record<string, string> = {
 };
 
 export function MarketplacePreview({ sectionTitle, sectionSubtitle }: { sectionTitle?: string; sectionSubtitle?: string } = {}) {
-  const cacheKey = "homepage-marketplace-preview-v2";
+  const cacheKey = "homepage-marketplace-preview-v3";
   const cachedListings = readBootstrapCache<ListingItem[]>(cacheKey);
   const initialListings = cachedListings && cachedListings.length > 0 ? cachedListings : undefined;
 
   const { data: listings = [], isLoading, isFetched } = useQuery({
-    queryKey: ["homepage-marketplace-preview", "v2"],
+    queryKey: ["homepage-marketplace-preview", "v3"],
     queryFn: async () => {
       const supabase = await getPublicSupabase();
-      const { data: publicPreview, error: publicPreviewError } = await supabase.rpc("get_public_marketplace_preview");
+      const { data, error } = await supabase
+        .from("marketplace_listings")
+        .select("id, title, price, currency, verification_image_url, condition, location, is_verified, created_at, user_id, view_count")
+        .eq("is_hidden", false)
+        .eq("is_sold", false)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (error) throw error;
 
-      let items: ListingItem[] = [];
+      const items: ListingItem[] = ((data || []) as Array<ListingItem & { view_count?: number | null }>).map((item) => ({
+        ...item,
+        view_count: item.view_count ?? 0,
+        inquiry_count: 0,
+        seller: {
+          username: null,
+          display_name: normalizeSellerName(undefined, item.user_id),
+        },
+      }));
 
-      if (!publicPreviewError && Array.isArray(publicPreview) && publicPreview.length > 0) {
-        items = (publicPreview as MarketplacePreviewRow[]).map((item) => ({
-          id: item.id,
-          title: item.title,
-          price: item.price,
-          currency: item.currency,
-          verification_image_url: item.verification_image_url,
-          condition: item.condition,
-          location: item.location,
-          is_verified: item.is_verified,
-          created_at: item.created_at,
-          user_id: item.user_id,
-          view_count: item.view_count ?? 0,
-          inquiry_count: item.inquiry_count ?? 0,
-          seller: {
-            username: item.seller_username,
-            display_name: normalizeSellerName(
-              {
-                display_name: item.seller_display_name,
-                username: item.seller_username,
-              },
-              item.user_id,
-            ),
-          },
-        }));
-      } else {
-        const { data, error } = await supabase
-          .from("marketplace_listings")
-          .select("id, title, price, currency, verification_image_url, condition, location, is_verified, created_at, user_id, view_count")
-          .eq("is_hidden", false)
-          .eq("is_sold", false)
-          .order("created_at", { ascending: false })
-          .limit(6);
-        if (error) throw error;
+      if (items.length > 0) {
+        const userIds = [...new Set(items.map((item) => item.user_id))];
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, username, display_name")
+          .in("user_id", userIds);
 
-        items = ((data || []) as Array<ListingItem & { view_count?: number | null }>).map((item) => ({
-          ...item,
-          view_count: item.view_count ?? 0,
-          inquiry_count: 0,
-        }));
-
-        if (items.length > 0) {
-          const userIds = [...new Set(items.map((i) => i.user_id))];
-          const { data: profiles, error: profilesError } = await supabase.rpc("get_public_profiles");
-          if (profilesError) throw profilesError;
-          if (profiles) {
-            const map = new Map(
-              profiles
-                .filter((p) => userIds.includes(p.user_id))
-                .map((p) => [p.user_id, p] as const),
-            );
-            items.forEach((item) => {
-              const p = map.get(item.user_id);
-              item.seller = {
-                username: p?.username ?? null,
-                display_name: normalizeSellerName(
-                  p ? { display_name: p.display_name, username: p.username } : undefined,
-                  item.user_id,
-                ),
-              };
-            });
-          }
+        if (profiles) {
+          const map = new Map(profiles.map((profile) => [profile.user_id, profile] as const));
+          items.forEach((item) => {
+            const profile = map.get(item.user_id);
+            item.seller = {
+              username: profile?.username ?? null,
+              display_name: normalizeSellerName(profile, item.user_id),
+            };
+          });
         }
       }
 
