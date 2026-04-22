@@ -34,8 +34,15 @@ export function usePhotographerFollow(targetUserId?: string | null) {
 
   const followStateQuery = useQuery({
     queryKey: ["photographer-follow-state", user?.id ?? "anon", targetUserId ?? "none"],
-    enabled: !!targetUserId,
+    enabled: !!targetUserId && !!user?.id,
     queryFn: async () => {
+      if (!user?.id || !targetUserId) {
+        return {
+          followerCount: 0,
+          isFollowing: false,
+        };
+      }
+
       const [{ count, error: countError }, relationship] = await Promise.all([
         supabase
           .from("user_follows")
